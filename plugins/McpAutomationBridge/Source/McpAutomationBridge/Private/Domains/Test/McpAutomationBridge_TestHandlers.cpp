@@ -24,6 +24,7 @@
 // -----------------------------------------------------------------------------
 #include "McpAutomationBridgeSubsystem.h"
 #include "Domains/SystemControl/McpAutomationBridge_SystemControlHandlersPrivate.h"
+#include "Foundation/BridgeHelpers/Responses/McpAutomationBridgeHelpersJsonFields.h"
 
 // -----------------------------------------------------------------------------
 // Engine Includes

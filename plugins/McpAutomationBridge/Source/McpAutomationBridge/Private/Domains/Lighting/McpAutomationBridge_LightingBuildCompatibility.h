@@ -1,6 +1,7 @@
 #pragma once
 
 #include "EditorBuildUtils.h"
+#include "Engine/EngineTypes.h"
 
 class UWorld;
 
