@@ -16,13 +16,20 @@ FProperty* CreateCustomEventParameter(
     const FName PropertyName(*ParameterName);
     FProperty* Property = nullptr;
 
-    if (PinType.PinCategory == UEdGraphSchema_K2::PC_Float)
+    if (PinType.PinCategory == UEdGraphSchema_K2::PC_Real)
     {
-        Property = new FFloatProperty(Function, PropertyName, RF_Public);
-    }
-    else if (PinType.PinCategory == UEdGraphSchema_K2::PC_Real)
-    {
-        Property = new FDoubleProperty(Function, PropertyName, RF_Public);
+        // UE5 real pins carry their precision in PinSubCategory (PC_Float or
+        // PC_Double); a bare PC_Float pin category is invalid and no longer
+        // produced by ResolveCustomEventPinType, so dispatch on the
+        // subcategory instead.
+        if (PinType.PinSubCategory == UEdGraphSchema_K2::PC_Float)
+        {
+            Property = new FFloatProperty(Function, PropertyName, RF_Public);
+        }
+        else
+        {
+            Property = new FDoubleProperty(Function, PropertyName, RF_Public);
+        }
     }
     else if (PinType.PinCategory == UEdGraphSchema_K2::PC_Int)
     {
@@ -36,7 +43,9 @@ FProperty* CreateCustomEventParameter(
     {
         FBoolProperty* BoolProperty =
             new FBoolProperty(Function, PropertyName, RF_Public);
-        BoolProperty->SetBoolSize(0, true);
+        // A native bool's size is sizeof(bool); SetBoolSize(0, ...) leaves
+        // ElementSize 0 and trips check(GetElementSize() != 0) -> editor crash.
+        BoolProperty->SetBoolSize(sizeof(bool), true);
         Property = BoolProperty;
     }
     else if (PinType.PinCategory == UEdGraphSchema_K2::PC_String)

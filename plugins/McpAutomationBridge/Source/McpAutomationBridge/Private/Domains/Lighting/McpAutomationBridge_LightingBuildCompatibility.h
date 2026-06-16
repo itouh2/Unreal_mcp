@@ -1,7 +1,7 @@
 #pragma once
 
 #include "EditorBuildUtils.h"
-#include "Engine/EngineTypes.h"
+#include "LightingBuildOptions.h" // UE5.8: ELightingBuildQuality no longer pulled transitively via EditorBuildUtils.h
 
 class UWorld;
 
