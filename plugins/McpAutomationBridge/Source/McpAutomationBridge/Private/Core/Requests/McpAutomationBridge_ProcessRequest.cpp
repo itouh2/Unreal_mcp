@@ -8,6 +8,7 @@
 #include "McpConnectionManager.h"
 #include "Misc/ScopeExit.h"
 #include "Misc/ScopeLock.h"
+#include "Framework/Application/SlateApplication.h" // active-modal pre-flight (Slate is an editor dep)
 
 void UMcpAutomationBridgeSubsystem::ProcessAutomationRequest(
     const FString &RequestId, const FString &Action,
@@ -27,7 +28,11 @@ void UMcpAutomationBridgeSubsystem::ProcessAutomationRequest(
          ConnectionManager.IsValid() ? ConnectionManager->GetActiveSocketCount()
                                      : 0);
   if (!IsInGameThread()) {
-    QueueAutomationRequest(RequestId, Action, Payload, RequestingSocket, Origin);
+    const EAutomationQueueRejection Reason = QueueAutomationRequest(
+        RequestId, Action, Payload, RequestingSocket, Origin);
+    if (Reason != EAutomationQueueRejection::None) {
+      SendAutomationRejection(RequestingSocket, RequestId, Reason);
+    }
     return;
   }
 
@@ -40,7 +45,11 @@ void UMcpAutomationBridgeSubsystem::ProcessAutomationRequest(
                 "Serialization/GC/Loading: RequestId=%s Action=%s"),
            *RequestId, *Action);
 
-    QueueAutomationRequest(RequestId, Action, Payload, RequestingSocket, Origin);
+    const EAutomationQueueRejection Reason = QueueAutomationRequest(
+        RequestId, Action, Payload, RequestingSocket, Origin);
+    if (Reason != EAutomationQueueRejection::None) {
+      SendAutomationRejection(RequestingSocket, RequestId, Reason);
+    }
     return;
   }
 
@@ -58,16 +67,37 @@ void UMcpAutomationBridgeSubsystem::ProcessAutomationRequest(
 
   // Reentrancy guard / enqueue
   if (bProcessingAutomationRequest) {
-    QueueAutomationRequest(RequestId, Action, Payload, RequestingSocket, Origin);
-    UE_LOG(LogMcpAutomationBridgeSubsystem, Verbose,
-           TEXT("Enqueued automation request %s for action %s (processing in "
-                "progress)."),
+    const EAutomationQueueRejection Reason = QueueAutomationRequest(
+        RequestId, Action, Payload, RequestingSocket, Origin);
+    if (Reason != EAutomationQueueRejection::None) {
+      SendAutomationRejection(RequestingSocket, RequestId, Reason);
+    }
+    return;
+  }
+
+  // if the editor is ALREADY blocked on a modal window, do NOT stack another handler on top of it — reply
+  // with a clear signal instead of piling onto the freeze. Defensive: the primary K1 fix is the unattended-guard
+  // below, which stops handlers from opening a blocking modal in the first place.
+  if (FSlateApplication::IsInitialized() &&
+      FSlateApplication::Get().GetActiveModalWindow().IsValid()) {
+    UE_LOG(LogMcpAutomationBridgeSubsystem, Warning,
+           TEXT("ProcessAutomationRequest: refusing dispatch while a modal window is active "
+                "RequestId=%s action='%s'"),
            *RequestId, *Action);
+    SendAutomationError(
+        RequestingSocket, RequestId,
+        TEXT("Editor is waiting on a modal dialog; automation is paused until it is dismissed."),
+        TEXT("EDITOR_MODAL_ACTIVE"));
     return;
   }
 
   bProcessingAutomationRequest = true;
   CurrentRequestOrigin = Origin;
+  // force UE unattended-script mode for the duration of handler dispatch so any FMessageDialog / editor
+  // confirmation prompt AUTO-ANSWERS its default instead of opening a BLOCKING modal that freezes the game thread
+  // (the witnessed force-kill / data-loss class). RAII-restored on every function-scope exit (incl. the early
+  // returns and the exception paths below). Non-differential stability fix.
+  TGuardValue<bool> UnattendedScriptGuard(GIsRunningUnattendedScript, true);
   bool bDispatchHandled = false;
   bool bErrorCaptureStarted = false;
   FString ConsumedHandlerLabel = TEXT("unknown-handler");
