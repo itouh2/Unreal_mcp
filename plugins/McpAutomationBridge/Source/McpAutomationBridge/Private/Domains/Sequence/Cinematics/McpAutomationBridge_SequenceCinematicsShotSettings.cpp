@@ -2,6 +2,7 @@
 
 #if WITH_EDITOR
 #include "MovieScene.h"
+#include "LevelSequence.h" // [CCB-PATCH] UE 5.7: ULevelSequence 完全型 (upstream include 漏れ)
 #include "Sections/MovieSceneCinematicShotSection.h"
 #include "Tracks/MovieSceneCinematicShotTrack.h"
 #endif

@@ -1,4 +1,5 @@
 #include "MCP/Transport/McpNativeTransportPrivate.h"
+#include "Misc/EngineVersionComparison.h" // [CCB-PATCH] UE_VERSION_OLDER_THAN for GetAddress compat
 
 void FMcpNativeTransport::HandleConnection(FSocket* ClientSocket)
 {
@@ -220,10 +221,16 @@ void FMcpNativeTransport::HandleConnection(FSocket* ClientSocket)
 		{
 			TSharedRef<FInternetAddr> RemoteAddr =
 				ISocketSubsystem::Get(PLATFORM_SOCKETSUBSYSTEM)->CreateInternetAddr();
+			// [CCB-PATCH] UE 5.7 の FSocket::GetAddress は void を返す (upstream は bool 前提)。
+#if UE_VERSION_OLDER_THAN(5, 8, 0)
+			ClientSocket->GetAddress(*RemoteAddr);
+			ConnectionRemoteAddr = RemoteAddr->ToString(true);
+#else
 			if (ClientSocket->GetAddress(*RemoteAddr))
 			{
 				ConnectionRemoteAddr = RemoteAddr->ToString(true);
 			}
+#endif
 		}
 		FString ResponseBody = HandleInitialize(
 			Rpc.Params, Rpc.Id, NewSessionId, ConnectionRemoteAddr);
