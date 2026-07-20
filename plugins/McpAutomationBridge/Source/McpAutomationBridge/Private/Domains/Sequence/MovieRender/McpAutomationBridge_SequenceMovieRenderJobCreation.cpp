@@ -3,7 +3,7 @@
 #if MCP_HAS_MOVIE_RENDER_PIPELINE
 
 #include "Domains/Sequence/MovieRender/McpAutomationBridge_SequenceMovieRenderInternal.h"
-#include "Domains/Sequence/MovieRender/McpAutomationBridge_SequenceMovieRenderResourceLimits.h" // [CCB-PATCH] UE 5.7: ValidateQueueResourceLimits 宣言
+#include "Domains/Sequence/MovieRender/McpAutomationBridge_SequenceMovieRenderResourceLimits.h"
 
 #include "EditorAssetLibrary.h"
 #include "Engine/World.h"

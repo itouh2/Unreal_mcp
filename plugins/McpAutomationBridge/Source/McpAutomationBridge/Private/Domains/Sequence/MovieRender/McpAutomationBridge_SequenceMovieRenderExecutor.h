@@ -2,8 +2,9 @@
 
 #include "Core/Compatibility/McpVersionCompatibility.h"
 #include "CoreMinimal.h"
-#include "Templates/SubclassOf.h" // [CCB-PATCH] UE 5.7: TSubclassOf テンプレート
+#include "Templates/SubclassOf.h"
 #include "Dom/JsonObject.h"
+#include "Templates/SubclassOf.h"
 
 #if MCP_HAS_MOVIE_RENDER_PIPELINE
 
