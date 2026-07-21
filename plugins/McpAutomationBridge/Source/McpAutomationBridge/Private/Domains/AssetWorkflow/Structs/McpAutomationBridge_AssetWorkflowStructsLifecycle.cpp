@@ -205,7 +205,9 @@ bool HandleStructLifecycleActions(UMcpAutomationBridgeSubsystem& Bridge, const F
             }
 
             FString ValidityMsg;
-            const bool bValid = FStructureEditorUtils::IsStructureValid(S, nullptr, &ValidityMsg);
+            // [CCB-PATCH] IsStructureValid は EStructureError(enum) を返す。bool 直代入は
+            // C4800(warning-as-error) になり、かつ Ok=0 のため isValid が反転する。Ok と明示比較する。
+            const bool bValid = (FStructureEditorUtils::IsStructureValid(S, nullptr, &ValidityMsg) == FStructureEditorUtils::EStructureError::Ok);
 
             TSharedPtr<FJsonObject> Result = McpHandlerUtils::CreateResultObject();
             Result->SetStringField(TEXT("assetPath"), StructPath);
