@@ -67,8 +67,16 @@ static bool CreateRerouteNode(FActionContext& Context)
 
     float X = 0.0f;
     float Y = 0.0f;
-    Context.Payload->TryGetNumberField(TEXT("x"), X);
-    Context.Payload->TryGetNumberField(TEXT("y"), Y);
+    // Match create_node: accept the tool-facing posX/posY names, which reach the
+    // native transport unnormalized (the TS bridge's posX->x mapping is bypassed).
+    if (!Context.Payload->TryGetNumberField(TEXT("x"), X))
+    {
+        Context.Payload->TryGetNumberField(TEXT("posX"), X);
+    }
+    if (!Context.Payload->TryGetNumberField(TEXT("y"), Y))
+    {
+        Context.Payload->TryGetNumberField(TEXT("posY"), Y);
+    }
 
     FGraphNodeCreator<UK2Node_Knot> NodeCreator(*Context.TargetGraph);
     UK2Node_Knot* RerouteNode = NodeCreator.CreateNode(false);
@@ -168,6 +176,47 @@ static bool SetNodeProperty(FActionContext& Context)
                  ESearchCase::IgnoreCase))
     {
         TargetNode->bCommentBubblePinned = Value.ToBool();
+        bHandled = true;
+    }
+    else if (
+        PropertyName.Equals(TEXT("EnabledState"), ESearchCase::IgnoreCase) ||
+        PropertyName.Equals(TEXT("bDisabled"), ESearchCase::IgnoreCase))
+    {
+        // Enable/disable a node (BUG-d870cf: the set was previously comment/position-only). "bDisabled" takes a
+        // bool; "EnabledState" also accepts the enum names Enabled / Disabled / DevelopmentOnly.
+        ENodeEnabledState NewState = ENodeEnabledState::Enabled;
+        if (PropertyName.Equals(TEXT("bDisabled"), ESearchCase::IgnoreCase))
+        {
+            NewState = Value.ToBool()
+                           ? ENodeEnabledState::Disabled
+                           : ENodeEnabledState::Enabled;
+        }
+        else if (Value.Equals(TEXT("Enabled"), ESearchCase::IgnoreCase))
+        {
+            NewState = ENodeEnabledState::Enabled;
+        }
+        else if (Value.Equals(TEXT("Disabled"), ESearchCase::IgnoreCase))
+        {
+            NewState = ENodeEnabledState::Disabled;
+        }
+        else if (Value.Equals(
+                     TEXT("DevelopmentOnly"),
+                     ESearchCase::IgnoreCase))
+        {
+            NewState = ENodeEnabledState::DevelopmentOnly;
+        }
+        else
+        {
+            // Reject an unrecognized EnabledState string instead of silently treating it as Enabled, so a typo
+            // (e.g. "Disable") is reported rather than leaving the node in the wrong state under a success reply.
+            Context.SendError(
+                FString::Printf(
+                    TEXT("Invalid EnabledState '%s' (expected Enabled, Disabled, or DevelopmentOnly)"),
+                    *Value),
+                TEXT("INVALID_ARGUMENT"));
+            return true;
+        }
+        TargetNode->SetEnabledState(NewState);
         bHandled = true;
     }
 

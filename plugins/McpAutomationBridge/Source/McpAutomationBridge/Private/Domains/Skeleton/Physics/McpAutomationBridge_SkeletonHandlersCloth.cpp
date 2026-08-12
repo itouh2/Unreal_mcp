@@ -25,8 +25,8 @@ bool UMcpAutomationBridgeSubsystem::HandleBindClothToSkeletalMesh(
     const TSharedPtr<FJsonObject>& Payload,
     TSharedPtr<FMcpBridgeWebSocket> RequestingSocket)
 {
-    FString SkeletalMeshPath = GetStringFieldSkel(Payload, TEXT("skeletalMeshPath"));
-    FString ClothAssetName = GetStringFieldSkel(Payload, TEXT("clothAssetName"));
+    FString SkeletalMeshPath = GetJsonStringField(Payload, TEXT("skeletalMeshPath"));
+    FString ClothAssetName = GetJsonStringField(Payload, TEXT("clothAssetName"));
     int32 MeshLodIndex = 0;
     int32 SectionIndex = 0;
     int32 AssetLodIndex = 0;
@@ -53,7 +53,6 @@ bool UMcpAutomationBridgeSubsystem::HandleBindClothToSkeletalMesh(
     TSharedPtr<FJsonObject> Result = McpHandlerUtils::CreateResultObject();
     Result->SetStringField(TEXT("skeletalMeshPath"), SkeletalMeshPath);
 
-    // Find the cloth asset by name if provided
     UClothingAssetBase* TargetClothAsset = nullptr;
     // UE 5.7 returns TArray<TObjectPtr<>> - UE 5.0 returns TArray<UClothingAssetBase*>
     const auto& ClothingAssets = Mesh->GetMeshClothingAssets();
@@ -84,7 +83,6 @@ bool UMcpAutomationBridgeSubsystem::HandleBindClothToSkeletalMesh(
             return true;
         }
 
-        // Bind the cloth asset to the specified section
         bool bSuccess = TargetClothAsset->BindToSkeletalMesh(Mesh, MeshLodIndex, SectionIndex, AssetLodIndex);
 
         if (bSuccess)
@@ -151,7 +149,7 @@ bool UMcpAutomationBridgeSubsystem::HandleAssignClothAssetToMesh(
     const TSharedPtr<FJsonObject>& Payload,
     TSharedPtr<FMcpBridgeWebSocket> RequestingSocket)
 {
-    FString SkeletalMeshPath = GetStringFieldSkel(Payload, TEXT("skeletalMeshPath"));
+    FString SkeletalMeshPath = GetJsonStringField(Payload, TEXT("skeletalMeshPath"));
 
     if (SkeletalMeshPath.IsEmpty())
     {
@@ -167,7 +165,6 @@ bool UMcpAutomationBridgeSubsystem::HandleAssignClothAssetToMesh(
         return true;
     }
 
-    // List current clothing assets
     TArray<TSharedPtr<FJsonValue>> ClothingArray;
     for (const auto& ClothAssetPtr : Mesh->GetMeshClothingAssets())
     {

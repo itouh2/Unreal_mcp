@@ -22,11 +22,11 @@ bool UMcpAutomationBridgeSubsystem::HandleListPhysicsBodies(
     const TSharedPtr<FJsonObject>& Payload,
     TSharedPtr<FMcpBridgeWebSocket> RequestingSocket)
 {
-    FString PhysicsAssetPath = GetStringFieldSkel(Payload, TEXT("physicsAssetPath"));
+    FString PhysicsAssetPath = GetJsonStringField(Payload, TEXT("physicsAssetPath"));
     if (PhysicsAssetPath.IsEmpty())
     {
         // Try to get from skeletal mesh
-        FString MeshPath = GetStringFieldSkel(Payload, TEXT("skeletalMeshPath"));
+        FString MeshPath = GetJsonStringField(Payload, TEXT("skeletalMeshPath"));
         if (!MeshPath.IsEmpty())
         {
             FString Error;
@@ -61,7 +61,6 @@ bool UMcpAutomationBridgeSubsystem::HandleListPhysicsBodies(
         BodyObj->SetStringField(TEXT("boneName"), BodySetup->BoneName.ToString());
         BodyObj->SetBoolField(TEXT("considerForBounds"), BodySetup->bConsiderForBounds);
 
-        // Collision type
         FString CollisionType;
         switch (BodySetup->CollisionTraceFlag)
         {
@@ -72,7 +71,6 @@ bool UMcpAutomationBridgeSubsystem::HandleListPhysicsBodies(
         }
         BodyObj->SetStringField(TEXT("collisionType"), CollisionType);
 
-        // Primitive counts
         BodyObj->SetNumberField(TEXT("sphereCount"), BodySetup->AggGeom.SphereElems.Num());
         BodyObj->SetNumberField(TEXT("boxCount"), BodySetup->AggGeom.BoxElems.Num());
         BodyObj->SetNumberField(TEXT("capsuleCount"), BodySetup->AggGeom.SphylElems.Num());
@@ -96,8 +94,8 @@ bool UMcpAutomationBridgeSubsystem::HandleGetPhysicsAssetInfo(
     TSharedPtr<FMcpBridgeWebSocket> RequestingSocket)
 {
 #if WITH_EDITOR
-    FString PhysicsAssetPath = GetStringFieldSkel(Payload, TEXT("physicsAssetPath"));
-    FString SkeletalMeshPath = GetStringFieldSkel(Payload, TEXT("skeletalMeshPath"));
+    FString PhysicsAssetPath = GetJsonStringField(Payload, TEXT("physicsAssetPath"));
+    FString SkeletalMeshPath = GetJsonStringField(Payload, TEXT("skeletalMeshPath"));
 
     UPhysicsAsset* PhysAsset = nullptr;
 
@@ -123,7 +121,6 @@ bool UMcpAutomationBridgeSubsystem::HandleGetPhysicsAssetInfo(
         return true;
     }
 
-    // Gather physics bodies info
     TArray<TSharedPtr<FJsonValue>> BodiesArray;
     for (USkeletalBodySetup* BodySetup : PhysAsset->SkeletalBodySetups)
     {
@@ -142,7 +139,6 @@ bool UMcpAutomationBridgeSubsystem::HandleGetPhysicsAssetInfo(
         }
     }
 
-    // Gather constraints info
     TArray<TSharedPtr<FJsonValue>> ConstraintsArray;
     for (UPhysicsConstraintTemplate* Constraint : PhysAsset->ConstraintSetup)
     {

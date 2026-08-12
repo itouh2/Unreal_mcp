@@ -19,13 +19,13 @@ namespace McpSkeletonHandlers {
 
 bool HandleMirrorWeightsAction(UMcpAutomationBridgeSubsystem* Subsystem, const FString& RequestId, const TSharedPtr<FJsonObject>& Payload, TSharedPtr<FMcpBridgeWebSocket> RequestingSocket)
 {
-FString SkeletalMeshPath = GetStringFieldSkel(Payload, TEXT("skeletalMeshPath"));
-        FString Axis = GetStringFieldSkel(Payload, TEXT("axis"));
+FString SkeletalMeshPath = GetJsonStringField(Payload, TEXT("skeletalMeshPath"));
+        FString Axis = GetJsonStringField(Payload, TEXT("axis"));
         if (Axis.IsEmpty())
         {
             Axis = TEXT("X");
         }
-        FString ProfileName = GetStringFieldSkel(Payload, TEXT("profileName"));
+        FString ProfileName = GetJsonStringField(Payload, TEXT("profileName"));
         if (ProfileName.IsEmpty())
         {
             ProfileName = TEXT("MirroredWeights");
@@ -58,7 +58,6 @@ FString SkeletalMeshPath = GetStringFieldSkel(Payload, TEXT("skeletalMeshPath"))
 
         FSkeletalMeshLODModel& LODModel = ImportedModel->LODModels[LODIndex];
 
-        // Create mirrored skin weight profile
         FSkinWeightProfileInfo NewProfile;
         NewProfile.Name = FName(*ProfileName);
         Mesh->AddSkinWeightProfile(NewProfile);

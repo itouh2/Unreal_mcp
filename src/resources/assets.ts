@@ -26,9 +26,7 @@ export class AssetResources extends BaseTool implements IAssetResources {
       if (d.toLowerCase().startsWith('/content')) {
         d = '/Game' + d.substring('/Content'.length);
       }
-      // Collapse multiple slashes
       d = d.replace(/\/+/g, '/');
-      // Remove trailing slash except root
       if (d.length > 1) d = d.replace(/\/$/, '');
       return d;
     } catch {
@@ -79,10 +77,8 @@ export class AssetResources extends BaseTool implements IAssetResources {
     // Note: _recursive parameter is intentionally ignored (kept for API compatibility)
     const recursive = false; // Force non-recursive
 
-    // Normalize directory first
     dir = this.normalizeDir(dir);
 
-    // Cache fast-path
     try {
       const key = this.makeKey(dir, recursive);
       const entry = this.cache.get(key);
@@ -188,7 +184,7 @@ export class AssetResources extends BaseTool implements IAssetResources {
         const normalizedDir = this.normalizeDir(dir);
         const response = await this.sendAutomationRequest<AutomationResponse>(
           'list',
-          { directory: normalizedDir, limit, recursive: false },
+          { path: normalizedDir, limit, recursive: false },
           { timeoutMs: 30000 }
         );
 

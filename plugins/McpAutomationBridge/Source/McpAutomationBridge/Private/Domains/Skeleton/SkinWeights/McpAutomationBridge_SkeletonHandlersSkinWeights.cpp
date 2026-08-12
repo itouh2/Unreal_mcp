@@ -16,7 +16,7 @@ bool UMcpAutomationBridgeSubsystem::HandleNormalizeWeights(
     const TSharedPtr<FJsonObject>& Payload,
     TSharedPtr<FMcpBridgeWebSocket> RequestingSocket)
 {
-    FString SkeletalMeshPath = GetStringFieldSkel(Payload, TEXT("skeletalMeshPath"));
+    FString SkeletalMeshPath = GetJsonStringField(Payload, TEXT("skeletalMeshPath"));
 
     if (SkeletalMeshPath.IsEmpty())
     {
@@ -39,7 +39,6 @@ bool UMcpAutomationBridgeSubsystem::HandleNormalizeWeights(
     Mesh->Build();
     McpSafeAssetSave(Mesh);
 
-    // Save if requested
     bool bSave = false;
     Payload->TryGetBoolField(TEXT("save"), bSave);
     if (bSave)
@@ -58,7 +57,7 @@ bool UMcpAutomationBridgeSubsystem::HandlePruneWeights(
     const TSharedPtr<FJsonObject>& Payload,
     TSharedPtr<FMcpBridgeWebSocket> RequestingSocket)
 {
-    FString SkeletalMeshPath = GetStringFieldSkel(Payload, TEXT("skeletalMeshPath"));
+    FString SkeletalMeshPath = GetJsonStringField(Payload, TEXT("skeletalMeshPath"));
     double Threshold = 0.01;
     Payload->TryGetNumberField(TEXT("threshold"), Threshold);
 
@@ -83,7 +82,6 @@ bool UMcpAutomationBridgeSubsystem::HandlePruneWeights(
     Mesh->Build();
     McpSafeAssetSave(Mesh);
 
-    // Save if requested
     bool bSave = false;
     Payload->TryGetBoolField(TEXT("save"), bSave);
     if (bSave)

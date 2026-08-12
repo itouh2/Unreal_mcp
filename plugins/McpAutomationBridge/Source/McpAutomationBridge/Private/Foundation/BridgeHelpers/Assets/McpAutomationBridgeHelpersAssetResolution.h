@@ -8,6 +8,14 @@
 // - Reference: Engine/Source/Runtime/CoreUObject/Public/Misc/PackageName.h
 #if WITH_EDITOR
 #include "Misc/PackageName.h"
+// UEditorAssetLibrary is used below. It reached this header only through the
+// PCH, which an installed-engine build does not guarantee; include it here with
+// the same guard the PCH uses so the header is self-contained.
+#if __has_include("EditorAssetLibrary.h")
+#include "EditorAssetLibrary.h"
+#elif __has_include("Editor/EditorAssetLibrary.h")
+#include "Editor/EditorAssetLibrary.h"
+#endif
 
 struct FNormalizedAssetPath {
   FString Path;
@@ -39,7 +47,6 @@ static inline FNormalizedAssetPath NormalizeAssetPath(const FString &InPath) {
 
   FString CleanPath = InPath;
 
-  // Remove trailing slashes
   while (CleanPath.EndsWith(TEXT("/"))) {
     CleanPath.RemoveAt(CleanPath.Len() - 1);
   }
@@ -80,7 +87,6 @@ static inline FNormalizedAssetPath NormalizeAssetPath(const FString &InPath) {
     FString TestPath = Root + BaseName;
     FText DummyReason;
     if (FPackageName::IsValidLongPackageName(TestPath, true, &DummyReason)) {
-      // Check if this asset actually exists
       if (FPackageName::DoesPackageExist(TestPath)) {
         Result.Path = TestPath;
         Result.bIsValid = true;
@@ -89,7 +95,6 @@ static inline FNormalizedAssetPath NormalizeAssetPath(const FString &InPath) {
     }
   }
 
-  // Return what we have, with the validation error
   Result.Path = CleanPath;
   Result.ErrorMessage = FString::Printf(
       TEXT("Invalid asset path '%s': %s. Expected format: "
@@ -162,7 +167,6 @@ static inline FString ResolveAssetPath(const FString &InputPath) {
       }
     }
 
-    // Return unique match
     if (FoundAssets.Num() == 1) {
       return FoundAssets[0].PackageName.ToString();
     }

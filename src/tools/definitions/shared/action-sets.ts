@@ -66,7 +66,12 @@ export const SKELETON_ACTIONS = [
   'add_physics_constraint', 'configure_constraint_limits',
   'bind_cloth_to_skeletal_mesh', 'assign_cloth_asset_to_mesh',
   'create_morph_target', 'set_morph_target_deltas', 'import_morph_targets',
-  'get_skeleton_info', 'list_bones', 'list_sockets', 'list_physics_bodies'
+  'get_skeleton_info', 'list_bones', 'list_sockets', 'list_physics_bodies',
+  'add_socket', 'modify_socket', 'delete_socket', 'remove_socket',
+  'set_physics_asset', 'modify_physics_body', 'remove_physics_body',
+  'set_physics_constraint', 'get_physics_asset_info',
+  'list_morph_targets', 'delete_morph_target', 'set_morph_target_value',
+  'get_bone_transform', 'list_virtual_bones', 'delete_virtual_bone'
 ] as const;
 
 export const LIGHTING_ACTIONS = [
@@ -160,7 +165,12 @@ export const WIDGET_AUTHORING_ACTIONS = [
   'create_loading_screen', 'create_hud_widget', 'add_health_bar', 'add_ammo_counter', 'add_minimap',
   'add_crosshair', 'add_compass', 'add_interaction_prompt', 'add_objective_tracker',
   'add_damage_indicator', 'create_inventory_ui', 'create_dialog_widget', 'create_radial_menu',
-  'get_widget_info', 'preview_widget'
+  'get_widget_info', 'preview_widget',
+  'add_quest_tracker', 'add_safe_zone', 'add_spacer', 'add_widget_component',
+  'add_widget_switcher', 'bind_localized_text', 'create_credits_screen', 'create_shop_ui',
+  'create_widget_style', 'delete_animation', 'get_widget_slot_info', 'remove_widget',
+  'rename_widget', 'reparent_widget', 'set_font', 'set_localization_key', 'set_margin',
+  'set_widget_binding'
 ] as const;
 
 export const SESSION_ACTIONS = [

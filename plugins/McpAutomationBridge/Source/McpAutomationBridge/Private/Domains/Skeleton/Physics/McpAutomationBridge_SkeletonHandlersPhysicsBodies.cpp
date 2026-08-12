@@ -25,9 +25,9 @@ bool UMcpAutomationBridgeSubsystem::HandleAddPhysicsBody(
     const TSharedPtr<FJsonObject>& Payload,
     TSharedPtr<FMcpBridgeWebSocket> RequestingSocket)
 {
-    FString PhysicsAssetPath = GetStringFieldSkel(Payload, TEXT("physicsAssetPath"));
-    FString BoneName = GetStringFieldSkel(Payload, TEXT("boneName"));
-    FString BodyType = GetStringFieldSkel(Payload, TEXT("bodyType"));
+    FString PhysicsAssetPath = GetJsonStringField(Payload, TEXT("physicsAssetPath"));
+    FString BoneName = GetJsonStringField(Payload, TEXT("boneName"));
+    FString BodyType = GetJsonStringField(Payload, TEXT("bodyType"));
 
     if (PhysicsAssetPath.IsEmpty())
     {
@@ -80,14 +80,12 @@ bool UMcpAutomationBridgeSubsystem::HandleAddPhysicsBody(
         }
     }
 
-    // Find existing body or create new one
     int32 BodyIndex = PhysicsAsset->FindBodyIndex(FName(*BoneName));
     USkeletalBodySetup* BodySetup = nullptr;
     bool bCreated = false;
 
     if (BodyIndex == INDEX_NONE)
     {
-        // Create new body
         BodySetup = NewObject<USkeletalBodySetup>(PhysicsAsset, NAME_None, RF_Transactional);
         if (!BodySetup)
         {
@@ -104,7 +102,6 @@ bool UMcpAutomationBridgeSubsystem::HandleAddPhysicsBody(
         BodySetup = PhysicsAsset->SkeletalBodySetups[BodyIndex];
     }
 
-    // Add geometry based on type
     if (BodyType.IsEmpty()) BodyType = TEXT("Capsule");
 
     double Radius = 10.0;
@@ -161,7 +158,6 @@ bool UMcpAutomationBridgeSubsystem::HandleAddPhysicsBody(
     PhysicsAsset->UpdateBoundsBodiesArray();
     McpSafeAssetSave(PhysicsAsset);
 
-    // Save if requested
     bool bSave = false;
     Payload->TryGetBoolField(TEXT("save"), bSave);
     if (bSave)
@@ -184,8 +180,8 @@ bool UMcpAutomationBridgeSubsystem::HandleConfigurePhysicsBody(
     const TSharedPtr<FJsonObject>& Payload,
     TSharedPtr<FMcpBridgeWebSocket> RequestingSocket)
 {
-    FString PhysicsAssetPath = GetStringFieldSkel(Payload, TEXT("physicsAssetPath"));
-    FString BoneName = GetStringFieldSkel(Payload, TEXT("boneName"));
+    FString PhysicsAssetPath = GetJsonStringField(Payload, TEXT("physicsAssetPath"));
+    FString BoneName = GetJsonStringField(Payload, TEXT("boneName"));
 
     if (PhysicsAssetPath.IsEmpty())
     {
@@ -229,7 +225,6 @@ bool UMcpAutomationBridgeSubsystem::HandleConfigurePhysicsBody(
 
     USkeletalBodySetup* BodySetup = PhysicsAsset->SkeletalBodySetups[BodyIndex];
 
-    // Configure physics properties
     double Mass = 0.0;
     if (Payload->TryGetNumberField(TEXT("mass"), Mass))
     {
@@ -267,7 +262,6 @@ bool UMcpAutomationBridgeSubsystem::HandleConfigurePhysicsBody(
 
     McpSafeAssetSave(PhysicsAsset);
 
-    // Save if requested
     bool bSave = false;
     Payload->TryGetBoolField(TEXT("save"), bSave);
     if (bSave)

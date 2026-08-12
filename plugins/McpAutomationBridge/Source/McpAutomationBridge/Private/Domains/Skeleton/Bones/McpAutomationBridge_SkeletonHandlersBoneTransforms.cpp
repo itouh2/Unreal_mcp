@@ -19,13 +19,13 @@ bool UMcpAutomationBridgeSubsystem::HandleSetBoneTransform(
     const TSharedPtr<FJsonObject>& Payload,
     TSharedPtr<FMcpBridgeWebSocket> RequestingSocket)
 {
-    FString SkeletalMeshPath = GetStringFieldSkel(Payload, TEXT("skeletalMeshPath"));
+    FString SkeletalMeshPath = GetJsonStringField(Payload, TEXT("skeletalMeshPath"));
     // Also accept skeletonPath for backward compatibility
     if (SkeletalMeshPath.IsEmpty())
     {
-        SkeletalMeshPath = GetStringFieldSkel(Payload, TEXT("skeletonPath"));
+        SkeletalMeshPath = GetJsonStringField(Payload, TEXT("skeletonPath"));
     }
-    FString BoneName = GetStringFieldSkel(Payload, TEXT("boneName"));
+    FString BoneName = GetJsonStringField(Payload, TEXT("boneName"));
 
     if (SkeletalMeshPath.IsEmpty() || BoneName.IsEmpty())
     {
@@ -52,7 +52,6 @@ bool UMcpAutomationBridgeSubsystem::HandleSetBoneTransform(
         return true;
     }
 
-    // Parse transform
     FVector Location = ParseVectorFromJson(Payload, TEXT("location"));
     FRotator Rotation = ParseRotatorFromJson(Payload, TEXT("rotation"));
     FVector Scale = ParseVectorFromJson(Payload, TEXT("scale"), FVector::OneVector);
@@ -66,7 +65,6 @@ bool UMcpAutomationBridgeSubsystem::HandleSetBoneTransform(
 
     McpSafeAssetSave(Mesh);
 
-    // Save if requested
     bool bSave = false;
     Payload->TryGetBoolField(TEXT("save"), bSave);
     if (bSave)

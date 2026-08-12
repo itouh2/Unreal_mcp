@@ -22,11 +22,11 @@ bool UMcpAutomationBridgeSubsystem::HandleImportMorphTargets(
     const TSharedPtr<FJsonObject>& Payload,
     TSharedPtr<FMcpBridgeWebSocket> RequestingSocket)
 {
-    FString SkeletalMeshPath = GetStringFieldSkel(Payload, TEXT("skeletalMeshPath"));
-    FString SourceFilePath = GetStringFieldSkel(Payload, TEXT("morphTargetPath"));
+    FString SkeletalMeshPath = GetJsonStringField(Payload, TEXT("skeletalMeshPath"));
+    FString SourceFilePath = GetJsonStringField(Payload, TEXT("morphTargetPath"));
     if (SourceFilePath.IsEmpty())
     {
-        SourceFilePath = GetStringFieldSkel(Payload, TEXT("sourcePath"));
+        SourceFilePath = GetJsonStringField(Payload, TEXT("sourcePath"));
     }
 
     if (SkeletalMeshPath.IsEmpty())
@@ -43,7 +43,6 @@ bool UMcpAutomationBridgeSubsystem::HandleImportMorphTargets(
         return true;
     }
 
-    // If source file provided, import from it
     if (!SourceFilePath.IsEmpty() && FPaths::FileExists(SourceFilePath))
     {
         // Note: Full FBX import for morph targets requires FbxImporter
@@ -54,7 +53,6 @@ bool UMcpAutomationBridgeSubsystem::HandleImportMorphTargets(
         return true;
     }
 
-    // Return current morph targets as info
     TArray<TSharedPtr<FJsonValue>> MorphTargetArray;
     for (UMorphTarget* MT : Mesh->GetMorphTargets())
     {
@@ -80,10 +78,10 @@ bool UMcpAutomationBridgeSubsystem::HandleSetMorphTargetValue(
     TSharedPtr<FMcpBridgeWebSocket> RequestingSocket)
 {
 #if WITH_EDITOR
-    FString ActorName = GetStringFieldSkel(Payload, TEXT("actorName"));
-    FString MorphTargetName = GetStringFieldSkel(Payload, TEXT("morphTargetName"));
-    double Value = GetNumberFieldSkel(Payload, TEXT("value"), 0.0);
-    bool bAddMissing = GetBoolFieldSkel(Payload, TEXT("addMissing"), false);
+    FString ActorName = GetJsonStringField(Payload, TEXT("actorName"));
+    FString MorphTargetName = GetJsonStringField(Payload, TEXT("morphTargetName"));
+    double Value = GetJsonNumberField(Payload, TEXT("value"), 0.0);
+    bool bAddMissing = GetJsonBoolField(Payload, TEXT("addMissing"), false);
 
     if (ActorName.IsEmpty() || MorphTargetName.IsEmpty())
     {
@@ -92,10 +90,8 @@ bool UMcpAutomationBridgeSubsystem::HandleSetMorphTargetValue(
         return true;
     }
 
-    // Clamp value to valid range
     Value = FMath::Clamp(Value, 0.0, 1.0);
 
-    // Find the actor
     UWorld* World = GEditor->GetEditorWorldContext().World();
     if (!World)
     {
@@ -120,7 +116,6 @@ bool UMcpAutomationBridgeSubsystem::HandleSetMorphTargetValue(
         return true;
     }
 
-    // Find skeletal mesh component
     USkeletalMeshComponent* SkelMeshComp = FoundActor->FindComponentByClass<USkeletalMeshComponent>();
     if (!SkelMeshComp)
     {
@@ -129,7 +124,6 @@ bool UMcpAutomationBridgeSubsystem::HandleSetMorphTargetValue(
         return true;
     }
 
-    // Check if morph target exists on the mesh
 #if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1
     USkeletalMesh* SkelMesh = SkelMeshComp->GetSkeletalMeshAsset();
 #else
@@ -157,7 +151,6 @@ bool UMcpAutomationBridgeSubsystem::HandleSetMorphTargetValue(
         }
     }
 
-    // Set the morph target value
     SkelMeshComp->SetMorphTarget(FName(*MorphTargetName), static_cast<float>(Value));
 
     TSharedPtr<FJsonObject> Result = McpHandlerUtils::CreateResultObject();
@@ -165,7 +158,6 @@ bool UMcpAutomationBridgeSubsystem::HandleSetMorphTargetValue(
     Result->SetStringField(TEXT("morphTargetName"), MorphTargetName);
     Result->SetNumberField(TEXT("value"), Value);
 
-    // Get current morph target weights for reporting
     TArray<TSharedPtr<FJsonValue>> ActiveMorphs;
     const TMap<FName, float>& MorphCurves = SkelMeshComp->GetMorphTargetCurves();
     for (const auto& Pair : MorphCurves)
@@ -195,10 +187,10 @@ bool UMcpAutomationBridgeSubsystem::HandleListMorphTargets(
     TSharedPtr<FMcpBridgeWebSocket> RequestingSocket)
 {
 #if WITH_EDITOR
-    FString SkeletalMeshPath = GetStringFieldSkel(Payload, TEXT("skeletalMeshPath"));
+    FString SkeletalMeshPath = GetJsonStringField(Payload, TEXT("skeletalMeshPath"));
     if (SkeletalMeshPath.IsEmpty())
     {
-        SkeletalMeshPath = GetStringFieldSkel(Payload, TEXT("meshPath"));
+        SkeletalMeshPath = GetJsonStringField(Payload, TEXT("meshPath"));
     }
 
     if (SkeletalMeshPath.IsEmpty())
@@ -248,8 +240,8 @@ bool UMcpAutomationBridgeSubsystem::HandleDeleteMorphTarget(
     TSharedPtr<FMcpBridgeWebSocket> RequestingSocket)
 {
 #if WITH_EDITOR
-    FString SkeletalMeshPath = GetStringFieldSkel(Payload, TEXT("skeletalMeshPath"));
-    FString MorphTargetName = GetStringFieldSkel(Payload, TEXT("morphTargetName"));
+    FString SkeletalMeshPath = GetJsonStringField(Payload, TEXT("skeletalMeshPath"));
+    FString MorphTargetName = GetJsonStringField(Payload, TEXT("morphTargetName"));
 
     if (SkeletalMeshPath.IsEmpty() || MorphTargetName.IsEmpty())
     {
@@ -266,7 +258,6 @@ bool UMcpAutomationBridgeSubsystem::HandleDeleteMorphTarget(
         return true;
     }
 
-    // Find the morph target
     UMorphTarget* TargetToRemove = nullptr;
     int32 Index = INDEX_NONE;
     for (int32 i = 0; i < Mesh->GetMorphTargets().Num(); ++i)
@@ -286,7 +277,6 @@ bool UMcpAutomationBridgeSubsystem::HandleDeleteMorphTarget(
         return true;
     }
 
-    // Remove the morph target
     Mesh->Modify();
     Mesh->UnregisterMorphTarget(TargetToRemove);
     Mesh->MarkPackageDirty();

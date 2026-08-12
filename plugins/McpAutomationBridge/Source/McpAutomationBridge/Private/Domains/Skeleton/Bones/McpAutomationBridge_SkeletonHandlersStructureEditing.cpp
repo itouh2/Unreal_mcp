@@ -18,8 +18,8 @@ namespace McpSkeletonHandlers {
 
 bool HandleRemoveBoneAction(UMcpAutomationBridgeSubsystem* Subsystem, const FString& RequestId, const TSharedPtr<FJsonObject>& Payload, TSharedPtr<FMcpBridgeWebSocket> RequestingSocket)
 {
-FString SkeletonPath = GetStringFieldSkel(Payload, TEXT("skeletonPath"));
-        FString BoneName = GetStringFieldSkel(Payload, TEXT("boneName"));
+FString SkeletonPath = GetJsonStringField(Payload, TEXT("skeletonPath"));
+        FString BoneName = GetJsonStringField(Payload, TEXT("boneName"));
         bool bRemoveChildren = false;
         Payload->TryGetBoolField(TEXT("removeChildren"), bRemoveChildren);
 
@@ -47,7 +47,6 @@ FString SkeletonPath = GetStringFieldSkel(Payload, TEXT("skeletonPath"));
             return true;
         }
 
-        // Check if it's the root bone
         if (BoneIndex == 0)
         {
             Subsystem->SendAutomationError(RequestingSocket, RequestId,
@@ -80,12 +79,12 @@ FString SkeletonPath = GetStringFieldSkel(Payload, TEXT("skeletonPath"));
 
 bool HandleSetBoneParentAction(UMcpAutomationBridgeSubsystem* Subsystem, const FString& RequestId, const TSharedPtr<FJsonObject>& Payload, TSharedPtr<FMcpBridgeWebSocket> RequestingSocket)
 {
-FString SkeletonPath = GetStringFieldSkel(Payload, TEXT("skeletonPath"));
-        FString BoneName = GetStringFieldSkel(Payload, TEXT("boneName"));
-        FString NewParentName = GetStringFieldSkel(Payload, TEXT("parentBone"));
+FString SkeletonPath = GetJsonStringField(Payload, TEXT("skeletonPath"));
+        FString BoneName = GetJsonStringField(Payload, TEXT("boneName"));
+        FString NewParentName = GetJsonStringField(Payload, TEXT("parentBone"));
         if (NewParentName.IsEmpty())
         {
-            NewParentName = GetStringFieldSkel(Payload, TEXT("newParentBone"));
+            NewParentName = GetJsonStringField(Payload, TEXT("newParentBone"));
         }
 
         if (SkeletonPath.IsEmpty() || BoneName.IsEmpty())

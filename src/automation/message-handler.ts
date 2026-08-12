@@ -4,6 +4,7 @@ import type {
     AutomationBridgeAutomationEvent,
     AutomationBridgeMessage,
     AutomationBridgeResponseMessage,
+    AutomationProgressUpdate,
     ProgressUpdateMessage
 } from './types.js';
 
@@ -56,7 +57,11 @@ export class MessageHandler {
 
     constructor(
         private requestTracker: RequestTracker,
-        private readonly emitAutomationEvent?: (event: AutomationBridgeAutomationEvent) => void
+        private readonly emitAutomationEvent?: (event: AutomationBridgeAutomationEvent) => void,
+        private readonly emitRequestProgress?: (
+            requestId: string,
+            update: AutomationProgressUpdate
+        ) => void
     ) { }
 
     public handleMessage(message: AutomationBridgeMessage): void {
@@ -103,7 +108,6 @@ export class MessageHandler {
 
         if (pending.waitForEvent) {
             if (!pending.initialResponse) {
-                // Store initial response and wait for event
                 pending.initialResponse = enforcedResponse;
 
                 // If the initial response indicates failure, resolve immediately
@@ -119,7 +123,6 @@ export class MessageHandler {
                     return;
                 }
 
-                // Set event timeout
                 const eventTimeoutMs = pending.eventTimeoutMs || 30000; // Default 30s for event
                 pending.eventTimeout = setTimeout(() => {
                     this.requestTracker.rejectRequest(requestId, new Error(`Timed out waiting for completion event for ${pending.action}`));
@@ -222,7 +225,6 @@ export class MessageHandler {
             return;
         }
 
-        // Log the progress update
         const progressStr = percent !== undefined ? ` (${percent.toFixed(1)}%)` : '';
         const msgStr = statusMsg ? `: ${statusMsg}` : '';
         this.log.debug(`Progress update for ${pending.action}${progressStr}${msgStr}`);
@@ -230,6 +232,17 @@ export class MessageHandler {
         // If stillWorking is explicitly false, operation may be completing soon
         if (stillWorking === false) {
             this.log.debug(`Progress update indicates operation completing for ${pending.action}`);
+        }
+
+        // Forward toward the MCP client BEFORE the timeout bookkeeping: a
+        // rejected extension must not also cost the client the progress frame
+        // that Unreal already produced.
+        if (percent !== undefined && Number.isFinite(percent)) {
+            this.emitRequestProgress?.(requestId, {
+                progress: percent,
+                total: 100,
+                ...(statusMsg ? { message: statusMsg } : {})
+            });
         }
 
         // Extend the timeout - this also handles deadlock detection

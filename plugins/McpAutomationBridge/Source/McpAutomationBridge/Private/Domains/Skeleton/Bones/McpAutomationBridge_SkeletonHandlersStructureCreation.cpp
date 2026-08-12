@@ -21,12 +21,12 @@ namespace McpSkeletonHandlers {
 
 bool HandleCreateSkeletonAction(UMcpAutomationBridgeSubsystem* Subsystem, const FString& RequestId, const TSharedPtr<FJsonObject>& Payload, TSharedPtr<FMcpBridgeWebSocket> RequestingSocket)
 {
-FString SkeletonPath = GetStringFieldSkel(Payload, TEXT("path"));
+FString SkeletonPath = GetJsonStringField(Payload, TEXT("path"));
         if (SkeletonPath.IsEmpty())
         {
-            SkeletonPath = GetStringFieldSkel(Payload, TEXT("skeletonPath"));
+            SkeletonPath = GetJsonStringField(Payload, TEXT("skeletonPath"));
         }
-        FString RootBoneName = GetStringFieldSkel(Payload, TEXT("rootBoneName"));
+        FString RootBoneName = GetJsonStringField(Payload, TEXT("rootBoneName"));
         if (RootBoneName.IsEmpty())
         {
             RootBoneName = TEXT("Root");
@@ -115,12 +115,12 @@ FString SkeletonPath = GetStringFieldSkel(Payload, TEXT("path"));
 
 bool HandleAddBoneAction(UMcpAutomationBridgeSubsystem* Subsystem, const FString& RequestId, const TSharedPtr<FJsonObject>& Payload, TSharedPtr<FMcpBridgeWebSocket> RequestingSocket)
 {
-FString SkeletonPath = GetStringFieldSkel(Payload, TEXT("skeletonPath"));
-        FString BoneName = GetStringFieldSkel(Payload, TEXT("boneName"));
-        FString ParentName = GetStringFieldSkel(Payload, TEXT("parentBone"));
+FString SkeletonPath = GetJsonStringField(Payload, TEXT("skeletonPath"));
+        FString BoneName = GetJsonStringField(Payload, TEXT("boneName"));
+        FString ParentName = GetJsonStringField(Payload, TEXT("parentBone"));
         if (ParentName.IsEmpty())
         {
-            ParentName = GetStringFieldSkel(Payload, TEXT("parentBoneName"));
+            ParentName = GetJsonStringField(Payload, TEXT("parentBoneName"));
         }
 
         if (SkeletonPath.IsEmpty() || BoneName.IsEmpty())
@@ -139,7 +139,6 @@ FString SkeletonPath = GetStringFieldSkel(Payload, TEXT("skeletonPath"));
 
         const FReferenceSkeleton& RefSkeleton = Skeleton->GetReferenceSkeleton();
 
-        // Check if bone already exists
         if (RefSkeleton.FindBoneIndex(FName(*BoneName)) != INDEX_NONE)
         {
             Subsystem->SendAutomationError(RequestingSocket, RequestId,
@@ -147,7 +146,6 @@ FString SkeletonPath = GetStringFieldSkel(Payload, TEXT("skeletonPath"));
             return true;
         }
 
-        // Find parent bone index
         int32 ParentIndex = INDEX_NONE;
         if (!ParentName.IsEmpty())
         {
@@ -167,13 +165,11 @@ FString SkeletonPath = GetStringFieldSkel(Payload, TEXT("skeletonPath"));
             return true;
         }
 
-        // Parse transform from payload
         FVector Location = ParseVectorFromJson(Payload, TEXT("location"));
         FRotator Rotation = ParseRotatorFromJson(Payload, TEXT("rotation"));
         FVector Scale = ParseVectorFromJson(Payload, TEXT("scale"), FVector::OneVector);
         FTransform BoneTransform(Rotation, Location, Scale);
 
-        // Add the bone using FReferenceSkeletonModifier
         FReferenceSkeletonModifier Modifier(Skeleton);
         FMeshBoneInfo NewBone;
         NewBone.Name = FName(*BoneName);

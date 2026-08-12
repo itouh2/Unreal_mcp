@@ -17,10 +17,10 @@ bool UMcpAutomationBridgeSubsystem::HandleListSockets(
     const TSharedPtr<FJsonObject>& Payload,
     TSharedPtr<FMcpBridgeWebSocket> RequestingSocket)
 {
-    FString SkeletonPath = GetStringFieldSkel(Payload, TEXT("skeletonPath"));
+    FString SkeletonPath = GetJsonStringField(Payload, TEXT("skeletonPath"));
     if (SkeletonPath.IsEmpty())
     {
-        SkeletonPath = GetStringFieldSkel(Payload, TEXT("skeletalMeshPath"));
+        SkeletonPath = GetJsonStringField(Payload, TEXT("skeletalMeshPath"));
     }
 
     FString Error;
@@ -50,7 +50,6 @@ bool UMcpAutomationBridgeSubsystem::HandleListSockets(
         SocketObj->SetStringField(TEXT("name"), Socket->SocketName.ToString());
         SocketObj->SetStringField(TEXT("boneName"), Socket->BoneName.ToString());
 
-        // Use McpHandlerUtils helpers for transform JSON
         SocketObj->SetObjectField(TEXT("relativeLocation"), McpHandlerUtils::VectorToJson(Socket->RelativeLocation));
         SocketObj->SetObjectField(TEXT("relativeRotation"), McpHandlerUtils::RotatorToJson(Socket->RelativeRotation));
         SocketObj->SetObjectField(TEXT("relativeScale"), McpHandlerUtils::VectorToJson(Socket->RelativeScale));
@@ -71,17 +70,17 @@ bool UMcpAutomationBridgeSubsystem::HandleCreateSocket(
     const TSharedPtr<FJsonObject>& Payload,
     TSharedPtr<FMcpBridgeWebSocket> RequestingSocket)
 {
-    FString SkeletonPath = GetStringFieldSkel(Payload, TEXT("skeletonPath"));
+    FString SkeletonPath = GetJsonStringField(Payload, TEXT("skeletonPath"));
     if (SkeletonPath.IsEmpty())
     {
-        SkeletonPath = GetStringFieldSkel(Payload, TEXT("skeletalMeshPath"));
+        SkeletonPath = GetJsonStringField(Payload, TEXT("skeletalMeshPath"));
     }
 
-    FString SocketName = GetStringFieldSkel(Payload, TEXT("socketName"));
-    FString BoneName = GetStringFieldSkel(Payload, TEXT("attachBoneName"));
+    FString SocketName = GetJsonStringField(Payload, TEXT("socketName"));
+    FString BoneName = GetJsonStringField(Payload, TEXT("attachBoneName"));
     if (BoneName.IsEmpty())
     {
-        BoneName = GetStringFieldSkel(Payload, TEXT("boneName"));
+        BoneName = GetJsonStringField(Payload, TEXT("boneName"));
     }
 
     if (SocketName.IsEmpty())
@@ -114,7 +113,6 @@ bool UMcpAutomationBridgeSubsystem::HandleCreateSocket(
         return true;
     }
 
-    // Check if socket already exists
     for (USkeletalMeshSocket* ExistingSocket : Skeleton->Sockets)
     {
         if (ExistingSocket && ExistingSocket->SocketName == FName(*SocketName))
@@ -126,14 +124,12 @@ bool UMcpAutomationBridgeSubsystem::HandleCreateSocket(
         }
     }
 
-    // Create the socket
     USkeletalMeshSocket* NewSocket = NewObject<USkeletalMeshSocket>(Skeleton);
     if (!NewSocket)
     {
         SendAutomationError(RequestingSocket, RequestId, TEXT("Failed to create socket object"), TEXT("CREATION_FAILED"));
         return true;
     }
-    // Parse socket transform using ParseVectorFromJson helpers
     NewSocket->SocketName = FName(*SocketName);
     NewSocket->RelativeLocation = ParseVectorFromJson(Payload, TEXT("relativeLocation"));
     NewSocket->RelativeRotation = ParseRotatorFromJson(Payload, TEXT("relativeRotation"));
@@ -143,7 +139,6 @@ bool UMcpAutomationBridgeSubsystem::HandleCreateSocket(
     Skeleton->Sockets.Add(NewSocket);
     McpSafeAssetSave(Skeleton);
 
-    // Save if requested
     bool bSave = false;
     Payload->TryGetBoolField(TEXT("save"), bSave);
     if (bSave)
@@ -165,13 +160,13 @@ bool UMcpAutomationBridgeSubsystem::HandleConfigureSocket(
     const TSharedPtr<FJsonObject>& Payload,
     TSharedPtr<FMcpBridgeWebSocket> RequestingSocket)
 {
-    FString SkeletonPath = GetStringFieldSkel(Payload, TEXT("skeletonPath"));
+    FString SkeletonPath = GetJsonStringField(Payload, TEXT("skeletonPath"));
     if (SkeletonPath.IsEmpty())
     {
-        SkeletonPath = GetStringFieldSkel(Payload, TEXT("skeletalMeshPath"));
+        SkeletonPath = GetJsonStringField(Payload, TEXT("skeletalMeshPath"));
     }
 
-    FString SocketName = GetStringFieldSkel(Payload, TEXT("socketName"));
+    FString SocketName = GetJsonStringField(Payload, TEXT("socketName"));
     if (SocketName.IsEmpty())
     {
         SendAutomationError(RequestingSocket, RequestId, TEXT("socketName is required"), TEXT("MISSING_PARAM"));
@@ -196,7 +191,6 @@ bool UMcpAutomationBridgeSubsystem::HandleConfigureSocket(
         return true;
     }
 
-    // Find the socket
     USkeletalMeshSocket* Socket = nullptr;
     for (USkeletalMeshSocket* S : Skeleton->Sockets)
     {
@@ -215,8 +209,7 @@ bool UMcpAutomationBridgeSubsystem::HandleConfigureSocket(
         return true;
     }
 
-    // Update properties
-    FString NewBoneName = GetStringFieldSkel(Payload, TEXT("attachBoneName"));
+    FString NewBoneName = GetJsonStringField(Payload, TEXT("attachBoneName"));
     if (!NewBoneName.IsEmpty())
     {
         Socket->BoneName = FName(*NewBoneName);
@@ -239,7 +232,6 @@ bool UMcpAutomationBridgeSubsystem::HandleConfigureSocket(
 
     McpSafeAssetSave(Skeleton);
 
-    // Save if requested
     bool bSave = false;
     Payload->TryGetBoolField(TEXT("save"), bSave);
     if (bSave)

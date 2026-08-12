@@ -20,7 +20,7 @@ const GEOMETRY_ACTIONS = [
   'create_arch', 'create_pipe', 'create_ramp',
   // Booleans
   'boolean_union', 'boolean_subtract', 'boolean_intersection',
-  'boolean_trim', 'self_union',
+  'boolean_trim', 'self_union', 'difference',
   // Modeling operations
   'extrude', 'inset', 'outset', 'bevel', 'offset_faces', 'shell', 'revolve', 'chamfer',
   'extrude_along_spline', 'bridge', 'loft', 'sweep',
@@ -46,6 +46,11 @@ const GEOMETRY_ACTIONS = [
   'mirror', 'array_linear', 'array_radial',
   // Export/conversion
   'convert_to_static_mesh',
+  // DynamicMesh authoring
+  'create_procedural_mesh', 'append_vertex', 'append_triangle',
+  'delete_vertex', 'delete_triangle',
+  'get_vertex_position', 'set_vertex_position', 'set_vertex_color',
+  'set_uvs', 'split_normals', 'translate_mesh',
   // Utils
   'get_mesh_info'
 ] as const;
@@ -204,7 +209,6 @@ function normalizeGeometryAliases(
 function normalizeGeometryArgs(action: string, args: HandlerArgs): Record<string, unknown> {
   const normalized: Record<string, unknown> = { ...args, subAction: action };
 
-  // Normalize location/position parameters
   if (args.location) {
     normalized.location = normalizeFiniteLocation(args.location);
   }
@@ -215,12 +219,10 @@ function normalizeGeometryArgs(action: string, args: HandlerArgs): Record<string
     normalized.center = normalizeFiniteLocation(args.center);
   }
 
-  // Normalize dimensions for primitives
   if (args.dimensions && Array.isArray(args.dimensions)) {
     normalized.dimensions = normalizeFiniteNumberArray(args.dimensions);
   }
 
-  // Normalize axis vectors
   if (args.axis && Array.isArray(args.axis)) {
     normalized.axis = normalizeFiniteNumberArray(args.axis);
   }
@@ -243,7 +245,6 @@ export async function handleGeometryTools(
   args: HandlerArgs,
   tools: ITools
 ): Promise<Record<string, unknown>> {
-  // Validate action
   if (!GEOMETRY_ACTIONS.includes(action as GeometryAction)) {
     return {
       success: false,
@@ -252,7 +253,6 @@ export async function handleGeometryTools(
     };
   }
 
-  // Normalize args and forward to C++
   const normalizedArgs = normalizeGeometryArgs(action, args);
 
   try {
