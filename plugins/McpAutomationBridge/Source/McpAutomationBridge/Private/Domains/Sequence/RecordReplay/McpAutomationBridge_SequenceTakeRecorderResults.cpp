@@ -1,4 +1,3 @@
-#include "Core/Compatibility/McpVersionCompatibility.h" // [CCB-PATCH] UE 5.7: MCP_HAS_MOVIE_SCENE_SHOT_METADATA 定義取得
 #include "Domains/Sequence/RecordReplay/McpAutomationBridge_SequenceTakeRecorderInternal.h"
 
 #include "Core/Compatibility/McpVersionCompatibility.h"

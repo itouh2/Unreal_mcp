@@ -2,7 +2,6 @@
 
 #include "GenericPlatform/GenericPlatformFile.h"
 #include "HAL/PlatformFileManager.h"
-#include "GenericPlatform/GenericPlatformFile.h" // [CCB-PATCH] UE 5.7: IPlatformFile/ESymlinkResult 完全型
 #include "Misc/PackageName.h"
 #include "Misc/Paths.h"
 

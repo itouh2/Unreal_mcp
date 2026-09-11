@@ -49,6 +49,7 @@ bool IsSafeListingId(const FString& Value)
  */
 FString BuildAddScriptImpl(const FString& RequestId, const FString& ListingId, const FString& EngineVersion)
 {
+	// [CCB-PATCH] MSVC C2026: a single string literal is capped at 16KB; the JS is split into two adjacent raw literals at a blank line
 	return FString::Printf(TEXT(R"JS(
 (function () {
   var id = "%s", listing = "%s", engine = "%s";
@@ -184,7 +185,7 @@ FString BuildAddScriptImpl(const FString& RequestId, const FString& ListingId, c
       if (!csrf) { csrf = readCsrfCookie(); csrfFrom = csrf ? "cookie" : "none"; }
       // A source name, never the value.
       out.csrfSource = csrfFrom;
-
+)JS") TEXT(R"JS(
       var claim = Promise.resolve(null);
       if (out.offerIds.length) {
         var form = new FormData();

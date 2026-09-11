@@ -3,6 +3,8 @@
 // Dogfood #38: add_animation_keyframe used to refuse with NOT_SUPPORTED. It now finds or creates the
 // widget binding + property track, adds a section, and writes real channel keys for RenderOpacity,
 // ColorAndOpacity and (in AnimationKeysTransform.cpp) the RenderTransform.
+// [CCB-PATCH] UE 5.7 UBT IWYU: same-name header must be the first include (PCH mode enables the check)
+#include "Domains/WidgetAuthoring/Support/McpAutomationBridge_WidgetAuthoringAnimationKeys.h"
 #include "Domains/WidgetAuthoring/Support/McpAutomationBridge_WidgetAuthoringAnimationKeysInternal.h"
 
 #include "Animation/WidgetAnimation.h"
