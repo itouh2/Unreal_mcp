@@ -22,6 +22,7 @@ void AppendBuildEnvironmentFields(FMcpSchemaBuilder& Schema)
 			Schema.String(TEXT("captureSource"), TEXT("Capture source string."));
 			Schema.Integer(TEXT("channel"), TEXT("Light channel index."));
 			Schema.Array(TEXT("channels"), TEXT("Lighting channel indices (0, 1, or 2)."), TEXT("integer"));
+			Schema.Bool(TEXT("closedLoop"), TEXT("Close the spline into a loop, joining the last point back to the first."));
 			Schema.Bool(TEXT("collisionEnabled"), TEXT("Whether collision is enabled."));
 			Schema.Number(TEXT("compensationValue"), TEXT("Exposure compensation value."));
 			Schema.String(TEXT("componentName"), TEXT("Component name."));
@@ -51,6 +52,7 @@ void AppendBuildEnvironmentFields(FMcpSchemaBuilder& Schema)
 			Schema.String(TEXT("landscapePath"), TEXT("Canonical /Game landscape asset path."));
 			Schema.String(TEXT("layerInfoPath"), TEXT("Canonical /Game landscape layer info asset path."));
 			Schema.String(TEXT("layerName"), TEXT("Landscape layer name."));
+			Schema.String(TEXT("levelName"), TEXT("Level name; appended when path is a folder."));
 			Schema.String(TEXT("lightClass"), TEXT("Light class string."));
 			Schema.String(TEXT("lightType"), TEXT("Light type string."));
 			Schema.String(TEXT("lutPath"), TEXT("Canonical /Game LUT texture path."));

@@ -15,19 +15,29 @@ bool UMcpAutomationBridgeSubsystem::HandleSequencePlay(
   }
 
 #if WITH_EDITOR
-  FString RequestIdArg = RequestId;
-  UMcpAutomationBridgeSubsystem *Subsystem = this;
   ULevelSequence *LevelSeq =
       Cast<ULevelSequence>(UEditorAssetLibrary::LoadAsset(SeqPath));
   if (LevelSeq) {
     if (ULevelSequenceEditorBlueprintLibrary::OpenLevelSequence(LevelSeq)) {
       ULevelSequenceEditorBlueprintLibrary::Play();
-      Subsystem->SendAutomationResponse(Socket, RequestIdArg, true,
-                                        TEXT("Sequence playing"), nullptr);
+      TSharedPtr<FJsonObject> Resp = McpHandlerUtils::CreateResultObject();
+      Resp->SetBoolField(TEXT("playing"), true);
+      if (UMovieScene *MovieScene = LevelSeq->GetMovieScene()) {
+        TRange<FFrameNumber> Range = MovieScene->GetPlaybackRange();
+        const double Start = static_cast<double>(Range.GetLowerBoundValue().Value);
+        const double End = static_cast<double>(Range.GetUpperBoundValue().Value);
+        FFrameRate FR = MovieScene->GetDisplayRate();
+        Resp->SetNumberField(TEXT("startTime"), Start / FR.AsDecimal());
+        Resp->SetNumberField(TEXT("currentFrame"), Start);
+        Resp->SetNumberField(TEXT("playbackStart"), Start);
+        Resp->SetNumberField(TEXT("playbackEnd"), End);
+      }
+      SendAutomationResponse(Socket, RequestId, true,
+                                        TEXT("Sequence playing"), Resp);
       return true;
     }
   }
-  Subsystem->SendAutomationResponse(Socket, RequestIdArg, false,
+  SendAutomationResponse(Socket, RequestId, false,
                                     TEXT("Failed to open or play sequence"),
                                     nullptr, TEXT("EXECUTION_ERROR"));
   return true;
@@ -62,11 +72,9 @@ bool UMcpAutomationBridgeSubsystem::HandleSequenceSetPlaybackSpeed(
   }
 
 #if WITH_EDITOR
-  FString RequestIdArg = RequestId;
-  UMcpAutomationBridgeSubsystem *Subsystem = this;
   UObject *SeqObj = UEditorAssetLibrary::LoadAsset(SeqPath);
   if (!SeqObj) {
-    Subsystem->SendAutomationResponse(Socket, RequestIdArg, false,
+    SendAutomationResponse(Socket, RequestId, false,
                                       TEXT("Sequence not found"), nullptr,
                                       TEXT("INVALID_SEQUENCE"));
     return true;
@@ -82,8 +90,8 @@ bool UMcpAutomationBridgeSubsystem::HandleSequenceSetPlaybackSpeed(
         if (LSEditor->GetSequencer().IsValid()) {
           LSEditor->GetSequencer()->SetPlaybackSpeed(
               static_cast<float>(Speed));
-          Subsystem->SendAutomationResponse(
-              Socket, RequestIdArg, true,
+          SendAutomationResponse(
+              Socket, RequestId, true,
               FString::Printf(TEXT("Playback speed set to %.2f"), Speed),
               nullptr);
           return true;
@@ -97,8 +105,8 @@ bool UMcpAutomationBridgeSubsystem::HandleSequenceSetPlaybackSpeed(
     }
   }
 
-  Subsystem->SendAutomationResponse(
-      Socket, RequestIdArg, false,
+  SendAutomationResponse(
+      Socket, RequestId, false,
       TEXT("Sequence editor not open or interface unavailable"), nullptr,
       TEXT("EDITOR_NOT_OPEN"));
   return true;
@@ -124,21 +132,19 @@ bool UMcpAutomationBridgeSubsystem::HandleSequencePause(
     return true;
   }
 #if WITH_EDITOR
-  FString RequestIdArg = RequestId;
-  UMcpAutomationBridgeSubsystem *Subsystem = this;
   ULevelSequence *LevelSeq =
       Cast<ULevelSequence>(UEditorAssetLibrary::LoadAsset(SeqPath));
   if (LevelSeq) {
     if (ULevelSequenceEditorBlueprintLibrary::GetCurrentLevelSequence() ==
         LevelSeq) {
       ULevelSequenceEditorBlueprintLibrary::Pause();
-      Subsystem->SendAutomationResponse(Socket, RequestIdArg, true,
+      SendAutomationResponse(Socket, RequestId, true,
                                         TEXT("Sequence paused"), nullptr);
       return true;
     }
   }
-  Subsystem->SendAutomationResponse(
-      Socket, RequestIdArg, false,
+  SendAutomationResponse(
+      Socket, RequestId, false,
       TEXT("Sequence not currently open in editor"), nullptr,
       TEXT("EXECUTION_ERROR"));
   return true;
@@ -163,8 +169,6 @@ bool UMcpAutomationBridgeSubsystem::HandleSequenceStop(
     return true;
   }
 #if WITH_EDITOR
-  FString RequestIdArg = RequestId;
-  UMcpAutomationBridgeSubsystem *Subsystem = this;
   ULevelSequence *LevelSeq =
       Cast<ULevelSequence>(UEditorAssetLibrary::LoadAsset(SeqPath));
   if (LevelSeq) {
@@ -179,14 +183,14 @@ bool UMcpAutomationBridgeSubsystem::HandleSequenceStop(
 #else
       ULevelSequenceEditorBlueprintLibrary::SetCurrentTime(0);
 #endif
-      Subsystem->SendAutomationResponse(
-          Socket, RequestIdArg, true, TEXT("Sequence stopped (reset to start)"),
+      SendAutomationResponse(
+          Socket, RequestId, true, TEXT("Sequence stopped (reset to start)"),
           nullptr);
       return true;
     }
   }
-  Subsystem->SendAutomationResponse(
-      Socket, RequestIdArg, false,
+  SendAutomationResponse(
+      Socket, RequestId, false,
       TEXT("Sequence not currently open in editor"), nullptr,
       TEXT("EXECUTION_ERROR"));
   return true;

@@ -29,14 +29,10 @@ import {
   LegacyToolNameSchema,
 } from '../../index.js';
 import { getParentToolMetadata } from '../parent-metadata.js';
-import { policy, behavior } from '../shared/record-presets.js';
+import { policy, behavior, SCHEMA_URI, V5_0, V5_8_P1 } from '../shared/record-presets.js';
 
-const SCHEMA_URI = 'https://json-schema.org/draft/2020-12/schema' as const;
 
-const V5_0 = { major: 5 as const, minor: 0, patch: 0, channel: 'stable' as const };
-const V5_3 = { major: 5 as const, minor: 3, patch: 0, channel: 'stable' as const };
 const V5_7 = { major: 5 as const, minor: 7, patch: 0, channel: 'stable' as const };
-const V5_8_P1 = { major: 5 as const, minor: 8, patch: 0, channel: 'preview' as const, preview: 1 };
 
 type EffectType = 'read' | 'write' | 'destructive';
 type EditorState = 'edit' | 'pie' | 'simulate';
@@ -63,6 +59,7 @@ export type WorldRecordSpec = {
   readonly unrealMin?: UnrealVersion;
   readonly unrealMax?: UnrealVersion;
   readonly aliases?: readonly string[];
+  readonly topics?: readonly string[];
   readonly normalizationRationale: string;
   readonly normalizationProvenance?: CapabilityRecordSource['normalization']['provenance'];
   readonly exampleInput: JsonObject;
@@ -88,6 +85,9 @@ function outputSchema(props: JsonObject, required: readonly string[]): Draft2020
   const full: JsonObject = {
     success: { type: 'boolean', description: 'Whether the action succeeded.' },
     message: { type: 'string', description: 'Human-readable result message.' },
+    // Handlers report more than the contract names; the gateways fold those fields here
+    // instead of dropping them (dogfood: thin reads such as #28/#210).
+    details: { type: 'object', 'x-unreal-reflection-boundary': true, description: 'Additional handler result fields not named by the contract.' },
     ...props,
   };
   return schema(full, ['success', ...required]);
@@ -106,8 +106,6 @@ function availability(
     editorStates: [...(spec.editorStates ?? ['edit'])],
   };
 }
-
-
 
 function routing(
   parentTool: string,
@@ -138,7 +136,7 @@ export function buildWorldRecord(
     discovery: {
       domain: 'world',
       family: spec.family,
-      topics: [spec.action],
+      topics: [spec.action, ...(spec.topics ?? [])],
       summary: spec.summary,
       whenToUse: [...spec.whenToUse],
       whenNotToUse: [...spec.whenNotToUse],
@@ -163,4 +161,4 @@ export function buildWorldRecord(
   };
 }
 
-export { V5_0, V5_3, V5_7, V5_8_P1 };
+export { V5_7 };

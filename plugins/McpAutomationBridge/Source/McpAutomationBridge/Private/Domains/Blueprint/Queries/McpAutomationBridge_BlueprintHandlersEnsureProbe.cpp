@@ -41,7 +41,6 @@ bool HandleBlueprintEnsureProbe(const FBlueprintActionContext &Context) {
       LocalPayload->TryGetBoolField(TEXT("createIfMissing"), bCreateIfMissing);
     }
 
-#if WITH_EDITOR
     // Check if blueprint exists using lightweight check
     FString CheckPath = Path;
     if (!CheckPath.StartsWith(TEXT("/Game")) &&
@@ -64,6 +63,25 @@ bool HandleBlueprintEnsureProbe(const FBlueprintActionContext &Context) {
       // Delegate to HandleBlueprintCreate for creation
       TSharedPtr<FJsonObject> CreatePayload = McpHandlerUtils::CreateResultObject();
       CreatePayload->SetStringField(TEXT("blueprintPath"), Path);
+      // blueprint_create needs name + savePath; derive them from the resolved
+      // path unless the caller supplied them (it used to fail "requires a
+      // name" for every ensure_exists that had to create).
+      FString CreateName;
+      LocalPayload->TryGetStringField(TEXT("name"), CreateName);
+      FString CreateSavePath;
+      LocalPayload->TryGetStringField(TEXT("savePath"), CreateSavePath);
+      if (CreateName.TrimStartAndEnd().IsEmpty()) {
+        CreateName = FPaths::GetBaseFilename(CheckPath);
+        int32 DotIndex = INDEX_NONE;
+        if (CreateName.FindChar(TEXT('.'), DotIndex)) {
+          CreateName = CreateName.Left(DotIndex);
+        }
+      }
+      if (CreateSavePath.TrimStartAndEnd().IsEmpty()) {
+        CreateSavePath = FPaths::GetPath(CheckPath);
+      }
+      CreatePayload->SetStringField(TEXT("name"), CreateName);
+      CreatePayload->SetStringField(TEXT("savePath"), CreateSavePath);
       if (!ParentClass.IsEmpty()) {
         CreatePayload->SetStringField(TEXT("parentClass"), ParentClass);
       }
@@ -90,13 +108,6 @@ bool HandleBlueprintEnsureProbe(const FBlueprintActionContext &Context) {
                             : TEXT("Blueprint not found")),
         Resp, FString());
     return true;
-#else
-    Bridge.SendAutomationResponse(
-        RequestingSocket, RequestId, false,
-        TEXT("blueprint_ensure_exists requires editor build"), nullptr,
-        TEXT("NOT_AVAILABLE"));
-    return true;
-#endif
   }
 
   // blueprint_probe_handle: Lightweight check for blueprint existence without loading
@@ -116,7 +127,6 @@ bool HandleBlueprintEnsureProbe(const FBlueprintActionContext &Context) {
       return true;
     }
 
-#if WITH_EDITOR
     // Normalize path
     FString CheckPath = Path;
     if (!CheckPath.StartsWith(TEXT("/Game")) &&
@@ -156,6 +166,7 @@ bool HandleBlueprintEnsureProbe(const FBlueprintActionContext &Context) {
 
     TSharedPtr<FJsonObject> Resp = McpHandlerUtils::CreateResultObject();
     Resp->SetBoolField(TEXT("exists"), bExists);
+    Resp->SetBoolField(TEXT("reachable"), bExists);
     Resp->SetStringField(TEXT("path"), bExists ? CheckPath : Path);
     if (!AssetClass.IsEmpty()) {
       Resp->SetStringField(TEXT("assetClass"), AssetClass);
@@ -165,13 +176,6 @@ bool HandleBlueprintEnsureProbe(const FBlueprintActionContext &Context) {
                                    : TEXT("Blueprint not found"),
                            Resp, FString());
     return true;
-#else
-    Bridge.SendAutomationResponse(
-        RequestingSocket, RequestId, false,
-        TEXT("blueprint_probe_handle requires editor build"), nullptr,
-        TEXT("NOT_AVAILABLE"));
-    return true;
-#endif
   }
 
   return false;

@@ -54,29 +54,24 @@ FVector ReadScaleField(const TSharedPtr<FJsonObject>& Payload);
 UWorld* GetEditorWorld();
 UEditorActorSubsystem* GetEditorActorSubsystem();
 AActor* FindActorByLabel(UEditorActorSubsystem& ActorSubsystem, const FString& ActorName);
-UNiagaraSystem* LoadNiagaraSystem(const FString& SystemPath);
-bool EnsureNiagaraModuleSystem(
-    const FEffectActionContext& Context,
-    const FString& ModuleName,
-    const FString& SystemPath,
-    const FString& EmitterName);
 #endif
-
-void SendNiagaraModuleResponse(
-    const FEffectActionContext& Context,
-    bool bSuccess,
-    const FString& ModuleName,
-    const FString& SystemPath,
-    const FString& EmitterName,
-    const FString& Message,
-    const FString& ErrorCode = FString());
 
 bool HandleEffectDiscoveryAction(const FEffectActionContext& Context);
 bool HandleCreateEffectSubAction(
     const FEffectActionContext& Context,
     const FString& LowerSubAction);
 bool HandleDrawDebugShape(const FEffectActionContext& Context);
-bool HandleParticleDebugShape(const FEffectActionContext& Context);
+bool HandleParticleEffect(const FEffectActionContext& Context);
+FString ReadNiagaraSystemPathField(const TSharedPtr<FJsonObject>& Payload);
+#if WITH_EDITOR
+bool AuthorProceduralNiagaraSystem(
+    const FEffectActionContext& Context,
+    const FString& EffectName,
+    FString& OutSystemPath,
+    TSharedPtr<FJsonObject>& OutDetails,
+    FString& OutError,
+    FString& OutErrorCode);
+#endif
 bool HandleSetNiagaraParameter(const FEffectActionContext& Context);
 bool HandleNiagaraLifecycleAction(
     const FEffectActionContext& Context,
@@ -88,10 +83,6 @@ bool HandleProceduralEffectAction(const FEffectActionContext& Context, bool bIsC
 bool CreateNiagaraEffectFromPayload(
     const FEffectActionContext& Context,
     const FString& EffectName,
-    const FString& DefaultSystemPath);
-bool HandleNiagaraSpawnModules(const FEffectActionContext& Context);
-bool HandleNiagaraBehaviorModules(const FEffectActionContext& Context);
-bool HandleNiagaraRenderModules(const FEffectActionContext& Context);
-bool HandleNiagaraDataEventModules(const FEffectActionContext& Context);
-bool HandleNiagaraParameterModules(const FEffectActionContext& Context);
+    const FString& DefaultSystemPath,
+    const TSharedPtr<FJsonObject>& ExtraFields = nullptr);
 }

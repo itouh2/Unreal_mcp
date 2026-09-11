@@ -45,3 +45,50 @@ describe('buildSummaryText — output field budget', () => {
     expect(text).toContain('output: [a, b] (2)');
   });
 });
+
+describe('pin linkedTo targets', () => {
+  it('renders link targets as 8-hex nodeId prefixes with pin names, plus the total', () => {
+    const text = buildSummaryText('probe', {
+      success: true,
+      pins: [{
+        pinName: 'then', direction: 'Output', pinType: 'exec',
+        linkedTo: [{ nodeId: '5C2E1A9F4D3B41E8A7C6F0B2D9E83714', pinName: 'execute' }],
+      }],
+    });
+    expect(text).toContain('linkedTo=[5C2E1A9F.execute] (1)');
+  });
+
+  it('keeps the compact linkedTo=0 form for unconnected pins', () => {
+    const text = buildSummaryText('probe', {
+      success: true,
+      pins: [{ pinName: 'then', direction: 'Output', pinType: 'exec', linkedTo: [] }],
+    });
+    expect(text).toContain('linkedTo=0');
+  });
+
+  it('caps at five targets and announces the spill with the total', () => {
+    const links = Array.from({ length: 7 }, (_, i) => ({
+      nodeId: `${String(i).padStart(2, '0')}AACCE54817BB6726E95CB9642E51DD`.slice(0, 32), pinName: 'execute',
+    }));
+    const text = buildSummaryText('probe', { success: true, pins: [{ pinName: 'then', linkedTo: links }] });
+    expect(text).toContain(', ...] (7)');
+    expect(text).toContain('00AACCE5.execute');
+  });
+});
+
+
+describe('array preview marker', () => {
+  it('announces where the elided tail lives, with the true total', () => {
+    const text = buildSummaryText('probe', {
+      success: true,
+      nodes: Array.from({ length: 56 }, (_, i) => ({ nodeId: `node-${i}` })),
+    });
+    expect(text).toContain('(+26 more - full list in structuredContent)');
+    expect(text).toContain('(56)');
+  });
+
+  it('adds no marker when the array fits the preview', () => {
+    const text = buildSummaryText('probe', { success: true, nodes: [{ nodeId: 'a' }, { nodeId: 'b' }] });
+    expect(text).not.toContain('more - full list');
+  });
+});

@@ -5,6 +5,7 @@
 #include "McpAutomationBridgeSubsystem.h"
 #include "Foundation/HandlerUtils/McpHandlerUtils.h"
 #include "Foundation/Reflection/McpPropertyReflection.h"
+#include "Safety/McpSafeReflectionTarget.h"
 
 bool UMcpAutomationBridgeSubsystem::HandleArrayInsert(
     const FString &RequestId, const FString &Action,
@@ -48,12 +49,16 @@ bool UMcpAutomationBridgeSubsystem::HandleArrayInsert(
     return true;
   }
 
-  UObject *RootObject = FindObject<UObject>(nullptr, *ObjectPath);
+  bool bObjectDenied = false;
+  UObject *RootObject = McpSafeReflectionTarget::FindAddressableObject(ObjectPath, &bObjectDenied);
   if (!RootObject) {
+    const FString NotFoundMessage = bObjectDenied
+        ? FString(McpSafeReflectionTarget::DenyMessage())
+        : FString::Printf(TEXT("Object not found: %s"), *ObjectPath);
     SendAutomationError(
         RequestingSocket, RequestId,
-        FString::Printf(TEXT("Object not found: %s"), *ObjectPath),
-        TEXT("OBJECT_NOT_FOUND"));
+        NotFoundMessage,
+        bObjectDenied ? FString(McpSafeReflectionTarget::DenyCode()) : TEXT("OBJECT_NOT_FOUND"));
     return true;
   }
 
@@ -97,31 +102,7 @@ bool UMcpAutomationBridgeSubsystem::HandleArrayInsert(
   bool bSuccess = ApplyJsonValueToProperty(ElemPtr, Inner, ValueField,
                                            ConversionError);
   if (!bSuccess) {
-    if (FStrProperty *StrInner = CastField<FStrProperty>(Inner)) {
-      *reinterpret_cast<FString *>(ElemPtr) =
-          (ValueField->Type == EJson::String)
-              ? ValueField->AsString()
-              : FString::Printf(TEXT("%g"), ValueField->AsNumber());
-      bSuccess = true;
-    } else if (FIntProperty *IntInner = CastField<FIntProperty>(Inner)) {
-      *reinterpret_cast<int32 *>(ElemPtr) =
-          (ValueField->Type == EJson::Number)
-              ? (int32)ValueField->AsNumber()
-              : FCString::Atoi(*ValueField->AsString());
-      bSuccess = true;
-    } else if (FFloatProperty *FloatInner = CastField<FFloatProperty>(Inner)) {
-      *reinterpret_cast<float *>(ElemPtr) =
-          (ValueField->Type == EJson::Number)
-              ? (float)ValueField->AsNumber()
-              : (float)FCString::Atod(*ValueField->AsString());
-      bSuccess = true;
-    } else if (FBoolProperty *BoolInner = CastField<FBoolProperty>(Inner)) {
-      *reinterpret_cast<uint8 *>(ElemPtr) =
-          (ValueField->Type == EJson::Boolean)
-              ? (ValueField->AsBool() ? 1 : 0)
-              : (ValueField->AsNumber() != 0.0 ? 1 : 0);
-      bSuccess = true;
-    }
+    bSuccess = McpPropertyReflection::AssignPrimitiveFromJson(Inner, ElemPtr, ValueField);
   }
 
   if (!bSuccess) {

@@ -1,5 +1,6 @@
 #include "Core/Compatibility/McpVersionCompatibility.h"
 #include "Domains/Sequence/McpAutomationBridge_SequenceHandlersEditorSupport.h"
+#include "Tracks/MovieSceneCameraCutTrack.h"
 
 namespace McpSequenceTracks {
 bool HandleListTrackTypes(UMcpAutomationBridgeSubsystem *Subsystem,
@@ -76,19 +77,14 @@ bool HandleListTracks(UMcpAutomationBridgeSubsystem *Subsystem,
     TrackObj->SetBoolField(TEXT("isMasterTrack"), true);
     TrackObj->SetNumberField(TEXT("sectionCount"),
                              Track->GetAllSections().Num());
+    TrackObj->SetBoolField(TEXT("isCameraCut"),
+                           Track->IsA<UMovieSceneCameraCutTrack>());
     TracksArray.Add(MakeShared<FJsonValueObject>(TrackObj));
   }
 
   for (const FMovieSceneBinding &Binding :
        const_cast<const UMovieScene *>(MovieScene)->GetBindings()) {
-    FString BindingName;
-    if (FMovieScenePossessable *Possessable =
-            MovieScene->FindPossessable(Binding.GetObjectGuid())) {
-      BindingName = Possessable->GetName();
-    } else if (FMovieSceneSpawnable *Spawnable =
-                   MovieScene->FindSpawnable(Binding.GetObjectGuid())) {
-      BindingName = Spawnable->GetName();
-    }
+    FString BindingName = GetBindingName(MovieScene, Binding.GetObjectGuid());
 
     for (UMovieSceneTrack *Track : MCP_GET_BINDING_TRACKS(Binding)) {
       if (!Track)
@@ -104,6 +100,8 @@ bool HandleListTracks(UMcpAutomationBridgeSubsystem *Subsystem,
                                Binding.GetObjectGuid().ToString());
       TrackObj->SetNumberField(TEXT("sectionCount"),
                                Track->GetAllSections().Num());
+      TrackObj->SetBoolField(TEXT("isCameraCut"),
+                             Track->IsA<UMovieSceneCameraCutTrack>());
       TracksArray.Add(MakeShared<FJsonValueObject>(TrackObj));
     }
   }

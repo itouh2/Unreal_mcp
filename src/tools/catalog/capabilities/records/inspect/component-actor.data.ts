@@ -27,6 +27,8 @@ const NR = 'Distinct inspect verb and target; no cross-tool duplicate.';
 export const COMPONENT_ACTOR_RECORDS: readonly CapabilityRecordSource[] = [
   buildCoreRecord({
     parentTool: 'inspect', action: 'get_components', dispatchAction: 'get_components', domain: D, family: 'components',
+    topics: ['list components', 'actor components', 'component list', 'components of actor'],
+    aliases: ['inspect.list_components'],
     summary: 'List components on a world actor (or a Blueprint CDO when blueprintPath is supplied).',
     whenToUse: ['An actor\'s component list must be enumerated.'],
     whenNotToUse: ['A single component\'s properties are needed; use get_component_property.'],
@@ -166,6 +168,14 @@ export const COMPONENT_ACTOR_RECORDS: readonly CapabilityRecordSource[] = [
   }),
   buildCoreRecord({
     parentTool: 'inspect', action: 'list_objects', dispatchAction: 'control_actor', dispatchMode: 'action', domain: D, family: 'actor',
+    outputProps: {
+      count: { type: 'number', description: 'Number of actors returned.' },
+      totalCount: { type: 'number', description: 'Total actor count in the world.' },
+      isPieWorld: { type: 'boolean', description: 'Whether the world is a PIE world.' },
+      worldName: { type: 'string', description: 'Name of the current world.' },
+      actors: { type: 'array', items: { type: 'object', additionalProperties: true, 'x-unreal-reflection-boundary': true }, description: 'Actor info objects.' },
+    },
+    topics: ['world objects', 'enumerate objects'],
     summary: 'List world actors (cross-parent to control_actor; dispatches action list_actors).',
     whenToUse: ['All actors in the current level must be enumerated.'],
     whenNotToUse: ['Only tagged actors are needed; use find_by_tag.'],
@@ -174,7 +184,6 @@ export const COMPONENT_ACTOR_RECORDS: readonly CapabilityRecordSource[] = [
     effect: 'read', costLatency: 'instant', costResources: 'low',
     exampleInput: { action: 'list_objects' },
     exampleOutput: { success: true, message: 'Actors listed', actors: [] },
-    outputProps: { actors: { type: 'array', items: { type: 'object', additionalProperties: true, 'x-unreal-reflection-boundary': true }, description: 'Actor info objects.' } },
     normalizationClass: 'C_SAME_VERB_DIFFERENT_TARGET', normalizationRationale: NR,
   }),
   buildCoreRecord({

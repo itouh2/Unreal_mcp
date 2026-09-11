@@ -37,6 +37,10 @@ export const RETRIEVAL_FUNCTION_WORDS: ReadonlySet<string> = Object.freeze(new S
   'to', 'for', 'from', 'by', 'with', 'into', 'onto', 'and', 'or', 'but', 'it',
   'its', 'is', 'are', 'be', 'as', 'all', 'every', 'any', 'some', 'my', 'our',
   'their', 'his', 'her', 'you', 'me', 'we', 'i', 'please', 'then', 'so',
+  // Interrogatives and auxiliaries: a question ('what is the current level',
+  // 'how do i spawn an actor') carries the same content words as the imperative.
+  'what', 'which', 'how', 'where', 'who', 'when', 'why', 'do', 'does', 'did',
+  'can', 'could', 'should', 'would', 'will', 'want', 'need',
 ]));
 
 export const SCORE_TIE_EPSILON = 1e-9 as const;
@@ -61,6 +65,8 @@ export const RETRIEVAL_SCORE_CONSTANTS = Object.freeze({
   headVerbMismatchPenalty: 10,
   minimumRelevanceScore: 0.01,
   confidenceSaturation: 40,
+  confidenceSaturationWeight: 0.85,
+  confidenceCoverageWeight: 0.15,
   minimumAutoSelectConfidence: 0.35,
   scorePrecision: 6,
   confidencePrecision: 4,

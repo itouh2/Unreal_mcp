@@ -81,10 +81,8 @@ void FMcpConnectionManager::SendBridgeAck(
 	const TSharedRef<FJsonObject> Ack = MakeShared<FJsonObject>();
 	Ack->SetStringField(TEXT("type"), TEXT("bridge_ack"));
 	Ack->SetStringField(TEXT("message"), TEXT("Automation bridge ready"));
-	Ack->SetStringField(TEXT("serverName"),
-		!ServerName.IsEmpty() ? ServerName : TEXT("UnrealEditor"));
-	Ack->SetStringField(TEXT("serverVersion"),
-		!ServerVersion.IsEmpty() ? ServerVersion : TEXT("unreal-engine"));
+	Ack->SetStringField(TEXT("serverName"), TEXT("UnrealEditor"));
+	Ack->SetStringField(TEXT("serverVersion"), TEXT("unreal-engine"));
 
 	if (ActiveSessionId.IsEmpty()) ActiveSessionId = FGuid::NewGuid().ToString();
 	Ack->SetStringField(TEXT("sessionId"), ActiveSessionId);
@@ -155,6 +153,64 @@ bool FMcpConnectionManager::AuthorizeAutomationRequest(
 	{
 		Request.Payload = *PayloadField;
 	}
+
+	// THE GATE AND THE DISPATCHER MUST RESOLVE THE SAME ACTION, and on this
+	// transport nothing between them reconciles the two fields they read. The gate
+	// resolves the sub-action through McpHandlerUtils::NormalizeAction
+	// (`payload.subAction`, else the envelope action). The domain dispatchers were
+	// split on which field they read — some took `payload.action`, some
+	// `payload.subAction` — so a payload carrying BOTH with different values once
+	// authorized one capability and executed another: `subAction:"screenshot"`
+	// (read) could buy `action:"execute_python"` (write, in-process code
+	// execution). This path applies no schema validation and no post-queue
+	// re-authorization, so the split is reconciled HERE, before the gate resolves
+	// a demand.
+	//
+	// It is NORMALIZED, not refused, because the split is also how legitimate
+	// alias traffic arrives: the gateway dispatches the canonical action in
+	// `action` and the handler rewrites `subAction` to the native name
+	// (`add_socket` -> `create_socket`, `add_niagara_module` -> `add_module`,
+	// `add_material_node` -> `add_node`), so refusing any disagreement would break
+	// 11+ shipped capabilities on this transport. The authoritative field is the
+	// one NormalizeAction and every dispatcher now read FIRST: `subAction`. When
+	// they disagree, `action` is OVERWRITTEN from `subAction`, so the decoy is
+	// destroyed rather than trusted — the gate and the dispatcher then resolve the
+	// same string by construction, and a client can never raise what runs past
+	// what was authorized.
+	//
+	// LOAD-BEARING ALIASING: Request.Payload is a TSharedPtr<FJsonObject> that
+	// aliases the same object inside RootObj (extracted via TryGetObjectField,
+	// which hands back the stored pointer, not a copy). SetStringField below
+	// therefore mutates the queued request's payload in place — the dispatcher
+	// sees the normalized fields by construction. Do NOT insert a deep copy of
+	// Request.Payload between this point and QueueAutomationRequest: doing so
+	// would silently re-open the bypass (the copy would carry the original,
+	// un-normalized action/subAction, while the gate authorized the in-place
+	// normalized values). No test protects this invariant; the comment is the
+	// guard.
+	if (Request.Payload.IsValid())
+	{
+		FString PayloadAction;
+		FString PayloadSubAction;
+		const bool bHasAction =
+			Request.Payload->TryGetStringField(TEXT("action"), PayloadAction) && !PayloadAction.IsEmpty();
+		const bool bHasSubAction =
+			Request.Payload->TryGetStringField(TEXT("subAction"), PayloadSubAction) && !PayloadSubAction.IsEmpty();
+		if (bHasSubAction &&
+			(!bHasAction || !PayloadAction.Equals(PayloadSubAction, ESearchCase::IgnoreCase)))
+		{
+			Request.Payload->SetStringField(TEXT("action"), PayloadSubAction);
+			UE_LOG(LogMcpAutomationBridgeSubsystem, Verbose,
+				TEXT("Normalized automation request payload.action from the authoritative subAction."));
+		}
+		else if (bHasAction && !bHasSubAction)
+		{
+			// Single-field payload: make the two fields agree so a dispatcher
+			// reading `subAction` resolves the same action the gate does.
+			Request.Payload->SetStringField(TEXT("subAction"), PayloadAction);
+		}
+	}
+
 	// Consent is an envelope sibling, never a handler param, and is revalidated
 	// here rather than trusted from the TypeScript layer.
 	const TSharedPtr<FJsonObject>* ConsentField = nullptr;

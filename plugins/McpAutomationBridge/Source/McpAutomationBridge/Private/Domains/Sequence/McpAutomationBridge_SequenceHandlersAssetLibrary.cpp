@@ -1,5 +1,6 @@
 #include "Core/Compatibility/McpVersionCompatibility.h"
 #include "Domains/Sequence/McpAutomationBridge_SequenceHandlersEditorSupport.h"
+#include "Domains/Sequence/Metadata/McpAutomationBridge_SequenceMetadata.h"
 
 bool UMcpAutomationBridgeSubsystem::HandleSequenceList(
     const FString &RequestId, const TSharedPtr<FJsonObject> &Payload,
@@ -73,6 +74,24 @@ bool UMcpAutomationBridgeSubsystem::HandleSequenceDuplicate(
     DestinationPath =
         FString::Printf(TEXT("%s/%s"), *ParentPath, *DestinationPath);
   }
+  // destinationPath is a folder in the published contract; combine it with
+  // newName (or the source name) so the copy is not written as an asset named
+  // after the folder (dogfood #118).
+  FString NewName;
+  LocalPayload->TryGetStringField(TEXT("newName"), NewName);
+  NewName.TrimStartAndEndInline();
+#if WITH_EDITOR
+  const bool bDestinationIsFolder =
+      UEditorAssetLibrary::DoesDirectoryExist(DestinationPath) ||
+      DestinationPath.EndsWith(TEXT("/")) ||
+      (!NewName.IsEmpty() && !UEditorAssetLibrary::DoesAssetExist(DestinationPath) &&
+       !FPaths::GetBaseFilename(DestinationPath).Equals(NewName, ESearchCase::IgnoreCase));
+  if (!NewName.IsEmpty()) {
+    DestinationPath = (bDestinationIsFolder ? DestinationPath : FPaths::GetPath(DestinationPath)) / NewName;
+  } else if (bDestinationIsFolder) {
+    DestinationPath = DestinationPath / FPaths::GetBaseFilename(SourcePath);
+  }
+#endif
 
 #if WITH_EDITOR
   UObject *SourceSeq = UEditorAssetLibrary::LoadAsset(SourcePath);
@@ -90,6 +109,7 @@ bool UMcpAutomationBridgeSubsystem::HandleSequenceDuplicate(
     Resp->SetStringField(TEXT("sourcePath"), SourcePath);
     Resp->SetStringField(TEXT("destinationPath"), DestinationPath);
     Resp->SetStringField(TEXT("duplicatedPath"), DuplicatedSeq->GetPathName());
+    Resp->SetStringField(TEXT("sequencePath"), DuplicatedSeq->GetPathName());
     SendAutomationResponse(Socket, RequestId, true,
                            TEXT("Sequence duplicated successfully"), Resp,
                            FString());
@@ -167,9 +187,10 @@ bool UMcpAutomationBridgeSubsystem::HandleSequenceDelete(
   if (!UEditorAssetLibrary::DoesAssetExist(Path)) {
     TSharedPtr<FJsonObject> Resp = McpHandlerUtils::CreateResultObject();
     Resp->SetStringField(TEXT("deletedPath"), Path);
-    SendAutomationResponse(Socket, RequestId, true,
-                           TEXT("Sequence deleted (or did not exist)"), Resp,
-                           FString());
+    // A destructive call must say whether it removed anything (dogfood #119).
+    SendAutomationResponse(Socket, RequestId, false,
+                           FString::Printf(TEXT("Sequence not found: %s"), *Path), Resp,
+                           TEXT("NOT_FOUND"));
     return true;
   }
 
@@ -188,41 +209,6 @@ bool UMcpAutomationBridgeSubsystem::HandleSequenceDelete(
 #else
   SendAutomationResponse(Socket, RequestId, false,
                          TEXT("sequence_delete requires editor build."),
-                         nullptr, TEXT("NOT_AVAILABLE"));
-  return true;
-#endif
-}
-
-bool UMcpAutomationBridgeSubsystem::HandleSequenceGetMetadata(
-    const FString &RequestId, const TSharedPtr<FJsonObject> &Payload,
-    TSharedPtr<FMcpBridgeWebSocket> Socket) {
-  TSharedPtr<FJsonObject> LocalPayload =
-      Payload.IsValid() ? Payload : McpHandlerUtils::CreateResultObject();
-  FString SeqPath = ResolveSequencePath(LocalPayload);
-  if (SeqPath.IsEmpty()) {
-    SendAutomationResponse(
-        Socket, RequestId, false,
-        TEXT("sequence_get_metadata requires a sequence path"), nullptr,
-        TEXT("INVALID_SEQUENCE"));
-    return true;
-  }
-#if WITH_EDITOR
-  UObject *SeqObj = UEditorAssetLibrary::LoadAsset(SeqPath);
-  if (!SeqObj) {
-    SendAutomationResponse(Socket, RequestId, false, TEXT("Sequence not found"),
-                           nullptr, TEXT("INVALID_SEQUENCE"));
-    return true;
-  }
-  TSharedPtr<FJsonObject> Resp = McpHandlerUtils::CreateResultObject();
-  Resp->SetStringField(TEXT("path"), SeqPath);
-  Resp->SetStringField(TEXT("name"), SeqObj->GetName());
-  Resp->SetStringField(TEXT("class"), SeqObj->GetClass()->GetName());
-  SendAutomationResponse(Socket, RequestId, true,
-                         TEXT("Sequence metadata retrieved"), Resp, FString());
-  return true;
-#else
-  SendAutomationResponse(Socket, RequestId, false,
-                         TEXT("sequence_get_metadata requires editor build."),
                          nullptr, TEXT("NOT_AVAILABLE"));
   return true;
 #endif

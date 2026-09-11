@@ -11,6 +11,7 @@
 import type {
   CapabilityAvailability,
   CapabilityBehaviorSource,
+  CapabilityPolicy,
   CapabilityRecordSource,
   CapabilityRouting,
   Draft202012ObjectSchema,
@@ -23,12 +24,9 @@ import {
   LegacyToolNameSchema,
 } from '../../index.js';
 import { getParentToolMetadata } from '../parent-metadata.js';
-import { policy, behavior } from '../shared/record-presets.js';
+import { policy, behavior, SCHEMA_URI, V5_0, V5_8_P1 } from '../shared/record-presets.js';
 
-const SCHEMA_URI = 'https://json-schema.org/draft/2020-12/schema' as const;
 
-const V5_0 = { major: 5 as const, minor: 0, patch: 0, channel: 'stable' as const };
-const V5_8_P1 = { major: 5 as const, minor: 8, patch: 0, channel: 'preview' as const, preview: 1 };
 
 type EffectType = 'read' | 'write' | 'destructive';
 type EditorState = 'edit' | 'pie' | 'simulate';
@@ -50,6 +48,8 @@ export type CoreRecordSpec = {
   readonly outputRequired?: readonly string[];
   readonly effect: EffectType;
   readonly behavior?: Partial<CapabilityBehaviorSource>;
+  /** Optional policy overrides on top of the effect-derived preset. */
+  readonly policyOverride?: Partial<CapabilityPolicy>;
   readonly costLatency: 'instant' | 'interactive' | 'long-running';
   readonly costResources: 'low' | 'medium' | 'high';
   readonly plugins?: readonly string[];
@@ -59,6 +59,7 @@ export type CoreRecordSpec = {
   readonly normalizationRationale: string;
   readonly normalizationAliasOf?: string;
   readonly aliases?: readonly string[];
+  readonly topics?: readonly string[];
   readonly exampleInput: JsonObject;
   readonly exampleOutput: JsonObject;
 };
@@ -87,6 +88,14 @@ function outputSchema(props: JsonObject, required: readonly string[]): Draft2020
   const full: JsonObject = {
     success: { type: 'boolean', description: 'Whether the action succeeded.' },
     message: { type: 'string', description: 'Human-readable result message.' },
+    // Every contract carries a `details` reflection boundary: both gateways fold
+    // handler fields the contract does not name into it, so a read action's
+    // payload survives projection instead of collapsing to a bare success.
+    details: {
+      type: 'object',
+      'x-unreal-reflection-boundary': true,
+      description: 'Additional handler result fields not named by the contract.',
+    },
     ...props,
   };
   return schema(full, ['success', ...required]);
@@ -144,7 +153,7 @@ export function buildCoreRecord(
     discovery: {
       domain: spec.domain,
       family: spec.family,
-      topics: [spec.action],
+      topics: [spec.action, ...(spec.topics ?? [])],
       summary: spec.summary,
       whenToUse: [...spec.whenToUse],
       whenNotToUse: [...spec.whenNotToUse],
@@ -153,7 +162,7 @@ export function buildCoreRecord(
     examples: [{ title: spec.summary, input: spec.exampleInput, output: spec.exampleOutput }],
     availability: availability(spec.plugins, spec.editorStates),
     behavior: behavior(spec.effect, spec.behavior),
-    policy: policy(spec.effect),
+    policy: { ...policy(spec.effect), ...(spec.policyOverride ?? {}) },
     cost: { latency: spec.costLatency, resources: spec.costResources },
     routing: routing(spec.parentTool, spec.dispatchAction ?? spec.action, spec.dispatchMode),
     normalization: {

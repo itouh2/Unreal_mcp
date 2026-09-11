@@ -28,10 +28,6 @@ bool HandleWidgetAuthoringMenuTemplates(
     TSharedPtr<FMcpBridgeWebSocket> RequestingSocket,
     TSharedPtr<FJsonObject> ResultJson)
 {
-    // =========================================================================
-    // 19.7 UI Templates - Real Implementation (creates composite widget structures)
-    // =========================================================================
-
     if (SubAction.Equals(TEXT("create_main_menu"), ESearchCase::IgnoreCase))
     {
         FString WidgetPath = GetJsonStringField(Payload, TEXT("widgetPath"));
@@ -43,7 +39,7 @@ bool HandleWidgetAuthoringMenuTemplates(
             return true;
         }
 
-        UWidgetBlueprint* WidgetBP = LoadWidgetBlueprint(WidgetPath);
+        UWidgetBlueprint* WidgetBP = LoadOrCreateWidgetBlueprint(WidgetPath);
         if (!WidgetBP || !WidgetBP->WidgetTree)
         {
             Subsystem.SendAutomationError(RequestingSocket, RequestId, TEXT("Widget blueprint not found"), TEXT("NOT_FOUND"));
@@ -125,7 +121,7 @@ bool HandleWidgetAuthoringMenuTemplates(
             return true;
         }
 
-        UWidgetBlueprint* WidgetBP = LoadWidgetBlueprint(WidgetPath);
+        UWidgetBlueprint* WidgetBP = LoadOrCreateWidgetBlueprint(WidgetPath);
         if (!WidgetBP || !WidgetBP->WidgetTree)
         {
             Subsystem.SendAutomationError(RequestingSocket, RequestId, TEXT("Widget blueprint not found"), TEXT("NOT_FOUND"));
@@ -202,7 +198,7 @@ bool HandleWidgetAuthoringMenuTemplates(
             return true;
         }
 
-        UWidgetBlueprint* WidgetBP = LoadWidgetBlueprint(WidgetPath);
+        UWidgetBlueprint* WidgetBP = LoadOrCreateWidgetBlueprint(WidgetPath);
         if (!WidgetBP || !WidgetBP->WidgetTree)
         {
             Subsystem.SendAutomationError(RequestingSocket, RequestId, TEXT("Widget blueprint not found"), TEXT("NOT_FOUND"));

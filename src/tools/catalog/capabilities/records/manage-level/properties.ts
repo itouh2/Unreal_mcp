@@ -6,12 +6,10 @@
  * contract. Property-only module; no records are constructed here.
  */
 import type { JsonObject } from '../../index.js';
+import { str, bool, num } from '../shared/schema-props.js';
 
 type Prop = JsonObject;
 
-const str = (description: string): Prop => ({ type: 'string', description });
-const bool = (description: string): Prop => ({ type: 'boolean', description });
-const num = (description: string): Prop => ({ type: 'number', description });
 const arrStr = (description: string): Prop => ({ type: 'array', items: { type: 'string' }, description });
 
 export const P = {
@@ -48,4 +46,11 @@ export const P = {
   quality: str('Lighting build quality: Preview, Medium, High, or Production.'),
   useWorldPartition: bool('Create the level with World Partition enabled.'),
   metadata: { type: 'object', description: 'Metadata key/value pairs to write.', additionalProperties: true, 'x-unreal-reflection-boundary': true } as Prop,
+  gameMode: str('GameMode override for the level. Accepts the Blueprint asset path or its generated _C class path.'),
+  killZ: num('Z height below which actors are destroyed.'),
+  gravityZ: num('World gravity along Z; setting it also enables the global gravity override.'),
+  timeDilation: num('Global time dilation multiplier for the level.'),
+  enableWorldBoundsChecks: bool('Whether actors leaving the world bounds are culled.'),
+  settingsApplied: bool('Whether any world setting was written.'),
+  appliedSettings: arrStr('Names of the world settings actually written by this call.'),
 } as const;

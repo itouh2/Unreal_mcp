@@ -1,4 +1,7 @@
 #include "Domains/Level/McpAutomationBridge_LevelHandlersActions.h"
+#include "Editor.h"
+#include "Engine/LevelStreaming.h"
+#include "Engine/World.h"
 #include "Domains/Level/Copy/McpAutomationBridge_LevelHandlersCopyOperations.h"
 #include "Domains/Level/Lifecycle/McpAutomationBridge_LevelHandlersPathSafety.h"
 
@@ -8,9 +11,6 @@ namespace McpLevelHandlers {
 #if WITH_EDITOR
 #define SendAutomationResponse(...) Subsystem.SendAutomationResponse(__VA_ARGS__)
 #define SendAutomationError(...) Subsystem.SendAutomationError(__VA_ARGS__)
-#define HandleExecuteEditorFunction(...) Subsystem.HandleExecuteEditorFunction(__VA_ARGS__)
-#define HandleManageLevelStructureAction(...) Subsystem.HandleManageLevelStructureAction(__VA_ARGS__)
-#define HandleSetMetadata(...) Subsystem.HandleSetMetadata(__VA_ARGS__)
 bool HandleRenameLevelAction(UMcpAutomationBridgeSubsystem& Subsystem, const FString& RequestId, const TSharedPtr<FJsonObject>& Payload, TSharedPtr<FMcpBridgeWebSocket> RequestingSocket) {
     FString SourcePath;
     if (Payload.IsValid())
@@ -40,6 +40,26 @@ bool HandleRenameLevelAction(UMcpAutomationBridgeSubsystem& Subsystem, const FSt
                              TEXT("destinationPath required for rename_level"),
                              nullptr, TEXT("INVALID_ARGUMENT"));
       return true;
+    }
+    // A level that is open in the editor (current world or a streaming
+    // sub-level) cannot have its source deleted after the copy, which used to
+    // leave both files behind and report SOURCE_DELETE_FAILED (dogfood #154).
+    if (GEditor) {
+      if (UWorld* EditorWorld = GEditor->GetEditorWorldContext().World()) {
+        const FString SourcePackage = NormalizeLevelPackagePath(SourcePath);
+        bool bInUse = EditorWorld->GetOutermost()->GetName().Equals(SourcePackage, ESearchCase::IgnoreCase);
+        for (ULevelStreaming* Streaming : EditorWorld->GetStreamingLevels()) {
+          if (Streaming && Streaming->GetWorldAssetPackageName().Equals(SourcePackage, ESearchCase::IgnoreCase)) {
+            bInUse = true;
+          }
+        }
+        if (bInUse) {
+          SendAutomationResponse(RequestingSocket, RequestId, false,
+                                 FString::Printf(TEXT("Level %s is loaded in the editor (current level or streaming sub-level); unload it before renaming"), *SourcePackage),
+                                 nullptr, TEXT("LEVEL_IN_USE"));
+          return true;
+        }
+      }
     }
 
     // Issue #8: Sanitize paths to prevent traversal attacks
@@ -152,8 +172,5 @@ bool HandleRenameLevelAction(UMcpAutomationBridgeSubsystem& Subsystem, const FSt
 }
 #undef SendAutomationResponse
 #undef SendAutomationError
-#undef HandleExecuteEditorFunction
-#undef HandleManageLevelStructureAction
-#undef HandleSetMetadata
 #endif
 } // namespace McpLevelHandlers

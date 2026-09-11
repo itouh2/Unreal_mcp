@@ -6,11 +6,9 @@
  * body actually consumes - never the full parent-tool union.
  */
 import type { JsonObject } from '../../index.js';
+import { str, num, bool } from '../shared/schema-props.js';
 
-const str = (d: string): JsonObject => ({ type: 'string', description: d });
-const num = (d: string): JsonObject => ({ type: 'number', description: d });
 const int = (d: string): JsonObject => ({ type: 'integer', description: d });
-const bool = (d: string): JsonObject => ({ type: 'boolean', description: d });
 const arr = (d: string, item: JsonObject): JsonObject => ({ type: 'array', items: item, description: d });
 const vec3 = (d: string): JsonObject => ({
   type: 'object', description: d,
@@ -110,6 +108,7 @@ export const P = {
   blueprintPath: str('Canonical /Game blueprint path.'),
   spacing: num('Mesh spacing along the spline.'),
   width: num('Spline width.'),
+  closedLoop: bool('Close the spline into a loop, joining the last point back to the first.'),
   alignToSpline: bool('Align meshes to spline direction.'),
   randomizeRotation: bool('Randomize mesh rotation.'),
   randomizeScale: bool('Randomize mesh scale.'),

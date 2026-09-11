@@ -23,10 +23,6 @@ bool HandleWidgetAuthoringAnimationQueries(
     TSharedPtr<FMcpBridgeWebSocket> RequestingSocket,
     TSharedPtr<FJsonObject> ResultJson)
 {
-    // =========================================================================
-    // 19.14 Animation Extended Actions
-    // =========================================================================
-
     if (SubAction.Equals(TEXT("set_animation_speed"), ESearchCase::IgnoreCase))
     {
         FString WidgetPath = GetJsonStringField(Payload, TEXT("widgetPath"));
@@ -46,15 +42,7 @@ bool HandleWidgetAuthoringAnimationQueries(
             return true;
         }
 
-        UWidgetAnimation* TargetAnim = nullptr;
-        for (UWidgetAnimation* Anim : WidgetBP->Animations)
-        {
-            if (Anim && Anim->GetName().Equals(AnimationName, ESearchCase::IgnoreCase))
-            {
-                TargetAnim = Anim;
-                break;
-            }
-        }
+        UWidgetAnimation* TargetAnim = WidgetAuthoringHelpers::FindWidgetAnimation(WidgetBP, AnimationName);
 
         if (!TargetAnim || !TargetAnim->MovieScene)
         {
@@ -62,13 +50,7 @@ bool HandleWidgetAuthoringAnimationQueries(
             return true;
         }
 
-        // Animation playback speed is set at runtime, but we can store it as metadata
-        // For design-time, we adjust the playback rate via the MovieScene settings
-        // UE 5.7: SetPlaybackRange takes TRange<FFrameNumber>
-        TRange<FFrameNumber> PlaybackRange = TargetAnim->MovieScene->GetPlaybackRange();
-        TargetAnim->MovieScene->SetPlaybackRange(PlaybackRange);
-
-        FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(WidgetBP);
+        WidgetAuthoringHelpers::MarkWidgetBlueprintModifiedAndSave(WidgetBP);
 
         ResultJson->SetBoolField(TEXT("success"), true);
         ResultJson->SetStringField(TEXT("widgetPath"), WidgetPath);
@@ -130,15 +112,7 @@ bool HandleWidgetAuthoringAnimationQueries(
         }
         else
         {
-            UWidgetAnimation* TargetAnim = nullptr;
-            for (UWidgetAnimation* Anim : WidgetBP->Animations)
-            {
-                if (Anim && Anim->GetName().Equals(AnimationName, ESearchCase::IgnoreCase))
-                {
-                    TargetAnim = Anim;
-                    break;
-                }
-            }
+            UWidgetAnimation* TargetAnim = WidgetAuthoringHelpers::FindWidgetAnimation(WidgetBP, AnimationName);
 
             if (!TargetAnim)
             {
@@ -223,7 +197,7 @@ bool HandleWidgetAuthoringAnimationQueries(
         }
 
         WidgetBP->Animations.RemoveAt(FoundIndex);
-        FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(WidgetBP);
+        WidgetAuthoringHelpers::MarkWidgetBlueprintModifiedAndSave(WidgetBP);
 
         ResultJson->SetBoolField(TEXT("success"), true);
         ResultJson->SetStringField(TEXT("widgetPath"), WidgetPath);

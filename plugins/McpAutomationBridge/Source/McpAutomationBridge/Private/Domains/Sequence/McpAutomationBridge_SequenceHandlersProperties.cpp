@@ -18,12 +18,10 @@ bool UMcpAutomationBridgeSubsystem::HandleSequenceSetProperties(
   }
 
 #if WITH_EDITOR
-  FString RequestIdArg = RequestId;
-  UMcpAutomationBridgeSubsystem *Subsystem = this;
   TSharedPtr<FJsonObject> Resp = McpHandlerUtils::CreateResultObject();
   UObject *SeqObj = UEditorAssetLibrary::LoadAsset(SeqPath);
   if (!SeqObj) {
-    Subsystem->SendAutomationResponse(Socket, RequestIdArg, false,
+    SendAutomationResponse(Socket, RequestId, false,
                                       TEXT("Sequence not found"), nullptr,
                                       TEXT("INVALID_SEQUENCE"));
     return true;
@@ -49,7 +47,7 @@ bool UMcpAutomationBridgeSubsystem::HandleSequenceSetProperties(
         FString FrameRateError;
         if (!McpSequenceFrameRate::TryParse(
                 LocalPayload, TEXT("frameRate"), NewRate, FrameRateError)) {
-          Subsystem->SendAutomationResponse(Socket, RequestIdArg, false,
+          SendAutomationResponse(Socket, RequestId, false,
                                             FrameRateError,
                                             nullptr, TEXT("INVALID_ARGUMENT"));
           return true;
@@ -59,23 +57,26 @@ bool UMcpAutomationBridgeSubsystem::HandleSequenceSetProperties(
       TRange<FFrameNumber> NewRange = MovieScene->GetPlaybackRange();
       bool bRangeChanged = false;
       if (bHasPlaybackStart || bHasPlaybackEnd || bHasLengthInFrames) {
-        FFrameNumber StartFrame = NewRange.GetLowerBoundValue();
-        FFrameNumber EndFrame = NewRange.GetUpperBoundValue();
+        // Work in display-rate frames (the contract's unit); the stored range
+        // is in tick resolution, so convert on the way in and out.
+        const FFrameRate TickRate = MovieScene->GetTickResolution();
+        FFrameNumber StartFrame = FFrameRate::TransformTime(FFrameTime(NewRange.GetLowerBoundValue()), TickRate, NewRate).FloorToFrame();
+        FFrameNumber EndFrame = FFrameRate::TransformTime(FFrameTime(NewRange.GetUpperBoundValue()), TickRate, NewRate).FloorToFrame();
 
         FString FrameError;
         if (bHasPlaybackStart &&
             !McpSequenceFrameMath::TryFrameNumber(
                 PlaybackStartValue, StartFrame, FrameError)) {
-          Subsystem->SendAutomationResponse(
-              Socket, RequestIdArg, false, FrameError, nullptr,
+          SendAutomationResponse(
+              Socket, RequestId, false, FrameError, nullptr,
               TEXT("INVALID_ARGUMENT"));
           return true;
         }
         if (bHasPlaybackEnd) {
           if (!McpSequenceFrameMath::TryFrameNumber(
                   PlaybackEndValue, EndFrame, FrameError)) {
-            Subsystem->SendAutomationResponse(
-                Socket, RequestIdArg, false, FrameError, nullptr,
+            SendAutomationResponse(
+                Socket, RequestId, false, FrameError, nullptr,
                 TEXT("INVALID_ARGUMENT"));
             return true;
           }
@@ -83,8 +84,8 @@ bool UMcpAutomationBridgeSubsystem::HandleSequenceSetProperties(
           FFrameNumber Length;
           if (!McpSequenceFrameMath::TryFrameNumber(
                   LengthInFramesValue, Length, FrameError)) {
-            Subsystem->SendAutomationResponse(
-                Socket, RequestIdArg, false, FrameError, nullptr,
+            SendAutomationResponse(
+                Socket, RequestId, false, FrameError, nullptr,
                 TEXT("INVALID_ARGUMENT"));
             return true;
           }
@@ -92,8 +93,8 @@ bool UMcpAutomationBridgeSubsystem::HandleSequenceSetProperties(
                   StartFrame,
                   FMath::Max(0, Length.Value),
                   EndFrame, FrameError)) {
-            Subsystem->SendAutomationResponse(
-                Socket, RequestIdArg, false, FrameError, nullptr,
+            SendAutomationResponse(
+                Socket, RequestId, false, FrameError, nullptr,
                 TEXT("INVALID_ARGUMENT"));
             return true;
           }
@@ -101,7 +102,9 @@ bool UMcpAutomationBridgeSubsystem::HandleSequenceSetProperties(
 
         if (EndFrame < StartFrame)
           EndFrame = StartFrame;
-        NewRange = TRange<FFrameNumber>(StartFrame, EndFrame);
+        NewRange = TRange<FFrameNumber>(
+            FFrameRate::TransformTime(FFrameTime(StartFrame), NewRate, TickRate).FloorToFrame(),
+            FFrameRate::TransformTime(FFrameTime(EndFrame), NewRate, TickRate).FloorToFrame());
         bRangeChanged = true;
       }
 
@@ -125,15 +128,18 @@ bool UMcpAutomationBridgeSubsystem::HandleSequenceSetProperties(
       Resp->SetObjectField(TEXT("frameRate"), FrameRateObj);
 
       TRange<FFrameNumber> Range = MovieScene->GetPlaybackRange();
-      const double Start =
-          static_cast<double>(Range.GetLowerBoundValue().Value);
-      const double End = static_cast<double>(Range.GetUpperBoundValue().Value);
+      // Playback range is stored in tick resolution; publish display-rate frames
+      // (the unit the contract names) instead of raw ticks.
+      const FFrameRate TickRate = MovieScene->GetTickResolution();
+      const double Start = FFrameRate::TransformTime(FFrameTime(Range.GetLowerBoundValue()), TickRate, FR).FloorToFrame().Value;
+      const double End = FFrameRate::TransformTime(FFrameTime(Range.GetUpperBoundValue()), TickRate, FR).FloorToFrame().Value;
       Resp->SetNumberField(TEXT("playbackStart"), Start);
       Resp->SetNumberField(TEXT("playbackEnd"), End);
       Resp->SetNumberField(TEXT("duration"), End - Start);
+      Resp->SetNumberField(TEXT("lengthInFrames"), End - Start);
       Resp->SetBoolField(TEXT("applied"), bModified);
 
-      Subsystem->SendAutomationResponse(Socket, RequestIdArg, true,
+      SendAutomationResponse(Socket, RequestId, true,
                                         TEXT("properties updated"), Resp,
                                         FString());
       return true;
@@ -144,8 +150,8 @@ bool UMcpAutomationBridgeSubsystem::HandleSequenceSetProperties(
   Resp->SetNumberField(TEXT("playbackEnd"), 0.0);
   Resp->SetNumberField(TEXT("duration"), 0.0);
   Resp->SetBoolField(TEXT("applied"), false);
-  Subsystem->SendAutomationResponse(
-      Socket, RequestIdArg, false,
+  SendAutomationResponse(
+      Socket, RequestId, false,
       TEXT("sequence_set_properties is not available in this editor build or "
            "for this sequence type"),
       Resp, TEXT("NOT_IMPLEMENTED"));
@@ -183,24 +189,29 @@ bool UMcpAutomationBridgeSubsystem::HandleSequenceGetProperties(
   if (ULevelSequence *LevelSeq = Cast<ULevelSequence>(SeqObj)) {
     if (UMovieScene *MovieScene = LevelSeq->GetMovieScene()) {
       FFrameRate FR = MovieScene->GetDisplayRate();
-      TSharedPtr<FJsonObject> FrameRateObj =
-          McpHandlerUtils::CreateResultObject();
-      FrameRateObj->SetNumberField(TEXT("numerator"), FR.Numerator);
-      FrameRateObj->SetNumberField(TEXT("denominator"), FR.Denominator);
-      Resp->SetObjectField(TEXT("frameRate"), FrameRateObj);
+      // BB-040: the record declares frameRate as a number|string union, so the
+      // {numerator,denominator} object this used to emit failed output
+      // validation. get_properties only; the set_properties site is unchanged.
+      Resp->SetNumberField(TEXT("frameRate"), FR.AsDecimal());
       TRange<FFrameNumber> Range = MovieScene->GetPlaybackRange();
-      const double Start =
-          static_cast<double>(Range.GetLowerBoundValue().Value);
-      const double End = static_cast<double>(Range.GetUpperBoundValue().Value);
+      // Playback range is stored in tick resolution; publish display-rate frames
+      // (the unit the contract names) instead of raw ticks.
+      const FFrameRate TickRate = MovieScene->GetTickResolution();
+      const double Start = FFrameRate::TransformTime(FFrameTime(Range.GetLowerBoundValue()), TickRate, FR).FloorToFrame().Value;
+      const double End = FFrameRate::TransformTime(FFrameTime(Range.GetUpperBoundValue()), TickRate, FR).FloorToFrame().Value;
       Resp->SetNumberField(TEXT("playbackStart"), Start);
       Resp->SetNumberField(TEXT("playbackEnd"), End);
       Resp->SetNumberField(TEXT("duration"), End - Start);
+      Resp->SetNumberField(TEXT("lengthInFrames"), End - Start);
       SendAutomationResponse(Socket, RequestId, true,
                              TEXT("properties retrieved"), Resp, FString());
       return true;
     }
   }
-  Resp->SetObjectField(TEXT("frameRate"), McpHandlerUtils::CreateResultObject());
+  // This fallback still answers success, so it is held to the same declared
+  // number|string union as the branch above; an empty object here was the same
+  // violation under a different code path.
+  Resp->SetNumberField(TEXT("frameRate"), 0.0);
   Resp->SetNumberField(TEXT("playbackStart"), 0.0);
   Resp->SetNumberField(TEXT("playbackEnd"), 0.0);
   Resp->SetNumberField(TEXT("duration"), 0.0);

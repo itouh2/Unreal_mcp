@@ -1,6 +1,8 @@
 // McpNativeReceiptEnrichment.cpp — see header for the parity contract.
 
 #include "MCP/Execute/McpNativeReceiptEnrichment.h"
+#include "MCP/Gateway/McpNativeGatewayCanonicalJson.h"
+#include "Misc/SecureHash.h"
 #include "MCP/Execute/McpNativeReceiptRedaction.h"
 #include "MCP/Execute/McpNativeReceiptOutcome.h"
 #include "MCP/Execute/McpNativeGatewayReceipt.h"
@@ -9,9 +11,7 @@
 #include "MCP/Gateway/McpNativeGatewayCatalog.h"
 #include "HAL/PlatformTime.h"
 
-namespace
-{
-void SetRecordRevisions(const TSharedPtr<FJsonObject>& Receipt, const FString& CapabilityId)
+void McpSetReceiptRecordRevisions(const TSharedPtr<FJsonObject>& Receipt, const FString& CapabilityId)
 {
 	if (CapabilityId.IsEmpty())
 	{
@@ -34,6 +34,8 @@ void SetRecordRevisions(const TSharedPtr<FJsonObject>& Receipt, const FString& C
 	}
 }
 
+namespace
+{
 TArray<FString> DeprecationWarnings(const FString& CapabilityId)
 {
 	TArray<FString> Warnings;
@@ -111,7 +113,7 @@ TSharedPtr<FJsonObject> McpBuildCanonicalReceipt(
 	if (!Context.RequestId.IsEmpty()) Receipt->SetStringField(TEXT("requestId"), Context.RequestId);
 	if (!Context.IdempotencyId.IsEmpty()) Receipt->SetStringField(TEXT("idempotencyId"), Context.IdempotencyId);
 	Receipt->SetStringField(TEXT("catalogRevision"), FMcpCanonicalRecordIndex::Get().GetCatalogRevision());
-	SetRecordRevisions(Receipt, CapabilityId);
+	McpSetReceiptRecordRevisions(Receipt, CapabilityId);
 	if (Context.StartTimeSeconds > 0.0)
 	{
 		const double Ms = (FPlatformTime::Seconds() - Context.StartTimeSeconds) * 1000.0;
@@ -142,15 +144,18 @@ TSharedPtr<FJsonObject> McpBuildCanonicalReceipt(
 		{
 			Receipt->SetObjectField(TEXT("task"), Task);
 		}
-		if (Data.IsValid())
-		{
-			McpMaskSecretsDeep(Data);
-			Receipt->SetObjectField(TEXT("data"), Data);
-		}
-		else
-		{
-			Receipt->SetObjectField(TEXT("data"), MakeShared<FJsonObject>());
-		}
+		// The payload is published once at the top level; the receipt binds to the masked payload
+		// through a digest instead of repeating it (dogfood #11). Mirrors dataDigestOf() in envelope.ts.
+		TSharedPtr<FJsonObject> Published = Data.IsValid() ? Data : MakeShared<FJsonObject>();
+		McpMaskSecretsDeep(Published);
+		FString CanonicalData;
+		McpCanonicalJsonObject(Published, CanonicalData);
+		const FTCHARToUTF8 Utf8(*CanonicalData);
+		uint8 Hash[20];
+		FSHA1::HashBuffer(Utf8.Get(), Utf8.Length(), Hash);
+		FString Digest = TEXT("sha1:");
+		for (int32 Index = 0; Index < 20; ++Index) { Digest += FString::Printf(TEXT("%02x"), Hash[Index]); }
+		Receipt->SetStringField(TEXT("dataDigest"), Digest);
 	}
 	else if (Error != nullptr)
 	{

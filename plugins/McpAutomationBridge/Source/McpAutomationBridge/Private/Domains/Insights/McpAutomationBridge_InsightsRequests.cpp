@@ -1,6 +1,6 @@
-#include "Core/Compatibility/McpVersionCompatibility.h"
-
 #include "Domains/Insights/McpAutomationBridge_InsightsRequests.h"
+
+#include "Core/Compatibility/McpVersionCompatibility.h"
 
 #include "Dom/JsonObject.h"
 #include "Dom/JsonValue.h"
@@ -180,6 +180,7 @@ void AddTraceStatus(TSharedPtr<FJsonObject>& Result)
     FGuid TraceGuid;
     const bool bConnected = FTraceAuxiliary::IsConnected(SessionGuid, TraceGuid);
     Result->SetBoolField(TEXT("connected"), bConnected);
+    Result->SetBoolField(TEXT("isTracing"), bConnected);
     Result->SetStringField(TEXT("destination"),
         FTraceAuxiliary::GetTraceDestinationString());
     if (bConnected)

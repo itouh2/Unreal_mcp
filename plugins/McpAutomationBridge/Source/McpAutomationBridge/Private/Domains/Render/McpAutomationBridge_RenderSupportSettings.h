@@ -8,9 +8,17 @@
 #include "UObject/UnrealType.h"
 #endif
 
+class APostProcessVolume;
+
 namespace McpRenderHandlers
 {
 #if WITH_EDITOR
+
+// BB-021: bounded post-process volume settings summary exposed for
+// inspect/component reads (implemented in
+// Foundation/Render/McpPostProcessVolumeResolution.cpp).
+TSharedPtr<FJsonObject> McpDescribePostProcessVolume(const APostProcessVolume& Volume);
+
 inline void AddStringArray(
     const TSharedPtr<FJsonObject>& Result,
     const FString& FieldName,
@@ -50,7 +58,7 @@ inline bool ApplyJsonSettings(
     {
         return true;
     }
-    for (const TPair<FString, TSharedPtr<FJsonValue>>& Pair : Settings->Values)
+    for (const TPair<FString, TSharedPtr<FJsonValue>> Pair : Settings->Values)
     {
         FProperty* Property = StructType->FindPropertyByName(FName(*Pair.Key));
         if (!Property)

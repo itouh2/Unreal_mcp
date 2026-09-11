@@ -131,8 +131,6 @@ bool HandleSetBlackboardValue(UMcpAutomationBridgeSubsystem* Self, const FString
 #endif
         return true;
     }
-
-    // get_blackboard_value - Get a key's info from a blackboard asset
     return true;
 }
 
@@ -167,6 +165,8 @@ bool HandleGetBlackboardValue(UMcpAutomationBridgeSubsystem* Self, const FString
         bool bKeyFound = false;
         FString KeyType = TEXT("Unknown");
         bool bInstanceSynced = false;
+        FString ValueStr;
+        bool bValueAvailable = false;
 
         for (const FBlackboardEntry& Key : BBData->Keys)
         {
@@ -178,6 +178,46 @@ bool HandleGetBlackboardValue(UMcpAutomationBridgeSubsystem* Self, const FString
                 {
                     KeyType = Key.KeyType->GetClass()->GetName();
                 }
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 5
+                if (Key.KeyType)
+                {
+                    if (const UBlackboardKeyType_Bool* BoolKey = Cast<UBlackboardKeyType_Bool>(Key.KeyType))
+                    {
+                        ValueStr = BoolKey->bDefaultValue ? TEXT("true") : TEXT("false");
+                        bValueAvailable = true;
+                    }
+                    else if (const UBlackboardKeyType_Int* IntKey = Cast<UBlackboardKeyType_Int>(Key.KeyType))
+                    {
+                        ValueStr = FString::FromInt(IntKey->DefaultValue);
+                        bValueAvailable = true;
+                    }
+                    else if (const UBlackboardKeyType_Float* FloatKey = Cast<UBlackboardKeyType_Float>(Key.KeyType))
+                    {
+                        ValueStr = FString::SanitizeFloat(FloatKey->DefaultValue);
+                        bValueAvailable = true;
+                    }
+                    else if (const UBlackboardKeyType_Vector* VectorKey = Cast<UBlackboardKeyType_Vector>(Key.KeyType))
+                    {
+                        ValueStr = VectorKey->DefaultValue.ToString();
+                        bValueAvailable = true;
+                    }
+                    else if (const UBlackboardKeyType_Rotator* RotatorKey = Cast<UBlackboardKeyType_Rotator>(Key.KeyType))
+                    {
+                        ValueStr = RotatorKey->DefaultValue.ToString();
+                        bValueAvailable = true;
+                    }
+                    else if (const UBlackboardKeyType_Name* NameKey = Cast<UBlackboardKeyType_Name>(Key.KeyType))
+                    {
+                        ValueStr = NameKey->DefaultValue.ToString();
+                        bValueAvailable = true;
+                    }
+                    else if (const UBlackboardKeyType_String* StringKey = Cast<UBlackboardKeyType_String>(Key.KeyType))
+                    {
+                        ValueStr = StringKey->DefaultValue;
+                        bValueAvailable = true;
+                    }
+                }
+#endif
                 break;
             }
         }
@@ -194,11 +234,23 @@ bool HandleGetBlackboardValue(UMcpAutomationBridgeSubsystem* Self, const FString
         GetResult->SetStringField(TEXT("keyName"), KeyName);
         GetResult->SetStringField(TEXT("keyType"), KeyType);
         GetResult->SetBoolField(TEXT("instanceSynced"), bInstanceSynced);
+        GetResult->SetBoolField(TEXT("valueAvailable"), bValueAvailable);
+        if (bValueAvailable)
+        {
+            GetResult->SetStringField(TEXT("value"), ValueStr);
+            // Typed companions so callers need not parse the text (dogfood #65).
+            if (KeyType.Contains(TEXT("Float")) || KeyType.Contains(TEXT("Int")))
+            {
+                GetResult->SetNumberField(TEXT("valueNumber"), FCString::Atod(*ValueStr));
+            }
+            else if (KeyType.Contains(TEXT("Bool")))
+            {
+                GetResult->SetBoolField(TEXT("valueBool"), ValueStr.ToBool());
+            }
+        }
         Self->SendAutomationResponse(RequestingSocket, RequestId, true, TEXT("Blackboard value retrieved"), GetResult);
         return true;
     }
-
-    // run_behavior_tree - Alias for assign_behavior_tree
     return true;
 }
 }

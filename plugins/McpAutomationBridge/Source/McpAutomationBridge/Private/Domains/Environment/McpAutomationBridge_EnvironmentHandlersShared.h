@@ -10,7 +10,6 @@
 #include "Foundation/BridgeHelpers/McpAutomationBridgeHelpers.h"
 #include "McpAutomationBridgeSubsystem.h"
 #include "Domains/Landscape/McpLandscapeMetadataTags.h"
-#include "Misc/ConfigCacheIni.h"
 #include "HAL/PlatformMemory.h"
 #include "Misc/App.h"
 #include "UObject/UnrealType.h"
@@ -23,8 +22,6 @@
 #if WITH_EDITOR
 #include "Editor.h"
 #include "EditorAssetLibrary.h"
-#include "Slate/SceneViewport.h"
-#include "Framework/Application/SlateApplication.h"
 #include "Engine/Selection.h"
 
 // Subsystem includes with version-specific paths
@@ -76,14 +73,11 @@
 // =============================================================================
 // Editor & Asset Includes
 // =============================================================================
-#include "Developer/AssetTools/Public/AssetToolsModule.h"
-#include "EditorValidatorSubsystem.h"
 #include "DynamicRHI.h"
 #include "Engine/Blueprint.h"
 #include "Engine/DirectionalLight.h"
 #include "Engine/SkyLight.h"
 #include "EngineUtils.h"
-#include "FileHelpers.h"
 #include "GeneralProjectSettings.h"
 #include "GameFramework/GameModeBase.h"
 #include "GameFramework/WorldSettings.h"
@@ -95,8 +89,6 @@
 // =============================================================================
 #include "KismetProceduralMeshLibrary.h"
 #include "Misc/FileHelper.h"
-#include "NiagaraComponent.h"
-#include "NiagaraSystem.h"
 #include "ProceduralMeshComponent.h"
 
 // =============================================================================
@@ -116,6 +108,8 @@
 #include "AssetRegistry/AssetRegistryModule.h"
 
 #endif // WITH_EDITOR
+
+class UTexture;
 
 namespace McpEnvironmentHandlers {
 #if WITH_EDITOR
@@ -173,10 +167,8 @@ bool McpCreateLandscapeLayerInfo(const TSharedPtr<FJsonObject> &Payload, TShared
 bool McpCreateLinearColorCurve(const TSharedPtr<FJsonObject> &Payload, const FString &DefaultName,
                                       TSharedPtr<FJsonObject> Resp, FString &OutMessage, FString &OutErrorCode);
 ALandscape *McpFindLandscapeForEnvironmentAction(const TSharedPtr<FJsonObject> &Payload);
-bool McpBuildProjectFilePath(const FString &InputPath, FString &OutAbsolutePath, FString &OutSafePath, FString &OutError);
 AActor *McpFindOrSpawnEnvironmentActor(const TSharedPtr<FJsonObject> &Payload, UClass *ActorClass, const FString &DefaultActorName);
 void McpApplyEnvironmentSettings(UObject *Target, const TSharedPtr<FJsonObject> &Payload, TSharedPtr<FJsonObject> Resp);
-UFoliageType *McpLoadFoliageTypeForEnvironmentAction(const TSharedPtr<FJsonObject> &Payload);
 AActor *McpFindActorFromEnvironmentPayload(const TSharedPtr<FJsonObject> &Payload);
 AActor *McpFindWaterBodyActor(const TSharedPtr<FJsonObject> &Payload);
 int32 McpSetMaterialOnActor(AActor *Actor, const TSharedPtr<FJsonObject> &Payload, TSharedPtr<FJsonObject> Resp);
@@ -250,6 +242,11 @@ bool HandleInspectSettingsAction(
     const TSharedPtr<FJsonObject> &Payload,
     TSharedPtr<FMcpBridgeWebSocket> RequestingSocket,
     TSharedPtr<FJsonObject> Resp);
+bool HandleInspectStatsAction(
+    UMcpAutomationBridgeSubsystem &Bridge, const FString &RequestId,
+    const FString &LowerSubAction,
+    TSharedPtr<FMcpBridgeWebSocket> RequestingSocket,
+    TSharedPtr<FJsonObject> Resp);
 bool HandleInspectRuntimeReportAction(
     UMcpAutomationBridgeSubsystem &Bridge, const FString &RequestId,
     const FString &LowerSubAction, const TSharedPtr<FJsonObject> &Payload,
@@ -262,6 +259,39 @@ bool HandleInspectSearchAction(
     TSharedPtr<FJsonObject> Resp);
 bool HandleInspectObjectAction(
     UMcpAutomationBridgeSubsystem &Bridge, const FString &RequestId,
-    const FString &ObjectPath, TSharedPtr<FMcpBridgeWebSocket> RequestingSocket);
+    const FString &ObjectPath, const TSharedPtr<FJsonObject> &Payload,
+    TSharedPtr<FMcpBridgeWebSocket> RequestingSocket);
+
+// Inspection helpers, split by responsibility under Domains/Environment/Inspection/.
+TArray<FString> McpReadStringListField(const TSharedPtr<FJsonObject> &Payload, const TCHAR *ArrayField, const TCHAR *SingleField);
+void McpAppendPropertyDump(UObject *Object, const TArray<FString> &PropertyNames, TSharedPtr<FJsonObject> Resp);
+TSharedPtr<FJsonObject> McpMakeBoundsObject(const FBox &Box);
+void McpAppendLevelDetails(UWorld *World, TSharedPtr<FJsonObject> Resp);
+void McpAppendViewportInfo(TSharedPtr<FJsonObject> Resp);
+void McpDescribeClass(UClass *Class, TSharedPtr<FJsonObject> Resp);
+void McpDescribeComponent(UActorComponent *Component, TSharedPtr<FJsonObject> Resp);
+void McpDescribeAssetDetails(UObject *Object, TSharedPtr<FJsonObject> Resp);
+void McpDescribeMaterialAsset(UMaterialInterface *Material, TSharedPtr<FJsonObject> Resp);
+void McpDescribeTextureAsset(UTexture *Texture, TSharedPtr<FJsonObject> Resp);
+TArray<TSharedPtr<FJsonValue>> McpCollectBlueprintComponents(UBlueprint *Blueprint);
+TArray<TSharedPtr<FJsonValue>> McpCollectBlueprintVariables(UBlueprint *Blueprint);
+bool HandleInspectLevelDetailsAction(
+    UMcpAutomationBridgeSubsystem &Bridge, const FString &RequestId,
+    TSharedPtr<FMcpBridgeWebSocket> RequestingSocket);
+bool HandleInspectBlueprintDetailsAction(
+    UMcpAutomationBridgeSubsystem &Bridge, const FString &RequestId,
+    const TSharedPtr<FJsonObject> &Payload,
+    TSharedPtr<FMcpBridgeWebSocket> RequestingSocket);
+bool HandleInspectBlueprintComponentsAction(
+    UMcpAutomationBridgeSubsystem &Bridge, const FString &RequestId,
+    const FString &BlueprintPath, TSharedPtr<FMcpBridgeWebSocket> RequestingSocket);
+bool HandleInspectComponentDetailsAction(
+    UMcpAutomationBridgeSubsystem &Bridge, const FString &RequestId,
+    const TSharedPtr<FJsonObject> &Payload,
+    TSharedPtr<FMcpBridgeWebSocket> RequestingSocket);
+bool HandleInspectActorQueryAction(
+    UMcpAutomationBridgeSubsystem &Bridge, const FString &RequestId,
+    const FString &LowerSubAction, const TSharedPtr<FJsonObject> &Payload,
+    TSharedPtr<FMcpBridgeWebSocket> RequestingSocket);
 #endif
 }

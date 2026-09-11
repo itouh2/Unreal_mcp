@@ -7,12 +7,14 @@
 
 export {
   applyDeclaredDefaults,
-  hasOwn,
+  coerceVectorShapes,
   validateAgainstCapabilitySchema,
   VIOLATION_GATEWAY_CODES,
   type SchemaViolation,
   type ViolationReason,
 } from './gateway-schema-validate.js';
+
+export { hasOwn } from '../../utils/validation/type-guards.js';
 
 export {
   checkPreviewSupport,

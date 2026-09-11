@@ -1,12 +1,13 @@
 # MCP AUTOMATION BRIDGE PLUGIN
 
-Editor-only UE 5.0-5.8 Preview plugin. It owns the WebSocket automation bridge and the optional native `/mcp` HTTP/SSE server. `McpAutomationBridge.uplugin` is the plugin version source (`0.5.30`); server package versions are separate.
+Editor-only UE 5.0-5.8 Preview plugin. It owns the WebSocket automation bridge, the optional native `/mcp` HTTP/SSE server, and the delay-loaded Fab asset-store adapter module. `McpAutomationBridge.uplugin` is the plugin version source (`0.5.30`); server package versions are separate.
 
 ## SCOPE MAP
 | Area | Owner | Notes |
 |------|-------|-------|
 | Manifest/config/docs | plugin root | `.uplugin`, `Config/`, plugin `README.md` and `CHANGELOG.md` |
 | Module dependencies | `Source/McpAutomationBridge/McpAutomationBridge.Build.cs` | Preserve UE-version probes and optional-module detection |
+| Fab adapter module | `Source/McpAutomationBridgeFab/` | Delay-loaded, optional; Fab browser bridge, import watcher, add-to-project, search, details, downloads. Compiles away when Fab/Megascans plugins are absent. |
 | Public API/settings | `Source/McpAutomationBridge/Public/` | Subsystem contract, settings, connection manager API |
 | Core lifecycle/routing | `Private/Core/` (36) | Queue, game-thread dispatch, registration shards, settings, responses — **nested `AGENTS.md`** |
 | Automation domains | `Private/Domains/` (1103 / 66 domains) | Domain handlers grouped by responsibility — **nested `AGENTS.md`** |
@@ -35,7 +36,7 @@ Editor-only UE 5.0-5.8 Preview plugin. It owns the WebSocket automation bridge a
 - Defaults are `127.0.0.1`, ports `8090,8091`, multi-listen enabled, and non-loopback disabled.
 - LAN binding requires explicit `bAllowNonLoopback`; never introduce an implicit `0.0.0.0` fallback.
 - **Fail-closed LAN coupling**: the native `/mcp` transport refuses to bind non-loopback unless `bRequireCapabilityToken` is also enabled, so a LAN-exposed surface can never start without auth. The plugin's non-loopback setting governs both server-side listeners it owns (WebSocket bridge listen socket and native MCP HTTP/SSE transport).
-- `bRequireCapabilityToken` protects both transports. WebSocket uses the bridge hello token; native MCP uses `X-MCP-Capability-Token`. **On by default since 0.5.31** — the plugin auto-generates a per-install token at `<ProjectRoot>/Saved/MCP/capability-token` (64 lowercase hex chars, no trailing newline) via the capability-token store (`Private/Foundation/BridgeHelpers/Security/McpAutomationBridgeHelpersCapabilityToken.h`); the TypeScript bridge reads the same file, never writes it. A manually configured `CapabilityToken` in Project Settings wins over the generated file.
+- `bRequireCapabilityToken` protects both transports. WebSocket uses the bridge hello token; native MCP uses `X-MCP-Capability-Token`. **On by default since 0.5.30** — the plugin auto-generates a per-install token at `<ProjectRoot>/Saved/MCP/capability-token` (64 lowercase hex chars, no trailing newline) via the capability-token store (`Private/Foundation/BridgeHelpers/Security/McpAutomationBridgeHelpersCapabilityToken.h`); the TypeScript bridge reads the same file, never writes it. A manually configured `CapabilityToken` in Project Settings wins over the generated file.
 - **Constant-time token checks**: both transports compare capability tokens with `McpConstantTimeTokenEquals` (`Private/Foundation/McpSecureTokenCompare.h`), XOR-accumulating over the full UTF-8 byte span with no data-dependent early exit, so timing never leaks how much of a token matched.
 - **Session-scoped bounded cancellation (advisory for in-flight)**: native `notifications/cancelled` correlates only to the caller's in-flight request (scoped by session id and client JSON-RPC id key), and the cancel-marker maps are capped with oldest-first eviction. Cancellation drops queued requests before they run and suppresses the late response for an in-flight request, but it cannot interrupt an already-executing editor operation — the work runs to completion. See the nested MCP `AGENTS.md` for lifecycle detail.
 - TLS settings belong to the WebSocket transport. Preserve certificate/key validation, rate limits, heartbeat handling, and response sanitization.

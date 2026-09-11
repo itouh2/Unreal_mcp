@@ -1,7 +1,8 @@
 // McpToolRegistry.cpp — Singleton registry for self-describing MCP tool definitions
 
-#include "Core/Compatibility/McpVersionCompatibility.h"
 #include "MCP/Registry/McpToolRegistry.h"
+
+#include "Core/Compatibility/McpVersionCompatibility.h"
 #include "MCP/Registry/McpToolDefinition.h"
 
 namespace
@@ -97,17 +98,6 @@ FString FMcpToolRegistry::GetToolCategory(const FString& ToolName) const
 	return TEXT("utility");
 }
 
-TMap<FString, FString> FMcpToolRegistry::GetToolCategories() const
-{
-	TMap<FString, FString> Categories;
-	Categories.Reserve(Tools.Num());
-	for (const FMcpToolDefinition* Tool : Tools)
-	{
-		Categories.Add(Tool->GetName(), Tool->GetCategory());
-	}
-	return Categories;
-}
-
 void FMcpToolRegistry::EnsureCache()
 {
 	if (bCacheValid)
@@ -140,11 +130,6 @@ TSharedPtr<FJsonObject> FMcpToolRegistry::BuildToolJson(FMcpToolDefinition* Tool
 	return ToolObj;
 }
 
-void FMcpToolRegistry::InvalidateCache()
-{
-	FScopeLock Lock(&CacheMutex);
-	bCacheValid = false;
-}
 TSharedPtr<FJsonObject> FMcpToolRegistry::GetFilteredToolsResponse(
 	const TSet<FString>& EnabledTools)
 {

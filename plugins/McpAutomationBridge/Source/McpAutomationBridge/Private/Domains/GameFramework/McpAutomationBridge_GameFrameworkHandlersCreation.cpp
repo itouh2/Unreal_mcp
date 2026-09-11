@@ -3,16 +3,11 @@
 namespace McpGameFrameworkHandlers
 {
 #if WITH_EDITOR
-static void SetOptionalClass(UBlueprint* Blueprint, const FActionContext& Context, const FString& FieldName, const FName& PropertyName, FString& Error)
-{
-    const FString ClassPath = GetStringField(Context.Payload, FieldName);
-    if (ClassPath.IsEmpty()) return;
-
-    if (UClass* ClassToSet = LoadClassFromPath(ClassPath))
-    {
-        SetClassProperty(Blueprint, PropertyName, ClassToSet, Error);
-    }
-}
+// Declared in ClassConfig.cpp: applies defaultPawnClass/playerControllerClass/
+// gameStateClass/playerStateClass/hudClass overrides and returns how many were
+// applied, so create_game_mode can report silently-dropped fields instead of
+// answering success while ignoring them.
+int32 ApplyGameModeClassOverrides(FActionContext& Context, UBlueprint* Blueprint, FString& Error);
 
 static bool CreateFrameworkClass(FActionContext& Context, UClass* DefaultParent, const FString& ActionName, const FString& Label, bool bConfigureGameMode)
 {
@@ -39,11 +34,24 @@ static bool CreateFrameworkClass(FActionContext& Context, UClass* DefaultParent,
 
     if (bConfigureGameMode)
     {
-        SetOptionalClass(Blueprint, Context, TEXT("defaultPawnClass"), TEXT("DefaultPawnClass"), Error);
-        SetOptionalClass(Blueprint, Context, TEXT("playerControllerClass"), TEXT("PlayerControllerClass"), Error);
-        SetOptionalClass(Blueprint, Context, TEXT("gameStateClass"), TEXT("GameStateClass"), Error);
-        SetOptionalClass(Blueprint, Context, TEXT("playerStateClass"), TEXT("PlayerStateClass"), Error);
-        SetOptionalClass(Blueprint, Context, TEXT("hudClass"), TEXT("HUDClass"), Error);
+        FString OverrideError;
+        const int32 Applied = ApplyGameModeClassOverrides(Context, Blueprint, OverrideError);
+        if (Applied > 0)
+        {
+            McpSafeCompileBlueprint(Blueprint);
+        }
+        if (!OverrideError.IsEmpty())
+        {
+            // A requested override was dropped (bad class path or property) —
+            // say so instead of reporting an unconditional success.
+            TSharedPtr<FJsonObject> Response = MakeBlueprintResponse(
+                FString::Printf(TEXT("Created %s blueprint: %s (%d class override(s) applied, some failed: %s)"),
+                    *Label, *Context.Name, Applied, *OverrideError),
+                Blueprint);
+            McpHandlerUtils::AddVerification(Response, Blueprint);
+            Context.SendSuccess(Response);
+            return true;
+        }
     }
 
     if (Context.bSave)

@@ -15,14 +15,15 @@
  * `magnitudeType`, `stackLimit`, `targetingType`, `targetingRange`, `policy`,
  * `particleSystem`, `sound`, `cameraShake`), the normalization layer derives it
  * from the canonical name, so declaring the alias too would double-count one
- * parameter. `tag` is the exception: add_tag_to_asset reads it directly as a
- * first-class fallback for `tagName`, so it stays declared there.
+ * parameter. The exceptions are the three the native side reads directly as
+ * first-class fallbacks: `tag` (add_tag_to_asset reads it for `tagName`),
+ * `abilityClass` (accepted wherever `abilityPath` is), and `actorPath`
+ * (accepted wherever `blueprintPath` is) — each stays declared here.
  */
 import type { JsonObject } from '../../../index.js';
 import type { PropertyMap } from '../properties.js';
+import { str, num } from '../../shared/schema-props.js';
 
-const str = (desc: string): JsonObject => ({ type: 'string', description: desc });
-const num = (desc: string): JsonObject => ({ type: 'number', description: desc });
 const tags = (desc: string): JsonObject => ({
   type: 'array',
   items: { type: 'string' },

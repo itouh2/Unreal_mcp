@@ -7,7 +7,7 @@
 // Any keyword outside the supported set is rejected fail-closed on both
 // surfaces. Extracted from gateway-execute-validate.ts.
 
-import { isRecord } from '../../utils/validation/type-guards.js';
+import { hasOwn, isRecord } from '../../utils/validation/type-guards.js';
 
 const SUPPORTED_SCHEMA_KEYWORDS = new Set([
   '$schema',
@@ -121,9 +121,7 @@ function validateScalarBounds(
 // and slip past the additionalProperties gate into dispatch. Native compares
 // against a TMap and has no such chain, so own-key lookup is also what keeps
 // the two surfaces reporting the same code for the same payload.
-export function hasOwn(target: object, key: string): boolean {
-  return Object.prototype.hasOwnProperty.call(target, key);
-}
+// (Implementation shared from src/utils/validation/type-guards.ts.)
 
 function ownProperty(properties: Record<string, unknown>, key: string): unknown {
   return hasOwn(properties, key) ? properties[key] : undefined;
@@ -134,8 +132,6 @@ function validateObject(
   schema: Record<string, unknown>,
   pointer: string
 ): SchemaViolation | undefined {
-  if (schema[REFLECTION_BOUNDARY_KEYWORD] === true) return undefined;
-
   const properties = isRecord(schema.properties) ? schema.properties : undefined;
 
   if (Array.isArray(schema.required)) {
@@ -162,9 +158,17 @@ function validateObject(
     }
   }
 
-  if (schema.additionalProperties === false && properties !== undefined) {
+  // An intentionally open object whose interior is arbitrary Unreal property data.
+  // Required/requiredOneOf above still apply to its declared fields; only the
+  // undeclared-key gate and property recursion are skipped for the interior.
+  if (schema[REFLECTION_BOUNDARY_KEYWORD] === true) return undefined;
+
+  // `additionalProperties: false` admits only declared keys. With no `properties`
+  // declared at all, that means NO key is admitted — absent `properties` must not
+  // read as "everything allowed", or the fail-closed gate would admit any key.
+  if (schema.additionalProperties === false) {
     for (const key of Object.keys(value)) {
-      if (!hasOwn(properties, key)) {
+      if (properties === undefined || !hasOwn(properties, key)) {
         return {
           reason: 'undeclared',
           pointer: `${pointer}/${key}`,
@@ -247,4 +251,84 @@ export function applyDeclaredDefaults(
     }
   }
   return withDefaults;
+}
+
+// Vector-shaped parameters are declared as arrays on some parents (control_actor.spawn,
+// manage_effect.spawn_niagara) and as {x,y,z} / {width,height} objects on others
+// (manage_geometry.create_box, manage_audio.create_ambient_sound). Every handler accepts
+// both spellings, so the gateway converts between them before validation instead of
+// refusing the other shape with INVALID_PARAMETER_TYPE (dogfood #226).
+//
+// Matching is strict: a candidate key set only wins when the caller's OWN keys are a
+// subset of the set and every set member that would be emitted is a finite number.
+// Anything else (a typo'd key, a short or over-long array, a non-numeric component)
+// falls through to the schema's guided type error instead of being silently truncated
+// or having keys dropped. In a set of four keys the last one (w / a) is optional, so
+// three of four are required. The sets and their order are mirrored by
+// McpNativeGatewayVectorCoercion.cpp and pinned by
+// tests/unit/tools/vector-shape-coercion-parity.test.ts — change both or neither.
+export const VECTOR_KEY_SETS: ReadonlyArray<readonly string[]> = [
+  ['x', 'y', 'z', 'w'],
+  ['x', 'y', 'z'],
+  ['pitch', 'yaw', 'roll'],
+  ['r', 'g', 'b', 'a'],
+  ['width', 'height'],
+  ['x', 'y']
+];
+
+const isFiniteNumber = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value);
+
+function objectToVector(value: Record<string, unknown>): number[] | undefined {
+  const ownKeys = Object.keys(value);
+  for (const keys of VECTOR_KEY_SETS) {
+    const required = keys.length === 4 ? keys.length - 1 : keys.length;
+    if (!ownKeys.every((key) => keys.includes(key))) continue;
+    if (!keys.slice(0, required).every((key) => hasOwn(value, key) && isFiniteNumber(value[key]))) continue;
+    if (!ownKeys.every((key) => isFiniteNumber(value[key]))) continue;
+    const vector: number[] = [];
+    for (const key of keys) {
+      const member = value[key];
+      if (isFiniteNumber(member)) vector.push(member);
+    }
+    return vector;
+  }
+  return undefined;
+}
+
+function vectorToObject(values: readonly number[], propertySchema: Record<string, unknown>): Record<string, number> | undefined {
+  const declared = isRecord(propertySchema.properties) ? Object.keys(propertySchema.properties) : [];
+  if (declared.length === 0) return undefined;
+  for (const keys of VECTOR_KEY_SETS) {
+    const required = keys.length === 4 ? keys.length - 1 : keys.length;
+    if (!keys.slice(0, required).every((key) => declared.includes(key))) continue;
+    const consumed = keys.filter((key) => declared.includes(key));
+    // Over-long arrays would silently drop their tail; short arrays below the
+    // required prefix would fabricate handler defaults. Both refuse instead.
+    if (values.length < required || values.length > consumed.length) continue;
+    const out: Record<string, number> = {};
+    for (let index = 0; index < values.length; index += 1) out[keys[index]] = values[index];
+    return out;
+  }
+  return undefined;
+}
+
+export function coerceVectorShapes(args: Record<string, unknown>, schema: unknown): Record<string, unknown> {
+  if (!isRecord(schema) || !isRecord(schema.properties)) return args;
+  let out: Record<string, unknown> | undefined;
+  for (const [name, propertySchema] of Object.entries(schema.properties)) {
+    if (!isRecord(propertySchema) || !hasOwn(args, name)) continue;
+    const value = args[name];
+    const types = declaredTypes(propertySchema);
+    let replacement: unknown;
+    if (types.includes('array') && !types.includes('object') && isRecord(value) && !Array.isArray(value)) {
+      replacement = objectToVector(value);
+    } else if (types.includes('object') && !types.includes('array') && Array.isArray(value) && value.every(isFiniteNumber)) {
+      replacement = vectorToObject(value, propertySchema);
+    }
+    if (replacement !== undefined) {
+      out = out ?? { ...args };
+      out[name] = replacement;
+    }
+  }
+  return out ?? args;
 }

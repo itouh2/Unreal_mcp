@@ -14,14 +14,19 @@ const F = 'primitives';
 const NR = 'Distinct manage_geometry primitive verb and target; no cross-tool duplicate.';
 const PLUGIN = ['GeometryScripting'] as const;
 
-// Names the spawned actor; `path` is accepted by the geometry path normalizer.
-const IDENT = { name: P.name, path: P.path };
+// Names the spawned actor. NOTE: primitive create_* actions spawn a LEVEL
+// actor (DynamicMeshActor) and do NOT consume a /Game asset path. `path` was
+// declared here but silently ignored, which read as an asset-creation
+// contract. Removed — pass `name` only, then use convert_to_static_mesh to
+// persist an asset.
+const IDENT = { name: P.name };
 // Read by the shared ReadTransformFromPayload helper on every create_* action.
 const XFORM = { location: P.location, rotation: P.rotation, scale: P.scale };
 
 export const GEOMETRY_PRIMITIVES_RECORDS: readonly CapabilityRecordSource[] = [
   buildWorldRecord({
     parentTool: 'manage_geometry', action: 'create_box', plugins: PLUGIN,
+    topics: ['box mesh', 'cube mesh', 'procedural box', 'geometry cube'],
     family: F, summary: 'Create a box dynamic mesh actor.', whenToUse: ['A box primitive must be created.'], whenNotToUse: ['A sphere is needed; use create_sphere.'],
     inputProps: { ...IDENT, ...XFORM, dimensions: P.dimensions, width: P.width, height: P.height, depth: P.depth, widthSegments: P.widthSegments, heightSegments: P.heightSegments, depthSegments: P.depthSegments }, required: [], effect: 'write', costLatency: 'interactive', costResources: 'low',
     exampleInput: { action: 'create_box', dimensions: { x: 100, y: 100, z: 100 } }, exampleOutput: { success: true, message: 'Box created' },

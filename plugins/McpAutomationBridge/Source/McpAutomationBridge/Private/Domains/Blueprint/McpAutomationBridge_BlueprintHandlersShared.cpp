@@ -42,9 +42,14 @@ void ExtractNestedManageAction(FBlueprintActionContext &Context,
       !Context.LocalPayload.IsValid()) {
     return;
   }
+  // subAction first, then `action` as the fallback - the same priority the
+  // pre-queue gate's NormalizeAction uses, so the nested route cannot diverge
+  // from what the gate authorized.
   FString Nested;
-  if (!Context.LocalPayload->TryGetStringField(TEXT("action"), Nested) ||
-      Nested.TrimStartAndEnd().IsEmpty()) {
+  if ((!Context.LocalPayload->TryGetStringField(TEXT("subAction"), Nested) ||
+       Nested.TrimStartAndEnd().IsEmpty()) &&
+      (!Context.LocalPayload->TryGetStringField(TEXT("action"), Nested) ||
+       Nested.TrimStartAndEnd().IsEmpty())) {
     return;
   }
   Context.CleanAction = CleanBlueprintAction(Nested);
@@ -77,9 +82,6 @@ FBlueprintActionContext BuildBlueprintActionContext(
       LowerNormalized.StartsWith(TEXT("manage_blueprint")) ||
       LowerNormalized.StartsWith(TEXT("manageblueprint"));
   ExtractNestedManageAction(Context, LowerNormalized);
-  if (Context.Lower.StartsWith(TEXT("manage_blueprint"))) {
-    ExtractNestedManageAction(Context, LowerNormalized);
-  }
   Context.AlphaNumLower = CompactActionKey(Context.CleanAction);
   Context.bLooksBlueprint = LowerNormalized.StartsWith(TEXT("blueprint_")) ||
       LowerNormalized.StartsWith(TEXT("manage_blueprint")) ||

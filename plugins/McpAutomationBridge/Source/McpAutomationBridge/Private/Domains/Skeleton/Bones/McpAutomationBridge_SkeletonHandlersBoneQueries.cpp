@@ -24,16 +24,7 @@ bool UMcpAutomationBridgeSubsystem::HandleGetSkeletonInfo(
     }
 
     FString Error;
-    USkeleton* Skeleton = LoadSkeletonFromPathSkel(SkeletonPath, Error);
-
-    if (!Skeleton && !SkeletonPath.IsEmpty())
-    {
-        USkeletalMesh* Mesh = LoadSkeletalMeshFromPathSkel(SkeletonPath, Error);
-        if (Mesh)
-        {
-            Skeleton = Mesh->GetSkeleton();
-        }
-    }
+    USkeleton* Skeleton = LoadSkeletonOrMeshSkeleton(SkeletonPath, Error);
 
     if (!Skeleton)
     {
@@ -67,16 +58,7 @@ bool UMcpAutomationBridgeSubsystem::HandleListBones(
     }
 
     FString Error;
-    USkeleton* Skeleton = LoadSkeletonFromPathSkel(SkeletonPath, Error);
-
-    if (!Skeleton)
-    {
-        USkeletalMesh* Mesh = LoadSkeletalMeshFromPathSkel(SkeletonPath, Error);
-        if (Mesh)
-        {
-            Skeleton = Mesh->GetSkeleton();
-        }
-    }
+    USkeleton* Skeleton = LoadSkeletonOrMeshSkeleton(SkeletonPath, Error);
 
     if (!Skeleton)
     {
@@ -111,7 +93,6 @@ bool UMcpAutomationBridgeSubsystem::HandleListBones(
     }
 
     TSharedPtr<FJsonObject> Result = McpHandlerUtils::CreateResultObject();
-    McpHandlerUtils::AddVerification(Result, Skeleton);
     Result->SetArrayField(TEXT("bones"), BoneArray);
     Result->SetNumberField(TEXT("count"), BoneArray.Num());
     McpHandlerUtils::AddVerification(Result, Skeleton);
@@ -125,53 +106,27 @@ bool UMcpAutomationBridgeSubsystem::HandleGetBoneTransform(
     const TSharedPtr<FJsonObject>& Payload,
     TSharedPtr<FMcpBridgeWebSocket> RequestingSocket)
 {
-#if WITH_EDITOR
-    FString SkeletalMeshPath = GetJsonStringField(Payload, TEXT("skeletalMeshPath"));
-    FString SkeletonPath = GetJsonStringField(Payload, TEXT("skeletonPath"));
-    FString BoneName = GetJsonStringField(Payload, TEXT("boneName"));
-    int32 LODIndex = GetIntFieldSkel(Payload, TEXT("lodIndex"), 0);
-
+    const FString BoneName = GetJsonStringField(Payload, TEXT("boneName"));
     if (BoneName.IsEmpty())
     {
         SendAutomationError(RequestingSocket, RequestId, TEXT("boneName is required"), TEXT("MISSING_PARAM"));
         return true;
     }
 
-    const FReferenceSkeleton* RefSkeleton = nullptr;
-    FString SourcePath;
-
-    if (!SkeletalMeshPath.IsEmpty())
+    // Same resolution as set_bone_transform, so a get/set pair reads and
+    // writes one reference skeleton: the mesh's when a mesh is addressed or
+    // reachable from the skeleton, else the skeleton's own reference pose.
+    const FSkeletonMeshTarget Target = ResolveSkeletonMeshTarget(Payload);
+    if (!Target.IsValid())
     {
-        FString Error;
-        USkeletalMesh* Mesh = LoadSkeletalMeshFromPathSkel(SkeletalMeshPath, Error);
-        if (!Mesh)
-        {
-            SendAutomationError(RequestingSocket, RequestId, Error, TEXT("MESH_NOT_FOUND"));
-            return true;
-        }
-        RefSkeleton = &Mesh->GetRefSkeleton();
-        SourcePath = SkeletalMeshPath;
-    }
-    else if (!SkeletonPath.IsEmpty())
-    {
-        FString Error;
-        USkeleton* Skeleton = LoadSkeletonFromPathSkel(SkeletonPath, Error);
-        if (!Skeleton)
-        {
-            SendAutomationError(RequestingSocket, RequestId, Error, TEXT("SKELETON_NOT_FOUND"));
-            return true;
-        }
-        RefSkeleton = &Skeleton->GetReferenceSkeleton();
-        SourcePath = SkeletonPath;
-    }
-    else
-    {
-        SendAutomationError(RequestingSocket, RequestId,
-            TEXT("skeletalMeshPath or skeletonPath is required"), TEXT("MISSING_PARAM"));
+        SendAutomationError(RequestingSocket, RequestId, Target.Error, Target.ErrorCode);
         return true;
     }
+    const FReferenceSkeleton* RefSkeleton = Target.Mesh
+        ? &Target.Mesh->GetRefSkeleton()
+        : &Target.Skeleton->GetReferenceSkeleton();
 
-    int32 BoneIndex = RefSkeleton->FindBoneIndex(FName(*BoneName));
+    const int32 BoneIndex = RefSkeleton->FindBoneIndex(FName(*BoneName));
     if (BoneIndex == INDEX_NONE)
     {
         SendAutomationError(RequestingSocket, RequestId,
@@ -179,47 +134,28 @@ bool UMcpAutomationBridgeSubsystem::HandleGetBoneTransform(
         return true;
     }
 
-    FTransform BoneTransform = RefSkeleton->GetRefBonePose()[BoneIndex];
-    FVector Location = BoneTransform.GetLocation();
-    FRotator Rotation = BoneTransform.Rotator();
-    FVector Scale = BoneTransform.GetScale3D();
-
-    // Get parent info
-    int32 ParentIndex = RefSkeleton->GetParentIndex(BoneIndex);
-    FString ParentName = ParentIndex != INDEX_NONE ?
-        RefSkeleton->GetBoneName(ParentIndex).ToString() : TEXT("");
+    const int32 ParentIndex = RefSkeleton->GetParentIndex(BoneIndex);
 
     TSharedPtr<FJsonObject> Result = McpHandlerUtils::CreateResultObject();
     Result->SetStringField(TEXT("boneName"), BoneName);
     Result->SetNumberField(TEXT("boneIndex"), BoneIndex);
-    Result->SetStringField(TEXT("parentBone"), ParentName);
+    Result->SetStringField(TEXT("parentBone"),
+        ParentIndex != INDEX_NONE ? RefSkeleton->GetBoneName(ParentIndex).ToString() : FString());
     Result->SetNumberField(TEXT("parentIndex"), ParentIndex);
-
-    TSharedPtr<FJsonObject> LocationObj = McpHandlerUtils::CreateResultObject();
-    LocationObj->SetNumberField(TEXT("x"), Location.X);
-    LocationObj->SetNumberField(TEXT("y"), Location.Y);
-    LocationObj->SetNumberField(TEXT("z"), Location.Z);
-    Result->SetObjectField(TEXT("location"), LocationObj);
-
-    TSharedPtr<FJsonObject> RotationObj = McpHandlerUtils::CreateResultObject();
-    RotationObj->SetNumberField(TEXT("pitch"), Rotation.Pitch);
-    RotationObj->SetNumberField(TEXT("yaw"), Rotation.Yaw);
-    RotationObj->SetNumberField(TEXT("roll"), Rotation.Roll);
-    Result->SetObjectField(TEXT("rotation"), RotationObj);
-
-    TSharedPtr<FJsonObject> ScaleObj = McpHandlerUtils::CreateResultObject();
-    ScaleObj->SetNumberField(TEXT("x"), Scale.X);
-    ScaleObj->SetNumberField(TEXT("y"), Scale.Y);
-    ScaleObj->SetNumberField(TEXT("z"), Scale.Z);
-    Result->SetObjectField(TEXT("scale"), ScaleObj);
+    Result->SetStringField(TEXT("source"), Target.Mesh ? TEXT("skeletalMesh") : TEXT("skeleton"));
+    if (Target.Mesh)
+    {
+        Result->SetStringField(TEXT("skeletalMeshPath"), Target.Mesh->GetPathName());
+    }
+    if (Target.Skeleton)
+    {
+        Result->SetStringField(TEXT("skeletonPath"), Target.Skeleton->GetPathName());
+    }
+    WriteTransformToJson(RefSkeleton->GetRefBonePose()[BoneIndex], Result);
 
     SendAutomationResponse(RequestingSocket, RequestId, true,
         FString::Printf(TEXT("Retrieved transform for bone '%s'"), *BoneName), Result);
     return true;
-#else
-    SendAutomationError(RequestingSocket, RequestId, TEXT("get_bone_transform requires editor mode"), TEXT("NOT_EDITOR"));
-    return true;
-#endif
 }
 
 #endif // WITH_EDITOR

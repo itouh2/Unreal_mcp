@@ -81,6 +81,7 @@ bool ParseRecord(const TSharedPtr<FJsonObject>& Entry, FMcpCapabilityRecord& Out
 	Discovery->TryGetStringField(TEXT("family"), Out.Family);
 	Discovery->TryGetStringField(TEXT("summary"), Out.Summary);
 	Out.Topics = ReadStringArray(Discovery, TEXT("topics"));
+	Out.Aliases = ReadStringArray(Record, TEXT("aliases"));
 	Out.WhenToUse = ReadStringArray(Discovery, TEXT("whenToUse"));
 	Out.WhenNotToUse = ReadStringArray(Discovery, TEXT("whenNotToUse"));
 
@@ -94,7 +95,15 @@ bool ParseRecord(const TSharedPtr<FJsonObject>& Entry, FMcpCapabilityRecord& Out
 	if (Out.Deprecation.IsValid()) Out.Deprecation->TryGetStringField(TEXT("status"), Out.DeprecationStatus);
 
 	const TArray<TSharedPtr<FJsonValue>>* Examples = nullptr;
-	Out.ExampleCount = Record->TryGetArrayField(TEXT("examples"), Examples) && Examples ? Examples->Num() : 0;
+	if (Record->TryGetArrayField(TEXT("examples"), Examples) && Examples)
+	{
+		Out.Examples = *Examples;
+		Out.ExampleCount = Out.Examples.Num();
+	}
+	else
+	{
+		Out.ExampleCount = 0;
+	}
 	return true;
 }
 

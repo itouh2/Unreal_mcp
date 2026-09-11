@@ -16,6 +16,7 @@ export const GRAPH_PINS_RECORDS: readonly CapabilityRecordSource[] = [
     action: 'connect_pins',
     family: FAMILY,
     domain: DOMAIN,
+    topics: ['link pins', 'wire nodes', 'connect nodes', 'exec pin', 'connect output to input'],
     summary: 'Connect two graph pins (exec or data) by nodeGuid and pin name.',
     whenToUse: ['An exec or data link between two existing nodes must be created.'],
     whenNotToUse: ['Links must be broken (use break_pin_links).'],
@@ -75,13 +76,17 @@ export const GRAPH_PINS_RECORDS: readonly CapabilityRecordSource[] = [
     whenNotToUse: ['The pin should receive its value from a linked node (use connect_pins).'],
     inputProps: { action: P.action, blueprintPath: P.blueprintPath, graphName: P.graphName, nodeId: P.nodeId, pinName: P.pinName, propertyValue: P.propertyValue, nodeGuid: P.nodeGuid },
     required: ['action', 'blueprintPath', 'nodeId', 'pinName'],
+    // appliedValue is read back off the pin after the schema has had its say, so
+    // a caller can distinguish an accepted literal from one silently rejected —
+    // the failure mode that let empty defaults pass as success.
+    outputProps: { nodeId: P.nodeId, pinName: P.pinName, appliedValue: { type: 'string', description: 'Literal actually stored on the pin (or the resolved object path for object/class pins).' } },
     effect: 'write',
     behavior: { idempotency: 'idempotent', safeToRetry: true },
     latency: 'instant',
     resources: 'low',
     plugins: BP_PLUGINS,
     exampleInput: { action: 'set_pin_default_value', blueprintPath: '/Game/Blueprints/BP_Test', graphName: 'EventGraph', nodeId: 'A1B2C3D4', pinName: 'InString', propertyValue: 'Hello' },
-    exampleOutput: { success: true, message: 'Pin default value set' },
+    exampleOutput: { success: true, message: 'Pin default value set', nodeId: 'A1B2C3D4', pinName: 'InString', appliedValue: 'Hello' },
   }),
   buildRecord({
     id: 'blueprint.add_construction_script',

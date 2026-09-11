@@ -24,16 +24,7 @@ bool UMcpAutomationBridgeSubsystem::HandleListSockets(
     }
 
     FString Error;
-    USkeleton* Skeleton = LoadSkeletonFromPathSkel(SkeletonPath, Error);
-
-    if (!Skeleton)
-    {
-        USkeletalMesh* Mesh = LoadSkeletalMeshFromPathSkel(SkeletonPath, Error);
-        if (Mesh)
-        {
-            Skeleton = Mesh->GetSkeleton();
-        }
-    }
+    USkeleton* Skeleton = LoadSkeletonOrMeshSkeleton(SkeletonPath, Error);
 
     if (!Skeleton)
     {
@@ -96,16 +87,7 @@ bool UMcpAutomationBridgeSubsystem::HandleCreateSocket(
     }
 
     FString Error;
-    USkeleton* Skeleton = LoadSkeletonFromPathSkel(SkeletonPath, Error);
-
-    if (!Skeleton)
-    {
-        USkeletalMesh* Mesh = LoadSkeletalMeshFromPathSkel(SkeletonPath, Error);
-        if (Mesh)
-        {
-            Skeleton = Mesh->GetSkeleton();
-        }
-    }
+    USkeleton* Skeleton = LoadSkeletonOrMeshSkeleton(SkeletonPath, Error);
 
     if (!Skeleton)
     {
@@ -113,6 +95,14 @@ bool UMcpAutomationBridgeSubsystem::HandleCreateSocket(
         return true;
     }
 
+    if (Skeleton->GetReferenceSkeleton().FindBoneIndex(FName(*BoneName)) == INDEX_NONE)
+    {
+        // A socket on a bone that does not exist is silently dead; refuse it.
+        SendAutomationError(RequestingSocket, RequestId,
+            FString::Printf(TEXT("Bone %s not found on skeleton %s (use list_bones)"), *BoneName, *Skeleton->GetPathName()),
+            TEXT("BONE_NOT_FOUND"));
+        return true;
+    }
     for (USkeletalMeshSocket* ExistingSocket : Skeleton->Sockets)
     {
         if (ExistingSocket && ExistingSocket->SocketName == FName(*SocketName))
@@ -138,12 +128,6 @@ bool UMcpAutomationBridgeSubsystem::HandleCreateSocket(
 
     Skeleton->Sockets.Add(NewSocket);
     McpSafeAssetSave(Skeleton);
-
-    bool bSave = false;
-    Payload->TryGetBoolField(TEXT("save"), bSave);
-    if (bSave)
-    {
-    }
 
     TSharedPtr<FJsonObject> Result = McpHandlerUtils::CreateResultObject();
     Result->SetStringField(TEXT("socketName"), SocketName);
@@ -174,16 +158,7 @@ bool UMcpAutomationBridgeSubsystem::HandleConfigureSocket(
     }
 
     FString Error;
-    USkeleton* Skeleton = LoadSkeletonFromPathSkel(SkeletonPath, Error);
-
-    if (!Skeleton)
-    {
-        USkeletalMesh* Mesh = LoadSkeletalMeshFromPathSkel(SkeletonPath, Error);
-        if (Mesh)
-        {
-            Skeleton = Mesh->GetSkeleton();
-        }
-    }
+    USkeleton* Skeleton = LoadSkeletonOrMeshSkeleton(SkeletonPath, Error);
 
     if (!Skeleton)
     {
@@ -231,12 +206,6 @@ bool UMcpAutomationBridgeSubsystem::HandleConfigureSocket(
     }
 
     McpSafeAssetSave(Skeleton);
-
-    bool bSave = false;
-    Payload->TryGetBoolField(TEXT("save"), bSave);
-    if (bSave)
-    {
-    }
 
     TSharedPtr<FJsonObject> Result = McpHandlerUtils::CreateResultObject();
     Result->SetStringField(TEXT("socketName"), SocketName);

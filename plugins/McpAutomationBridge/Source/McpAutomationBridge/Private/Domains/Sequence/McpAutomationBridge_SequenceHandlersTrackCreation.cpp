@@ -1,4 +1,5 @@
 #include "Core/Compatibility/McpVersionCompatibility.h"
+#include "MovieSceneNameableTrack.h"
 #include "Domains/Sequence/McpAutomationBridge_SequenceHandlersEditorSupport.h"
 
 namespace McpSequenceTracks {
@@ -51,14 +52,7 @@ bool HandleAddTrack(UMcpAutomationBridgeSubsystem *Subsystem,
   if (!ActorName.IsEmpty()) {
     const UMovieScene *ConstMovieScene = MovieScene;
     for (const FMovieSceneBinding &Binding : ConstMovieScene->GetBindings()) {
-      FString BindingName;
-      if (FMovieScenePossessable *Possessable =
-              MovieScene->FindPossessable(Binding.GetObjectGuid())) {
-        BindingName = Possessable->GetName();
-      } else if (FMovieSceneSpawnable *Spawnable =
-                     MovieScene->FindSpawnable(Binding.GetObjectGuid())) {
-        BindingName = Spawnable->GetName();
-      }
+      FString BindingName = GetBindingName(MovieScene, Binding.GetObjectGuid());
 
       if (BindingName.Contains(ActorName)) {
         BindingGuid = Binding.GetObjectGuid();
@@ -116,7 +110,17 @@ bool HandleAddTrack(UMcpAutomationBridgeSubsystem *Subsystem,
     TSharedPtr<FJsonObject> Resp = McpHandlerUtils::CreateResultObject();
     Resp->SetBoolField(TEXT("success"), true);
     Resp->SetStringField(TEXT("sequencePath"), SeqPath);
+    // Honour trackName (dogfood #124): callers address tracks by the display name they chose.
+    if (UMovieSceneNameableTrack *Nameable = (NewTrack && !TrackName.IsEmpty()) ? Cast<UMovieSceneNameableTrack>(NewTrack) : nullptr)
+    {
+      Nameable->SetDisplayName(FText::FromString(TrackName));
+    }
     Resp->SetStringField(TEXT("trackType"), TrackType);
+    if (NewTrack) {
+      Resp->SetStringField(TEXT("trackId"), NewTrack->GetName()); // dogfood #124: addressable id
+      Resp->SetStringField(TEXT("trackClass"), NewTrack->GetClass()->GetName());
+      Resp->SetStringField(TEXT("trackPath"), NewTrack->GetPathName());
+    }
     Resp->SetStringField(TEXT("trackName"),
                          TrackName.IsEmpty() ? TrackType : TrackName);
     if (!ActorName.IsEmpty()) {

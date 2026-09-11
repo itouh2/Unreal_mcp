@@ -7,9 +7,11 @@ bool HandleUseMaterialFunction(UMcpAutomationBridgeSubsystem* Bridge, const FStr
 {
   if (SubAction == TEXT("use_material_function")) {
     FString AssetPath;
-    if (!Payload->TryGetStringField(TEXT("assetPath"), AssetPath) ||
-        AssetPath.IsEmpty()) {
-      Bridge->SendAutomationError(Socket, RequestId, TEXT("Missing 'assetPath'."),
+    // The published schema spells this `materialPath` and forbids `assetPath`, so reading
+    // only `assetPath` made the capability uncallable through the gateway. Accept both.
+    if ((!Payload->TryGetStringField(TEXT("materialPath"), AssetPath) || AssetPath.IsEmpty()) &&
+        (!Payload->TryGetStringField(TEXT("assetPath"), AssetPath) || AssetPath.IsEmpty())) {
+      Bridge->SendAutomationError(Socket, RequestId, TEXT("Missing 'materialPath' (or 'assetPath')."),
                           TEXT("INVALID_ARGUMENT"));
       return true;
     }
@@ -98,13 +100,6 @@ bool HandleUseMaterialFunction(UMcpAutomationBridgeSubsystem* Bridge, const FStr
     return true;
   }
 
-  // ==========================================================================
-  // 8.4 Material Instances
-  // ==========================================================================
-
-  // --------------------------------------------------------------------------
-  // create_material_instance
-  // --------------------------------------------------------------------------
   return false;
 }
 }

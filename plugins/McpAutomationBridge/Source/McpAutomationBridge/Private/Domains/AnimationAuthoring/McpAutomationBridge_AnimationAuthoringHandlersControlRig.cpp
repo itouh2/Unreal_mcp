@@ -58,6 +58,20 @@ TSharedPtr<FJsonObject> HandleControlRigActions(const FString& SubAction, const 
             ANIM_ERROR_RESPONSE(TEXT("Failed to create Control Rig blueprint"), TEXT("CREATION_FAILED"));
         }
 
+        // The skeleton factory names and places the asset after the skeleton;
+        // move it to the requested path/name (dogfood #84).
+        if (ControlRigBP && !FullPath.IsEmpty() &&
+            !ControlRigBP->GetOutermost()->GetName().Equals(FullPath, ESearchCase::IgnoreCase))
+        {
+            const FString OldObjectPath = ControlRigBP->GetPathName();
+            if (UEditorAssetLibrary::RenameAsset(OldObjectPath, FullPath))
+            {
+                if (UControlRigBlueprint* Moved = Cast<UControlRigBlueprint>(UEditorAssetLibrary::LoadAsset(FullPath)))
+                {
+                    ControlRigBP = Moved;
+                }
+            }
+        }
         if (!SaveAnimAsset(ControlRigBP, bSave))
         {
             ANIM_ERROR_RESPONSE(TEXT("Failed to save Control Rig blueprint"), TEXT("SAVE_FAILED"));
@@ -162,9 +176,7 @@ TSharedPtr<FJsonObject> HandleControlRigActions(const FString& SubAction, const 
     if (SubAction == TEXT("add_control"))
     {
 #if MCP_HAS_CONTROLRIG
-        FString AssetPath = NormalizeAnimPath(GetJsonStringField(Params, TEXT("assetPath"), TEXT("")));
         FString ControlName = GetJsonStringField(Params, TEXT("controlName"), TEXT(""));
-        bool bSave = GetJsonBoolField(Params, TEXT("save"), true);
 
         if (ControlName.IsEmpty())
         {
@@ -182,9 +194,6 @@ TSharedPtr<FJsonObject> HandleControlRigActions(const FString& SubAction, const 
     if (SubAction == TEXT("add_rig_unit"))
     {
 #if MCP_HAS_CONTROLRIG
-        FString AssetPath = NormalizeAnimPath(GetJsonStringField(Params, TEXT("assetPath"), TEXT("")));
-        FString UnitType = GetJsonStringField(Params, TEXT("unitType"), TEXT(""));
-
         ANIM_ERROR_RESPONSE(
             TEXT("add_rig_unit is handled by the animation_physics runtime authoring route; call animation_physics with action=add_rig_unit."),
             TEXT("WRONG_HANDLER_ROUTE"));

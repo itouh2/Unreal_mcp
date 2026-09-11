@@ -35,7 +35,27 @@ function formatRecordListItem(record: Record<string, unknown>): string {
       const value = scalarToText(record[key]);
       if (value !== undefined) pinParts.push(`${key}=${value}`);
     }
-    if (Array.isArray(record.linkedTo)) pinParts.push(`linkedTo=${record.linkedTo.length}`);
+    if (Array.isArray(record.linkedTo)) {
+      const links = record.linkedTo;
+      if (links.length === 0) {
+        pinParts.push('linkedTo=0');
+      } else {
+        // Render the link TARGETS, not just a count: the target nodeId is the argument every follow-up
+        // graph call takes (connect/delete/get_node_details), and a bare count forces clients that only
+        // read the text channel to re-query per node. 8-hex GUID prefixes are directly consumable —
+        // FindNode resolves unique prefixes of >=8 hex chars (BlueprintGraphHandlersContextEditor.cpp).
+        const shown = links.slice(0, 5).map(link => {
+          if (isRecord(link)) {
+            const nodeId = typeof link.nodeId === 'string' ? link.nodeId.slice(0, 8) : '';
+            const pin = scalarToText(link.pinName);
+            if (nodeId !== '') return pin !== undefined && pin !== '' ? `${nodeId}.${pin}` : nodeId;
+          }
+          return '?';
+        });
+        const spill = links.length > 5 ? ', ...' : '';
+        pinParts.push(`linkedTo=[${shown.join(', ')}${spill}] (${links.length})`);
+      }
+    }
     return `{ ${pinParts.join(', ')} }`;
   }
 
@@ -59,6 +79,9 @@ function formatRecordListItem(record: Record<string, unknown>): string {
  */
 const OUTPUT_SUMMARY_LIMIT = 2000;
 
+/** Array items shown in a summary before the tail is elided (the full array stays in structuredContent). */
+const ARRAY_PREVIEW_LIMIT = 30;
+
 function formatOutputValue(val: unknown): string {
   if (typeof val !== 'string') return formatValue(val);
   if (val.length <= OUTPUT_SUMMARY_LIMIT) return val;
@@ -72,8 +95,13 @@ function formatValue(val: unknown): string {
 
   if (Array.isArray(val)) {
     if (val.length === 0) return '[] (0)';
-    const items = val.slice(0, 30).map(v => isRecord(v) ? formatRecordListItem(v) : String(v));
-    const suffix = val.length > 30 ? `, ... (+${val.length - 30} more)` : '';
+    const items = val.slice(0, ARRAY_PREVIEW_LIMIT).map(v => isRecord(v) ? formatRecordListItem(v) : String(v));
+    // Point at where the tail actually lives — mirroring the string branch, whose truncation marker
+    // already says 'full text in structuredContent'. A bare '(+N more)' reads as data loss and sends
+    // text-only clients into re-query loops for a tail that was never going to appear.
+    const suffix = val.length > ARRAY_PREVIEW_LIMIT
+      ? `, ... (+${val.length - ARRAY_PREVIEW_LIMIT} more - full list in structuredContent)`
+      : '';
     return `[${items.join(', ')}${suffix}] (${val.length})`;
   }
 

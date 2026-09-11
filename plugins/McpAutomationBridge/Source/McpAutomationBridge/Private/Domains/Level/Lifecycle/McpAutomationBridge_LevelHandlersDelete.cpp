@@ -10,9 +10,6 @@ namespace McpLevelHandlers {
 #if WITH_EDITOR
 #define SendAutomationResponse(...) Subsystem.SendAutomationResponse(__VA_ARGS__)
 #define SendAutomationError(...) Subsystem.SendAutomationError(__VA_ARGS__)
-#define HandleExecuteEditorFunction(...) Subsystem.HandleExecuteEditorFunction(__VA_ARGS__)
-#define HandleManageLevelStructureAction(...) Subsystem.HandleManageLevelStructureAction(__VA_ARGS__)
-#define HandleSetMetadata(...) Subsystem.HandleSetMetadata(__VA_ARGS__)
 bool HandleDeleteLevelAction(UMcpAutomationBridgeSubsystem& Subsystem, const FString& RequestId, const TSharedPtr<FJsonObject>& Payload, TSharedPtr<FMcpBridgeWebSocket> RequestingSocket) {
     FString LevelPath;
     if (Payload.IsValid())
@@ -20,6 +17,21 @@ bool HandleDeleteLevelAction(UMcpAutomationBridgeSubsystem& Subsystem, const FSt
     if (LevelPath.IsEmpty() && Payload.IsValid())
       Payload->TryGetStringField(TEXT("path"), LevelPath);
 
+    // `levelPaths` used to be silently ignored while the call reported success
+    // (dogfood #157b). One level is deleted per call: accept a single-entry
+    // array, and refuse a batch loudly instead of pretending.
+    const TArray<TSharedPtr<FJsonValue>>* LevelPathsArray = nullptr;
+    if (Payload.IsValid() && Payload->TryGetArrayField(TEXT("levelPaths"), LevelPathsArray) && LevelPathsArray) {
+      if (LevelPathsArray->Num() > 1 || (LevelPathsArray->Num() == 1 && !LevelPath.IsEmpty())) {
+        SendAutomationResponse(RequestingSocket, RequestId, false,
+                               TEXT("delete_level removes one level per call; pass a single levelPath (or a one-entry levelPaths) and repeat for each level"),
+                               nullptr, TEXT("BATCH_NOT_SUPPORTED"));
+        return true;
+      }
+      if (LevelPathsArray->Num() == 1 && (*LevelPathsArray)[0].IsValid()) {
+        LevelPath = (*LevelPathsArray)[0]->AsString();
+      }
+    }
     if (LevelPath.IsEmpty()) {
       SendAutomationResponse(RequestingSocket, RequestId, false,
                              TEXT("levelPath required for delete_level"),
@@ -223,8 +235,5 @@ bool HandleDeleteLevelAction(UMcpAutomationBridgeSubsystem& Subsystem, const FSt
 }
 #undef SendAutomationResponse
 #undef SendAutomationError
-#undef HandleExecuteEditorFunction
-#undef HandleManageLevelStructureAction
-#undef HandleSetMetadata
 #endif
 } // namespace McpLevelHandlers

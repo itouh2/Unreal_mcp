@@ -1,5 +1,6 @@
-#include "Core/Compatibility/McpVersionCompatibility.h"
 #include "Domains/BehaviorTree/McpAutomationBridge_BehaviorTreeSerializers.h"
+
+#include "Core/Compatibility/McpVersionCompatibility.h"
 
 #include "Dom/JsonObject.h"
 #include "Dom/JsonValue.h"
@@ -24,9 +25,6 @@ namespace McpBehaviorTreeSerializers
 // Max tree-traversal depth (R12). BT graphs are shallow; this is pure defense-in-depth.
 static const int32 GMaxTreeDepth = 64;
 
-// ---------------------------------------------------------------------------
-// SerializeDecoratorOpsRaw — UE postfix EBTDecoratorLogic -> [{op, number}]
-// ---------------------------------------------------------------------------
 // ---------------------------------------------------------------------------
 // CollectBlackboardKeySelectors — enumerate ALL FBlackboardKeySelector props (R16)
 // Fix of dev's CreateBTNodeRuntimeInfo, which broke after the first selector.
@@ -77,11 +75,6 @@ static FString GetRunBehaviorDynamicInjectionTag(UBTTask_RunBehaviorDynamic* Dyn
 #endif
 }
 
-// ---------------------------------------------------------------------------
-// One Blackboard entry. PR0a-pinned fields (name/type/instanceSynced) first,
-// then additive enrichment. `Source` is the BB that declared the key; `SelfBB`
-// is the asset being queried (for the inherited flag).
-// ---------------------------------------------------------------------------
 // ---------------------------------------------------------------------------
 // Discriminate a UBTNode*. Composites & tasks are the execution nodes;
 // decorators & services are auxiliary (share UBTAuxiliaryNode base).

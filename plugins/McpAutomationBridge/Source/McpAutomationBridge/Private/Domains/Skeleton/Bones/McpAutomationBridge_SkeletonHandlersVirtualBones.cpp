@@ -46,6 +46,22 @@ bool UMcpAutomationBridgeSubsystem::HandleCreateVirtualBone(
         VirtualBoneName = FString::Printf(TEXT("VB_%s_to_%s"), *SourceBone, *TargetBone);
     }
 
+    // AddNewVirtualBone does not check that the bones exist; a dangling
+    // virtual bone gets saved into the skeleton and later crashes the engine
+    // (index -1 during animation compression). Validate first.
+    const FReferenceSkeleton& RefSkeleton = Skeleton->GetReferenceSkeleton();
+    const TArray<FString> RequiredBones = {SourceBone, TargetBone};
+    for (const FString& Bone : RequiredBones)
+    {
+        if (RefSkeleton.FindBoneIndex(FName(*Bone)) == INDEX_NONE)
+        {
+            SendAutomationError(RequestingSocket, RequestId,
+                FString::Printf(TEXT("Bone '%s' not found on skeleton %s (use list_bones)"), *Bone, *Skeleton->GetPathName()),
+                TEXT("BONE_NOT_FOUND"));
+            return true;
+        }
+    }
+
     FName NewVirtualBoneName;
     bool bSuccess = Skeleton->AddNewVirtualBone(FName(*SourceBone), FName(*TargetBone), NewVirtualBoneName);
 
@@ -65,12 +81,6 @@ bool UMcpAutomationBridgeSubsystem::HandleCreateVirtualBone(
     }
 
     McpSafeAssetSave(Skeleton);
-
-    bool bSave = false;
-    Payload->TryGetBoolField(TEXT("save"), bSave);
-    if (bSave)
-    {
-    }
 
     TSharedPtr<FJsonObject> Result = McpHandlerUtils::CreateResultObject();
     Result->SetStringField(TEXT("virtualBoneName"), NewVirtualBoneName.ToString());
@@ -123,12 +133,6 @@ bool UMcpAutomationBridgeSubsystem::HandleRenameBone(
         Skeleton->RenameVirtualBone(FName(*BoneName), FName(*NewBoneName));
         McpSafeAssetSave(Skeleton);
 
-        bool bSave = false;
-        Payload->TryGetBoolField(TEXT("save"), bSave);
-        if (bSave)
-        {
-        }
-
         TSharedPtr<FJsonObject> Result = McpHandlerUtils::CreateResultObject();
         Result->SetStringField(TEXT("oldName"), BoneName);
         Result->SetStringField(TEXT("newName"), NewBoneName);
@@ -152,7 +156,6 @@ bool UMcpAutomationBridgeSubsystem::HandleListVirtualBones(
     const TSharedPtr<FJsonObject>& Payload,
     TSharedPtr<FMcpBridgeWebSocket> RequestingSocket)
 {
-#if WITH_EDITOR
     FString SkeletonPath = GetJsonStringField(Payload, TEXT("skeletonPath"));
     FString SkeletalMeshPath = GetJsonStringField(Payload, TEXT("skeletalMeshPath"));
 
@@ -205,10 +208,6 @@ bool UMcpAutomationBridgeSubsystem::HandleListVirtualBones(
     SendAutomationResponse(RequestingSocket, RequestId, true,
         FString::Printf(TEXT("Found %d virtual bones"), VirtualBoneArray.Num()), Result);
     return true;
-#else
-    SendAutomationError(RequestingSocket, RequestId, TEXT("list_virtual_bones requires editor mode"), TEXT("NOT_EDITOR"));
-    return true;
-#endif
 }
 
 bool UMcpAutomationBridgeSubsystem::HandleDeleteVirtualBone(
@@ -216,7 +215,6 @@ bool UMcpAutomationBridgeSubsystem::HandleDeleteVirtualBone(
     const TSharedPtr<FJsonObject>& Payload,
     TSharedPtr<FMcpBridgeWebSocket> RequestingSocket)
 {
-#if WITH_EDITOR
     FString SkeletonPath = GetJsonStringField(Payload, TEXT("skeletonPath"));
     FString VirtualBoneName = GetJsonStringField(Payload, TEXT("virtualBoneName"));
 
@@ -266,10 +264,6 @@ bool UMcpAutomationBridgeSubsystem::HandleDeleteVirtualBone(
     SendAutomationResponse(RequestingSocket, RequestId, true,
         FString::Printf(TEXT("Virtual bone '%s' deleted"), *VirtualBoneName), Result);
     return true;
-#else
-    SendAutomationError(RequestingSocket, RequestId, TEXT("delete_virtual_bone requires editor mode"), TEXT("NOT_EDITOR"));
-    return true;
-#endif
 }
 
 #endif // WITH_EDITOR

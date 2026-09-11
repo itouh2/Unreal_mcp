@@ -23,17 +23,54 @@ import { P } from './properties.js';
 const D = 'inspect';
 const NR = 'Distinct inspect verb and target; no cross-tool duplicate.';
 
+/**
+ * What HandleInspectObjectAction actually returns
+ * (Private/Domains/Environment/Inspection/McpAutomationBridge_EnvironmentHandlersInspectObject.cpp).
+ *
+ * These MUST be declared. McpProjectCanonicalOutput keeps only the properties a
+ * record declares, so while this set was missing the native gateway stripped the
+ * entire payload and every inspect_object call — plus its four aliases — answered
+ * `{success, message}` and nothing else, for a capability whose whole purpose is
+ * "returning detailed properties".
+ */
+const INSPECT_OBJECT_OUTPUT = {
+  objectName: { type: 'string', description: 'Object name.' },
+  objectPath: { type: 'string', description: 'Full object path of the inspected object.' },
+  class: { type: 'string', description: 'Class name of the inspected object.' },
+  className: { type: 'string', description: 'Class name of the inspected object (alias of class).' },
+  classPath: { type: 'string', description: 'Full /Script class path of the inspected object.' },
+  actorLabel: { type: 'string', description: 'Editor display label. Actors only.' },
+  isActor: { type: 'boolean', description: 'True when the object is a world actor rather than an asset.' },
+  isStaticMesh: { type: 'boolean', description: 'True when the object is a StaticMesh asset.' },
+  isSceneComponent: { type: 'boolean', description: 'True when the object is a scene component.' },
+  isSelected: { type: 'boolean', description: 'True when the actor is selected in the editor.' },
+  isHidden: { type: 'boolean', description: 'True when the actor is hidden in the editor viewport.' },
+  isVisible: { type: 'boolean', description: 'True when the object is visible.' },
+  isActive: { type: 'boolean', description: 'True when the component is active.' },
+  staticMesh: { type: 'string', description: 'Static mesh asset path assigned to the object, when it has one.' },
+  location: { type: 'object', 'x-unreal-reflection-boundary': true, description: 'World location as {x, y, z}.' },
+  rotation: { type: 'object', 'x-unreal-reflection-boundary': true, description: 'World rotation as {pitch, yaw, roll} in degrees.' },
+  scale: { type: 'object', 'x-unreal-reflection-boundary': true, description: 'World scale as {x, y, z}.' },
+  transform: { type: 'object', 'x-unreal-reflection-boundary': true, description: 'Combined transform: location, rotation and scale.' },
+  components: { type: 'array', description: 'Attached components with their names, classes and transforms.' },
+  componentCount: { type: 'number', description: 'Number of attached components.' },
+  tags: { type: 'array', items: { type: 'string' }, description: 'Actor tags.' },
+};
+
 export const OBJECT_PROPERTY_RECORDS: readonly CapabilityRecordSource[] = [
   buildCoreRecord({
     parentTool: 'inspect', action: 'inspect_object', dispatchAction: 'inspect_object', domain: D, family: 'object',
+    topics: ['inspect actor', 'object details', 'actor properties', 'dump object', 'all properties', 'introspect object'],
+    aliases: ['inspect.inspect_actor'],
     summary: 'Inspect a world actor or asset object by path, returning detailed properties.',
     whenToUse: ['An object\'s properties and structure must be read.'],
     whenNotToUse: ['A Blueprint CDO without a spawned actor is needed; use inspect_cdo.'],
     inputProps: { objectPath: P.objectPath, actorName: P.actorName, name: P.name, componentName: P.componentName, detailed: P.detailed, propertyNames: P.propertyNames },
     required: [],
+    outputProps: INSPECT_OBJECT_OUTPUT,
     effect: 'read', costLatency: 'instant', costResources: 'low',
     exampleInput: { action: 'inspect_object', objectPath: '/Game/Maps/Demo.Demo_PersistentLevel.PlayerStart_1' },
-    exampleOutput: { success: true, message: 'Object inspected' },
+    exampleOutput: { success: true, message: 'Object inspected', objectName: 'PlayerStart_1', class: 'PlayerStart', isActor: true, location: { x: 0, y: 0, z: 100 } },
     normalizationClass: 'C_SAME_VERB_DIFFERENT_TARGET', normalizationRationale: NR,
   }),
   buildCoreRecord({
@@ -43,9 +80,10 @@ export const OBJECT_PROPERTY_RECORDS: readonly CapabilityRecordSource[] = [
     whenNotToUse: ['Prefer the canonical inspect_object verb.'],
     inputProps: { objectPath: P.objectPath, actorName: P.actorName, name: P.name, detailed: P.detailed },
     required: [],
+    outputProps: INSPECT_OBJECT_OUTPUT,
     effect: 'read', costLatency: 'instant', costResources: 'low',
     exampleInput: { action: 'get_actor_details', actorName: 'PlayerStart_1' },
-    exampleOutput: { success: true, message: 'Object inspected' },
+    exampleOutput: { success: true, message: 'Object inspected', objectName: 'PlayerStart_1', isActor: true },
     normalizationClass: 'C_SAME_VERB_DIFFERENT_TARGET', normalizationRationale: NR,
   }),
   buildCoreRecord({
@@ -68,9 +106,10 @@ export const OBJECT_PROPERTY_RECORDS: readonly CapabilityRecordSource[] = [
     whenNotToUse: ['Prefer the canonical inspect_object verb.'],
     inputProps: { objectPath: P.objectPath, actorName: P.actorName, name: P.name },
     required: [],
+    outputProps: INSPECT_OBJECT_OUTPUT,
     effect: 'read', costLatency: 'instant', costResources: 'low',
     exampleInput: { action: 'get_mesh_details', objectPath: '/Game/Meshes/SM_Cube' },
-    exampleOutput: { success: true, message: 'Object inspected' },
+    exampleOutput: { success: true, message: 'Object inspected', objectName: 'SM_Cube', isStaticMesh: true },
     normalizationClass: 'C_SAME_VERB_DIFFERENT_TARGET', normalizationRationale: NR,
   }),
   buildCoreRecord({
@@ -80,6 +119,7 @@ export const OBJECT_PROPERTY_RECORDS: readonly CapabilityRecordSource[] = [
     whenNotToUse: ['Prefer the canonical inspect_object verb.'],
     inputProps: { objectPath: P.objectPath, actorName: P.actorName, name: P.name },
     required: [],
+    outputProps: INSPECT_OBJECT_OUTPUT,
     effect: 'read', costLatency: 'instant', costResources: 'low',
     exampleInput: { action: 'get_texture_details', objectPath: '/Game/Textures/T_Base' },
     exampleOutput: { success: true, message: 'Object inspected' },
@@ -92,6 +132,7 @@ export const OBJECT_PROPERTY_RECORDS: readonly CapabilityRecordSource[] = [
     whenNotToUse: ['Prefer the canonical inspect_object verb.'],
     inputProps: { objectPath: P.objectPath, actorName: P.actorName, name: P.name },
     required: [],
+    outputProps: INSPECT_OBJECT_OUTPUT,
     effect: 'read', costLatency: 'instant', costResources: 'low',
     exampleInput: { action: 'get_material_details', objectPath: '/Game/Materials/M_Base' },
     exampleOutput: { success: true, message: 'Object inspected' },
@@ -113,6 +154,7 @@ export const OBJECT_PROPERTY_RECORDS: readonly CapabilityRecordSource[] = [
   }),
   buildCoreRecord({
     parentTool: 'inspect', action: 'get_property', dispatchAction: 'get_property', domain: D, family: 'property',
+    topics: ['read property', 'property value', 'get value', 'read field', 'actor property'],
     summary: 'Read a property value from a world actor, asset, or Blueprint CDO.',
     whenToUse: ['A single property value must be read.'],
     whenNotToUse: ['All properties are needed; use inspect_object or inspect_cdo.'],
@@ -127,6 +169,7 @@ export const OBJECT_PROPERTY_RECORDS: readonly CapabilityRecordSource[] = [
   }),
   buildCoreRecord({
     parentTool: 'inspect', action: 'set_property', dispatchAction: 'set_property', domain: D, family: 'property',
+    topics: ['write property', 'set value', 'change property', 'modify property', 'edit property', 'set field', 'set property on actor'],
     summary: 'Write a property value on a world actor, asset, or Blueprint CDO.',
     whenToUse: ['A single property value must be written.'],
     whenNotToUse: ['The property is read-only or the target is a packed asset.'],
@@ -140,6 +183,7 @@ export const OBJECT_PROPERTY_RECORDS: readonly CapabilityRecordSource[] = [
   }),
   buildCoreRecord({
     parentTool: 'inspect', action: 'inspect_class', dispatchAction: 'inspect_class', domain: D, family: 'class',
+    topics: ['class info', 'class metadata', 'reflection', 'class properties', 'uclass'],
     summary: 'Inspect a UClass: metadata, parent, default CDO properties.',
     whenToUse: ['A class\'s hierarchy and defaults must be read.'],
     whenNotToUse: ['A specific instance is in scope; use inspect_object.'],
@@ -147,8 +191,13 @@ export const OBJECT_PROPERTY_RECORDS: readonly CapabilityRecordSource[] = [
     required: ['className'],
     effect: 'read', costLatency: 'instant', costResources: 'low',
     exampleInput: { action: 'inspect_class', className: 'PointLight' },
-    exampleOutput: { success: true, message: 'Class inspected', className: '/Script/Engine.PointLight' },
-    outputProps: { className: P.className },
+    exampleOutput: { success: true, message: 'Class inspected', className: 'PointLight', classPath: '/Script/Engine.PointLight', parentClass: 'Light' },
+    outputProps: {
+      className: P.className,
+      classPath: { type: 'string', description: 'Full /Script path of the resolved class.' },
+      parentClass: { type: 'string', description: 'Immediate super-class name ("None" when the class has no super).' },
+    },
+    outputRequired: [],
     normalizationClass: 'C_SAME_VERB_DIFFERENT_TARGET', normalizationRationale: NR,
   }),
   buildCoreRecord({
@@ -186,8 +235,16 @@ export const OBJECT_PROPERTY_RECORDS: readonly CapabilityRecordSource[] = [
     inputProps: { structPath: P.structPath },
     required: ['structPath'],
     effect: 'read', costLatency: 'instant', costResources: 'low',
+    // The native handler (McpAutomationBridge_InspectStruct.cpp) returns its
+    // findings nested under `result`; with no outputProps declared the output
+    // projection stripped the entire nested object and the capability answered
+    // bare success — a layout reader that returned nothing.
     exampleInput: { action: 'inspect_struct', structPath: '/Game/Structs/S_Test' },
-    exampleOutput: { success: true, message: 'Struct inspected' },
+    exampleOutput: { success: true, message: 'Struct inspected', result: { structName: 'S_Test', memberCount: 3 } },
+    outputProps: {
+      result: { type: 'object', additionalProperties: true, 'x-unreal-reflection-boundary': true, description: 'Struct layout: structName, structPath, parentStruct(Path), isRowStruct, isUserDefined, members[] (name/type/default/tooltip/guid/metadata/innerStruct), memberCount.' },
+    },
+    outputRequired: [],
     normalizationClass: 'C_SAME_VERB_DIFFERENT_TARGET', normalizationRationale: NR,
   }),
 ];

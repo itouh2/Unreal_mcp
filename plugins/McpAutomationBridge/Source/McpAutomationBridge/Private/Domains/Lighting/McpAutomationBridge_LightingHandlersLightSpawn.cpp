@@ -180,17 +180,14 @@ bool HandleSpawnLight(
     FTransform SpawnTransform(Rotation, Location);
     AActor* NewLight = World->SpawnActorDeferred<AActor>(
         LightClass, SpawnTransform, nullptr, nullptr, ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
-    if (NewLight)
-    {
-        UGameplayStatics::FinishSpawningActor(NewLight, SpawnTransform);
-        NewLight->SetActorLabel(LightClassStr);
-        NewLight->SetActorLocationAndRotation(Location, Rotation, false, nullptr, ETeleportType::TeleportPhysics);
-    }
     if (!NewLight)
     {
         Subsystem.SendAutomationError(RequestingSocket, RequestId, TEXT("Failed to spawn light actor"), TEXT("SPAWN_FAILED"));
         return true;
     }
+    UGameplayStatics::FinishSpawningActor(NewLight, SpawnTransform);
+    NewLight->SetActorLabel(LightClassStr);
+    NewLight->SetActorLocationAndRotation(Location, Rotation, false, nullptr, ETeleportType::TeleportPhysics);
 
     FString Name;
     if (Payload->TryGetStringField(TEXT("name"), Name) && !Name.IsEmpty())
@@ -201,6 +198,16 @@ bool HandleSpawnLight(
     if (ULightComponent* BaseLightComp = NewLight->FindComponentByClass<ULightComponent>())
     {
         BaseLightComp->SetMobility(EComponentMobility::Movable);
+
+        // BB-058: ApplyLightProperties below only reads the `properties`
+        // sub-object, so a documented top-level intensity would otherwise be
+        // silently dropped and the component keeps the engine default. Mirror
+        // spawn_sky_light / the Effect create_dynamic_light path.
+        double TopLevelIntensity = 0.0;
+        if (Payload->TryGetNumberField(TEXT("intensity"), TopLevelIntensity))
+        {
+            BaseLightComp->SetIntensity(static_cast<float>(TopLevelIntensity));
+        }
     }
 
     const TSharedPtr<FJsonObject>* Props;

@@ -7,6 +7,7 @@
  */
 import type { CapabilityRecordSource } from '../../../index.js';
 import { IP, inventoryRecord } from './schema.js';
+import { P } from '../properties.js';
 
 export const INVENTORY_2: readonly CapabilityRecordSource[] = [
   inventoryRecord({
@@ -70,7 +71,7 @@ export const INVENTORY_2: readonly CapabilityRecordSource[] = [
   }),
   inventoryRecord({
     action: 'create_equipment_component',
-    summary: 'Add an equipment component to a Blueprint asset.',
+    summary: 'Add an equipment placeholder component and variables to a Blueprint asset; no equipment logic is generated.',
     inputProps: { blueprintPath: IP.blueprintPath, componentName: IP.componentName, save: IP.save },
     required: ['blueprintPath'],
     exampleInput: {
@@ -81,7 +82,8 @@ export const INVENTORY_2: readonly CapabilityRecordSource[] = [
   }),
   inventoryRecord({
     action: 'create_inventory_component',
-    summary: 'Add an inventory component to a Blueprint asset.',
+    topics: ['inventory', 'inventory component', 'inventory system', 'item container'],
+    summary: 'Add an inventory placeholder component and variables to a Blueprint asset; no inventory logic is generated.',
     inputProps: {
       blueprintPath: IP.blueprintPath,
       componentName: IP.componentName,
@@ -145,6 +147,36 @@ export const INVENTORY_2: readonly CapabilityRecordSource[] = [
       lootTablePath: IP.lootTablePath,
       recipePath: IP.recipePath,
       pickupPath: IP.pickupPath,
+    },
+    outputProps: {
+      assetPath: P.assetPath,
+      assetType: { type: 'string', description: 'Resolved asset type (item, lootTable, recipe, pickup, blueprint).' },
+      className: { type: 'string', description: 'UClass or data asset class name.' },
+      itemPath: IP.itemPath,
+      lootTablePath: IP.lootTablePath,
+      recipePath: IP.recipePath,
+      pickupPath: IP.pickupPath,
+      blueprintPath: IP.blueprintPath,
+      properties: { type: 'object', additionalProperties: true, 'x-unreal-reflection-boundary': true, description: 'Authored item properties.' },
+      category: { type: 'string', description: 'Item category asset path.' },
+      stackable: IP.stackable,
+      maxStackSize: IP.maxStackSize,
+      icon: IP.iconPath,
+      weight: { type: 'number', description: 'Item weight.' },
+      replication: { type: 'string', description: 'Replication condition applied to inventory state.' },
+      lootEntries: { type: 'array', items: { type: 'object', additionalProperties: true, 'x-unreal-reflection-boundary': true }, description: 'Loot table entries.' },
+      tiers: IP.tiers,
+      entryCount: { type: 'number', description: 'Number of loot entries.' },
+      ingredients: { type: 'array', items: { type: 'object', additionalProperties: true, 'x-unreal-reflection-boundary': true }, description: 'Recipe ingredients.' },
+      outputItem: { type: 'string', description: 'Recipe output item asset path.' },
+      outputQuantity: IP.outputQuantity,
+      craftTime: IP.craftTime,
+      requiredLevel: IP.requiredLevel,
+      requiredStation: IP.requiredStation,
+      components: { type: 'array', items: { type: 'object', additionalProperties: true, 'x-unreal-reflection-boundary': true }, description: 'Blueprint SCS components.' },
+      variables: { type: 'array', items: { type: 'object', additionalProperties: true, 'x-unreal-reflection-boundary': true }, description: 'Blueprint NewVariables (recipes, station settings).' },
+      recipes: IP.recipePaths,
+      unsupportedFields: { type: 'array', items: { type: 'string' }, description: 'Categories the handler could not project.' },
     },
     exampleInput: { action: 'get_inventory_info', blueprintPath: '/Game/Blueprints/BP_Player' },
   }),

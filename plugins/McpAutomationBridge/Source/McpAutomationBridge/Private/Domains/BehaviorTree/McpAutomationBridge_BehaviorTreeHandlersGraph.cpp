@@ -2,12 +2,44 @@
 #include "Domains/BehaviorTree/McpAutomationBridge_BehaviorTreeHandlersPrivate.h"
 
 #if WITH_EDITOR
+#include "Foundation/BridgeHelpers/McpAutomationBridgeHelpers.h"
 #include "Foundation/HandlerUtils/McpHandlerUtils.h"
 #include "BehaviorTreeGraph.h"
 #include "EdGraph/EdGraphPin.h"
 #include "EdGraphSchema_BehaviorTree.h"
 
 namespace McpBehaviorTreeHandlers {
+
+bool EnsureBehaviorTreeGraph(UBehaviorTree*& BehaviorTree, UEdGraph*& OutGraph)
+{
+  if (!BehaviorTree)
+  {
+    return false;
+  }
+  OutGraph = BehaviorTree->BTGraph;
+  if (OutGraph)
+  {
+#if MCP_HAS_BEHAVIOR_TREE_GRAPH
+    // Asset-route edits (add_task_node/add_composite_node) bypass the graph: spawn their graph
+    // nodes so graph-route ids resolve and UpdateAsset does not drop them (dogfood #60).
+    if (UBehaviorTreeGraph* BTGraph = Cast<UBehaviorTreeGraph>(OutGraph)) { BTGraph->SpawnMissingNodes(); }
+    SyncBehaviorTreeGraphFromAsset(BehaviorTree, OutGraph);
+#endif
+    return true;
+  }
+#if MCP_HAS_BEHAVIOR_TREE_GRAPH
+  UEdGraph* NewGraph = NewObject<UBehaviorTreeGraph>(BehaviorTree, TEXT("BehaviorTree"));
+  NewGraph->Schema = UEdGraphSchema_BehaviorTree::StaticClass();
+  BehaviorTree->BTGraph = NewGraph;
+  NewGraph->GetSchema()->CreateDefaultNodesForGraph(*NewGraph);
+  if (UBehaviorTreeGraph* BTGraph = Cast<UBehaviorTreeGraph>(NewGraph)) { BTGraph->SpawnMissingNodes(); }
+  SyncBehaviorTreeGraphFromAsset(BehaviorTree, NewGraph);
+  OutGraph = NewGraph;
+  return true;
+#else
+  return false;
+#endif
+}
 
 bool LoadBehaviorTreeForGraph(UMcpAutomationBridgeSubsystem* Subsystem,
                               const FRequestContext& Context,
@@ -43,10 +75,12 @@ bool LoadBehaviorTreeForGraph(UMcpAutomationBridgeSubsystem* Subsystem,
   }
 
   UEdGraph* Graph = BehaviorTree->BTGraph;
-  if (!Graph) {
+  // Always run the ensure step: besides creating a missing graph it syncs asset-route nodes
+  // (add_composite_node / add_task_node) into an existing graph (dogfood #60).
+  if (!EnsureBehaviorTreeGraph(BehaviorTree, Graph)) {
     Subsystem->SendAutomationError(Context.RequestingSocket, Context.RequestId,
-                                   TEXT("Behavior Tree has no graph."),
-                                   TEXT("GRAPH_NOT_FOUND"));
+                                   TEXT("Behavior Tree graph editing requires UE 5.3+."),
+                                   TEXT("NOT_SUPPORTED"));
     return false;
   }
 
@@ -64,6 +98,7 @@ void UpdateBehaviorTreeAsset(const FGraphContext& Context)
 #endif
   Context.Graph->NotifyGraphChanged();
   Context.BehaviorTree->MarkPackageDirty();
+  McpSafeAssetSave(Context.BehaviorTree);
 }
 
 UEdGraphNode* FindGraphNodeByIdOrName(UEdGraph* Graph,
@@ -88,6 +123,8 @@ UEdGraphNode* FindGraphNodeByIdOrName(UEdGraph* Graph,
     }
 #if MCP_HAS_BEHAVIOR_TREE_GRAPH
     if (UAIGraphNode* AINode = Cast<UAIGraphNode>(Node)) {
+      // Asset-route ids (BTTask_Wait_0) name the node instance, not the graph node (dogfood #60).
+      if (AINode->NodeInstance && AINode->NodeInstance->GetName().Equals(Needle, ESearchCase::IgnoreCase)) return Node;
       for (UAIGraphNode* SubNode : AINode->SubNodes) {
         if (UEdGraphNode* Found = Match(SubNode)) return Found;
       }
@@ -121,8 +158,18 @@ bool HandleConnectNodes(UMcpAutomationBridgeSubsystem* Subsystem,
   UEdGraphNode* Child =
       FindGraphNodeByIdOrName(GraphContext.Graph, ChildNodeId);
   if (!Parent || !Child) {
+    FString GraphNodes;
+    for (UEdGraphNode* Node : GraphContext.Graph->Nodes) {
+      if (!Node) continue;
+      FString Entry = Node->GetName();
+      if (UAIGraphNode* AINode = Cast<UAIGraphNode>(Node)) {
+        Entry += FString::Printf(TEXT(" [%s]"), AINode->NodeInstance ? *AINode->NodeInstance->GetName() : TEXT("no instance"));
+      }
+      GraphNodes += (GraphNodes.IsEmpty() ? TEXT("") : TEXT(", ")) + Entry;
+    }
     Subsystem->SendAutomationError(Context.RequestingSocket, Context.RequestId,
-                                   TEXT("Parent or child node not found."),
+                                   FString::Printf(TEXT("%s node not found in the Behavior Tree graph: %s (ids may be graph GUIDs, node instance names such as BTTask_Wait_0, or node titles). Graph nodes: %s"),
+                                                   !Parent ? TEXT("Parent") : TEXT("Child"), !Parent ? *ParentNodeId : *ChildNodeId, *GraphNodes),
                                    TEXT("NODE_NOT_FOUND"));
     return true;
   }

@@ -51,28 +51,32 @@ TypeScript receipt is built in `src/server/gateway/direct-call-migration.ts`; th
 native transport emits the same `DIRECT_TOOL_CALL_REMOVED` shape from
 `McpNativeTransportGateway.cpp`.
 
+Both transports also return the same `instructions` text from `initialize`
+(`UNREAL_GATEWAY_INSTRUCTIONS` in `src/tools/catalog/unreal-gateway-definition.ts`;
+the native server reads it from `Resources/MCP/server-info.json`). It states the
+search -> describe -> execute procedure a client should follow and how to
+recover from each guided error.
+
 ## Progressive gateway discovery
 
 Both transports expose the same progressive `unreal` gateway. Discovery is
-**never a full schema dump**; `describe` drills down in three levels, and
-`perActionSchemas` is **always `false`**:
+**never a full schema dump**; `describe` drills down one level per call, and
+`perActionSchemas` is `false` only on the `{ tool }` summary:
 
 1. `describe { tool }` -> tool summary + a paginated/filterable action list
-   (no `inputSchema` body).
-2. `describe { tool, action }` -> a paginated/filterable parameter catalog for
-   the action. The catalog is the **tool-union**: parameters are shared across
-   all actions of the parent tool, not action-specific, so per-action schema
-   mappings do not exist.
+   (no `inputSchema` body), plus a `browse` call: `search` filtered to that
+   tool, whose rows carry per-action summaries.
+2. `describe { tool, action }` -> the exact contract of the capability that
+   pair resolves to: only the parameters the action declares
+   (`perActionSchemas: true`), never a parent-tool union.
 3. `describe { tool, action, param }` -> exactly one parameter's full schema.
 
 `search` returns compact matches (name, category, description, actions) without
 `inputSchema` or `parameterNames` bodies. Every invalid `describe` call
 (tool/action/param) returns a structured, **guided error**: closest-match
 `suggestions` plus an executable `nextCall` payload that drills one level
-deeper. The generated native manifest (`McpNativeGatewayManifest.h`) is the
-single source of truth shared with the TS gateway; the native
-`McpNativeGatewayDescribe.cpp` is only a registry fallback when that manifest
-fails to load.
+deeper. The native gateway serves describe from the generated parent registry
+(`McpGeneratedParentRegistry*`), the same capability records the TS gateway reads.
 
 ## Protocol version negotiation
 
@@ -172,7 +176,6 @@ The neutral gateway manifest is generated from
 
 - `src/gateway/gateway-manifest.generated.ts` (compiled into `dist/`)
 - `src/gateway/gateway-manifest.generated.json` (neutral asset, parity source)
-- `plugins/.../MCP/Gateway/McpNativeGatewayManifest.h` (embedded JSON)
 
 Run:
 

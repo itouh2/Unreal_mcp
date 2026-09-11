@@ -9,52 +9,92 @@ bool HandleAutoUV(UMcpAutomationBridgeSubsystem* Self, const FString& RequestId,
 {
     FString ActorName = GetJsonStringField(Payload, TEXT("actorName"));
 
-    if (ActorName.IsEmpty())
+    ADynamicMeshActor* TargetActor = nullptr;
+    UDynamicMeshComponent* DMC = nullptr;
+    UDynamicMesh* Mesh = nullptr;
+    if (!ResolveDynamicMeshForGeometry(Self, RequestId, ActorName, Socket, TargetActor, DMC, Mesh))
     {
-        Self->SendAutomationError(Socket, RequestId, TEXT("actorName required"), TEXT("INVALID_ARGUMENT"));
         return true;
     }
+    const int32 UVChannel = FMath::Max(0, GetJsonIntField(Payload, TEXT("uvChannel"), 0));
 
-    UWorld* World = GEditor ? GEditor->GetEditorWorldContext().World() : nullptr;
-    ADynamicMeshActor* TargetActor = nullptr;
-
-    for (TActorIterator<ADynamicMeshActor> It(World); It; ++It)
+    // XAtlas silently refuses a non-compact mesh or a missing UV layer (its Debug sink
+    // was null), which is how auto_uv reported success while writing nothing (dogfood
+    // #133). Compact first, make sure the layer exists, and fall back to a bounds-sized
+    // box projection so the channel is never left empty.
+    bool bCompacted = false;
+    if (!Mesh->GetMeshRef().IsCompact())
     {
-        if (It->GetActorLabel() == ActorName)
+        UGeometryScriptLibrary_MeshRepairFunctions::CompactMesh(Mesh, nullptr);
+        bCompacted = true;
+    }
+    {
+        UE::Geometry::FDynamicMesh3& EditMesh = Mesh->GetMeshRef();
+        if (!EditMesh.HasAttributes())
         {
-            TargetActor = *It;
+            EditMesh.EnableAttributes();
+        }
+        if (EditMesh.Attributes()->NumUVLayers() <= UVChannel)
+        {
+            EditMesh.Attributes()->SetNumUVLayers(UVChannel + 1);
+        }
+    }
+    auto CountUVElements = [Mesh, UVChannel]() -> int32
+    {
+        UE::Geometry::FDynamicMesh3& EditMesh = Mesh->GetMeshRef();
+        UE::Geometry::FDynamicMeshUVOverlay* Overlay =
+            EditMesh.HasAttributes() && UVChannel < EditMesh.Attributes()->NumUVLayers()
+                ? EditMesh.Attributes()->GetUVLayer(UVChannel)
+                : nullptr;
+        return Overlay ? Overlay->ElementCount() : 0;
+    };
+
+    UGeometryScriptDebug* Debug = NewObject<UGeometryScriptDebug>();
+    // UE 5.7: FGeometryScriptAutoUVOptions was removed, use XAtlas directly
+    UGeometryScriptLibrary_MeshUVFunctions::AutoGenerateXAtlasMeshUVs(
+        Mesh, UVChannel, FGeometryScriptXAtlasOptions(), Debug);
+    FString XAtlasError;
+    for (const FGeometryScriptDebugMessage& Message : Debug->Messages)
+    {
+        if (Message.MessageType == EGeometryScriptDebugMessageType::ErrorMessage)
+        {
+            XAtlasError = Message.Message.ToString();
             break;
         }
     }
-
-    if (!TargetActor)
+    FString Method = TEXT("xatlas");
+    int32 ElementCount = CountUVElements();
+    if (!XAtlasError.IsEmpty() || ElementCount == 0)
     {
-        Self->SendAutomationError(Socket, RequestId, FString::Printf(TEXT("Actor not found: %s"), *ActorName), TEXT("ACTOR_NOT_FOUND"));
-        return true;
+        const UE::Geometry::FAxisAlignedBox3d Bounds = Mesh->GetMeshRef().GetBounds();
+        FVector BoxSize = FVector(Bounds.Max - Bounds.Min);
+        BoxSize.X = FMath::Max(BoxSize.X, 1.0);
+        BoxSize.Y = FMath::Max(BoxSize.Y, 1.0);
+        BoxSize.Z = FMath::Max(BoxSize.Z, 1.0);
+        UGeometryScriptLibrary_MeshUVFunctions::SetMeshUVsFromBoxProjection(
+            Mesh, UVChannel, FTransform(FQuat::Identity, FVector(Bounds.Center()), BoxSize),
+            FGeometryScriptMeshSelection(), 2, nullptr);
+        Method = TEXT("box_projection_fallback");
+        ElementCount = CountUVElements();
     }
-
-    UDynamicMeshComponent* DMC = TargetActor->GetDynamicMeshComponent();
-    if (!DMC || !DMC->GetDynamicMesh())
-    {
-        Self->SendAutomationError(Socket, RequestId, TEXT("DynamicMesh not available"), TEXT("MESH_NOT_FOUND"));
-        return true;
-    }
-
-    UDynamicMesh* Mesh = DMC->GetDynamicMesh();
-
-    // UE 5.7: FGeometryScriptAutoUVOptions was removed, use XAtlas directly
-    UGeometryScriptLibrary_MeshUVFunctions::AutoGenerateXAtlasMeshUVs(
-        Mesh,
-        0, // UV Channel
-        FGeometryScriptXAtlasOptions(),
-        nullptr
-    );
 
     DMC->NotifyMeshUpdated();
 
     TSharedPtr<FJsonObject> Result = McpHandlerUtils::CreateResultObject();
     Result->SetStringField(TEXT("actorName"), ActorName);
-
+    Result->SetNumberField(TEXT("uvChannel"), UVChannel);
+    Result->SetStringField(TEXT("method"), Method);
+    Result->SetNumberField(TEXT("uvElementCount"), ElementCount);
+    Result->SetBoolField(TEXT("compacted"), bCompacted);
+    if (!XAtlasError.IsEmpty())
+    {
+        Result->SetStringField(TEXT("xatlasError"), XAtlasError);
+    }
+    if (ElementCount == 0)
+    {
+        Self->SendAutomationResponse(Socket, RequestId, false, TEXT("Auto UV produced no UV elements"), Result, TEXT("UV_GENERATION_FAILED"));
+        return true;
+    }
     Self->SendAutomationResponse(Socket, RequestId, true, TEXT("Auto UV generated"), Result);
     return true;
 }
@@ -63,42 +103,17 @@ bool HandleProjectUV(UMcpAutomationBridgeSubsystem* Self, const FString& Request
                             const TSharedPtr<FJsonObject>& Payload, TSharedPtr<FMcpBridgeWebSocket> Socket)
 {
     FString ActorName = GetJsonStringField(Payload, TEXT("actorName"));
-FString ProjectionType = GetJsonStringField(Payload, TEXT("projectionType"), TEXT("box")).ToLower();
+    FString ProjectionType = GetJsonStringField(Payload, TEXT("projectionType"), TEXT("box")).ToLower();
     double Scale = GetJsonNumberField(Payload, TEXT("scale"), 1.0);
     int32 UVChannel = GetJsonIntField(Payload, TEXT("uvChannel"), 0);
 
-    if (ActorName.IsEmpty())
-    {
-        Self->SendAutomationError(Socket, RequestId, TEXT("actorName required"), TEXT("INVALID_ARGUMENT"));
-        return true;
-    }
-
-    UWorld* World = GEditor ? GEditor->GetEditorWorldContext().World() : nullptr;
     ADynamicMeshActor* TargetActor = nullptr;
-
-    for (TActorIterator<ADynamicMeshActor> It(World); It; ++It)
+    UDynamicMeshComponent* DMC = nullptr;
+    UDynamicMesh* Mesh = nullptr;
+    if (!ResolveDynamicMeshForGeometry(Self, RequestId, ActorName, Socket, TargetActor, DMC, Mesh))
     {
-        if (It->GetActorLabel() == ActorName)
-        {
-            TargetActor = *It;
-            break;
-        }
-    }
-
-    if (!TargetActor)
-    {
-        Self->SendAutomationError(Socket, RequestId, FString::Printf(TEXT("Actor not found: %s"), *ActorName), TEXT("ACTOR_NOT_FOUND"));
         return true;
     }
-
-    UDynamicMeshComponent* DMC = TargetActor->GetDynamicMeshComponent();
-    if (!DMC || !DMC->GetDynamicMesh())
-    {
-        Self->SendAutomationError(Socket, RequestId, TEXT("DynamicMesh not available"), TEXT("MESH_NOT_FOUND"));
-        return true;
-    }
-
-    UDynamicMesh* Mesh = DMC->GetDynamicMesh();
 
     FTransform ProjectionTransform(FQuat::Identity, FVector::ZeroVector, FVector(Scale));
 
@@ -139,54 +154,25 @@ FString ProjectionType = GetJsonStringField(Payload, TEXT("projectionType"), TEX
     return true;
 }
 
-// -------------------------------------------------------------------------
-// Tangent Operations
-// -------------------------------------------------------------------------
-
 bool HandleTransformUVs(UMcpAutomationBridgeSubsystem* Self, const FString& RequestId,
                                const TSharedPtr<FJsonObject>& Payload, TSharedPtr<FMcpBridgeWebSocket> Socket)
 {
     FString ActorName = GetJsonStringField(Payload, TEXT("actorName"));
     int32 UVChannel = GetJsonIntField(Payload, TEXT("uvChannel"), 0);
 
-double TranslateU = GetJsonNumberField(Payload, TEXT("translateU"), 0.0);
+    double TranslateU = GetJsonNumberField(Payload, TEXT("translateU"), 0.0);
     double TranslateV = GetJsonNumberField(Payload, TEXT("translateV"), 0.0);
     double ScaleU = GetJsonNumberField(Payload, TEXT("scaleU"), 1.0);
     double ScaleV = GetJsonNumberField(Payload, TEXT("scaleV"), 1.0);
     double Rotation = GetJsonNumberField(Payload, TEXT("rotation"), 0.0);
 
-    if (ActorName.IsEmpty())
-    {
-        Self->SendAutomationError(Socket, RequestId, TEXT("actorName required"), TEXT("INVALID_ARGUMENT"));
-        return true;
-    }
-
-    UWorld* World = GEditor ? GEditor->GetEditorWorldContext().World() : nullptr;
     ADynamicMeshActor* TargetActor = nullptr;
-
-    for (TActorIterator<ADynamicMeshActor> It(World); It; ++It)
+    UDynamicMeshComponent* DMC = nullptr;
+    UDynamicMesh* Mesh = nullptr;
+    if (!ResolveDynamicMeshForGeometry(Self, RequestId, ActorName, Socket, TargetActor, DMC, Mesh))
     {
-        if (It->GetActorLabel() == ActorName)
-        {
-            TargetActor = *It;
-            break;
-        }
-    }
-
-    if (!TargetActor)
-    {
-        Self->SendAutomationError(Socket, RequestId, FString::Printf(TEXT("Actor not found: %s"), *ActorName), TEXT("ACTOR_NOT_FOUND"));
         return true;
     }
-
-    UDynamicMeshComponent* DMC = TargetActor->GetDynamicMeshComponent();
-    if (!DMC || !DMC->GetDynamicMesh())
-    {
-        Self->SendAutomationError(Socket, RequestId, TEXT("DynamicMesh not available"), TEXT("MESH_NOT_FOUND"));
-        return true;
-    }
-
-    UDynamicMesh* Mesh = DMC->GetDynamicMesh();
 
     // UE 5.7: TransformMeshUVs was removed, use separate TranslateMeshUVs, ScaleMeshUVs, RotateMeshUVs
     FGeometryScriptMeshSelection Selection; // Empty = apply to entire mesh
@@ -223,9 +209,6 @@ double TranslateU = GetJsonNumberField(Payload, TEXT("translateU"), 0.0);
     return true;
 }
 
-// -------------------------------------------------------------------------
-// Boolean Trim Operation
-// -------------------------------------------------------------------------
 } // namespace McpGeometryHandlers
 
 #endif // WITH_EDITOR && MCP_HAS_FULL_GEOMETRY_SCRIPT

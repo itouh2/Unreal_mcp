@@ -1,6 +1,7 @@
+#include "Domains/SCS/McpAutomationBridge_SCSHandlers.h"
+
 #include "Core/Compatibility/McpVersionCompatibility.h"
 
-#include "Domains/SCS/McpAutomationBridge_SCSHandlers.h"
 #include "Domains/SCS/McpAutomationBridge_SCSHandlersSupport.h"
 
 #include "Foundation/BridgeHelpers/McpAutomationBridgeHelpers.h"
@@ -43,10 +44,13 @@ void FSCSHandlers::FinalizeBlueprintSCSChange(UBlueprint *Blueprint,
 namespace McpSCSHandlers {
 
 bool IsPlayInEditorActive() {
-  if (GEditor && GEditor->IsPlaySessionInProgress()) {
+  if (!GEditor) {
+    return false;
+  }
+  if (GEditor->IsPlaySessionInProgress()) {
     return true;
   }
-  if (GEditor) {
+  {
     for (const FWorldContext &Context : GEngine->GetWorldContexts()) {
       if (Context.WorldType == EWorldType::PIE ||
           Context.WorldType == EWorldType::Game) {

@@ -138,17 +138,15 @@ bool UMcpAutomationBridgeSubsystem::HandleSequenceAddActors(
       Names.Add(V->AsString());
   }
 
-  FString RequestIdArg = RequestId;
-  UMcpAutomationBridgeSubsystem *Subsystem = this;
   UObject *SeqObj = UEditorAssetLibrary::LoadAsset(SeqPath);
   if (!SeqObj) {
-    Subsystem->SendAutomationResponse(Socket, RequestIdArg, false,
+    SendAutomationResponse(Socket, RequestId, false,
                                       TEXT("Sequence not found"), nullptr,
                                       TEXT("INVALID_SEQUENCE"));
     return true;
   }
   if (!GEditor) {
-    Subsystem->SendAutomationResponse(Socket, RequestIdArg, false,
+    SendAutomationResponse(Socket, RequestId, false,
                                       TEXT("Editor not available"), nullptr,
                                       TEXT("EDITOR_NOT_AVAILABLE"));
     return true;
@@ -162,7 +160,7 @@ bool UMcpAutomationBridgeSubsystem::HandleSequenceAddActors(
     for (const FString &Name : Names) {
       TSharedPtr<FJsonObject> Item = McpHandlerUtils::CreateResultObject();
       Item->SetStringField(TEXT("name"), Name);
-      AActor *Found = Subsystem->FindActorByName(Name);
+      AActor *Found = FindActorByName(Name);
 
       if (!Found) {
         Item->SetBoolField(TEXT("success"), false);
@@ -201,16 +199,31 @@ bool UMcpAutomationBridgeSubsystem::HandleSequenceAddActors(
     }
     TSharedPtr<FJsonObject> Out = McpHandlerUtils::CreateResultObject();
     Out->SetArrayField(TEXT("results"), Results);
-    Subsystem->SendAutomationResponse(Socket, RequestIdArg, true,
+    int32 Successful = 0;
+    int32 Failed = 0;
+    for (const TSharedPtr<FJsonValue> &Val : Results) {
+      if (Val.IsValid() && Val->Type == EJson::Object) {
+        bool bSuccess = false;
+        Val->AsObject()->TryGetBoolField(TEXT("success"), bSuccess);
+        if (bSuccess)
+          Successful++;
+        else
+          Failed++;
+      }
+    }
+    Out->SetNumberField(TEXT("total"), Names.Num());
+    Out->SetNumberField(TEXT("successful"), Successful);
+    Out->SetNumberField(TEXT("failed"), Failed);
+    SendAutomationResponse(Socket, RequestId, true,
                                       TEXT("Actors processed"), Out, FString());
     return true;
   }
-  Subsystem->SendAutomationResponse(
-      Socket, RequestIdArg, false, TEXT("EditorActorSubsystem not available"),
+  SendAutomationResponse(
+      Socket, RequestId, false, TEXT("EditorActorSubsystem not available"),
       nullptr, TEXT("EDITOR_ACTOR_SUBSYSTEM_MISSING"));
   return true;
 #else
-  Subsystem->SendAutomationResponse(Socket, RequestIdArg, false,
+  SendAutomationResponse(Socket, RequestId, false,
                                     TEXT("UEditorActorSubsystem not available"),
                                     nullptr, TEXT("NOT_AVAILABLE"));
 #endif

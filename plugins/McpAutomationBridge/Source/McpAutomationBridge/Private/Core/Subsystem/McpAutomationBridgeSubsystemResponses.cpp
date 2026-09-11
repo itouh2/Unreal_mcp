@@ -2,6 +2,7 @@
 
 #include "MCP/Transport/McpNativeTransport.h"
 #include "Core/Requests/McpRequestOriginRegistry.h"
+#include "Foundation/Diagnostics/McpDiagnosticsSnapshot.h"
 #include "Foundation/McpTelemetryRegistry.h"
 #include "Core/Subsystem/McpAutomationBridgeSubsystemResponseSanitization.h"
 #include "Transport/WebSocket/McpBridgeWebSocket.h"
@@ -159,6 +160,12 @@ void UMcpAutomationBridgeSubsystem::SendAutomationResponse(
     }
     // Released here: the single funnel every delivered response passes through.
     FMcpRequestOriginRegistry::Get().Forget(RequestId);
+    // BB-005 bounded terminal in the single response funnel, before the
+    // transport branch. Persist inline ONLY on the game thread (deferred
+    // replies coalesce to the next game-thread persist); the native branch
+    // below RETURNS, so this must precede it.
+    FMcpDiagnosticsSnapshot::Get().RecordTerminal(RequestId, bEffectiveSuccess ? TEXT("success") : EffectiveErrorCode.IsEmpty() ? TEXT("failure") : EffectiveErrorCode);
+    if (IsInGameThread()) { FMcpDiagnosticsSnapshot::Get().PersistCurrent(); }
     // F3 fix: removed the response-stealing override that redirected a
     // WebSocket-originated response to the Native HTTP transport when the
     // RequestId matched a Native pending request. RequestIds are
@@ -244,6 +251,10 @@ void UMcpAutomationBridgeSubsystem::SendAutomationRejection(
         case EAutomationQueueRejection::QueueFull:
             Code = TEXT("AUTOMATION_QUEUE_FULL");
             Message = TEXT("Automation request rejected: queue is full");
+            break;
+        case EAutomationQueueRejection::GameThreadStalled:
+            Code = TEXT("EDITOR_BLOCKED");
+            Message = TEXT("Automation request rejected: the editor game thread has not ticked for over 15 s (a modal dialog or a blocking operation is holding it); dismiss it and retry");
             break;
         case EAutomationQueueRejection::SessionQueueFull:
             Code = TEXT("AUTOMATION_SESSION_QUEUE_FULL");

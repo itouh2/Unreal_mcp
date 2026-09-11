@@ -98,17 +98,13 @@ TSharedPtr<FJsonObject> FSCSHandlers::AddSCSComponent(
     }
   }
 
-  for (USCS_Node *Node : SCS->GetAllNodes()) {
-    if (Node && Node->GetVariableName().IsValid() &&
-        Node->GetVariableName().ToString().Equals(ComponentName,
-                                                  ESearchCase::IgnoreCase)) {
-      Result->SetBoolField(TEXT("success"), false);
-      Result->SetStringField(
-          TEXT("error"),
-          FString::Printf(TEXT("Component with name '%s' already exists"),
-                          *ComponentName));
-      return Result;
-    }
+  if (FindSCSNodeByVariableName(SCS, ComponentName)) {
+    Result->SetBoolField(TEXT("success"), false);
+    Result->SetStringField(
+        TEXT("error"),
+        FString::Printf(TEXT("Component with name '%s' already exists"),
+                        *ComponentName));
+    return Result;
   }
 
   USCS_Node *NewNode = SCS->CreateNode(CompClass, FName(*ComponentName));
@@ -192,9 +188,17 @@ TSharedPtr<FJsonObject> FSCSHandlers::AddSCSComponent(
       FString::Printf(TEXT("Component '%s' added to SCS"), *ComponentName));
   Result->SetStringField(TEXT("component_name"), ComponentName);
   Result->SetStringField(TEXT("component_class"), CompClass->GetName());
-  Result->SetStringField(TEXT("parent"), ParentComponentName.IsEmpty()
-                                             ? TEXT("(root)")
-                                             : ParentComponentName);
+  // Report the parent the engine actually attached to: a new scene component with no
+  // explicit parent lands under the root node, not at "(root)" (dogfood #23).
+  FString ActualParent = ParentComponentName;
+  if (USCS_Node *ActualParentNode = SCS->FindParentNode(VerifiedNode)) {
+    ActualParent = ActualParentNode->GetVariableName().ToString();
+  }
+  Result->SetStringField(TEXT("parent"), ActualParent.IsEmpty() ? TEXT("(root)") : ActualParent);
+  // componentName is the SCS name the caller asked for and can address again; the internal
+  // variable/template name (Name_GEN_VARIABLE) rides separately (dogfood #23).
+  Result->SetStringField(TEXT("componentName"), ComponentName);
+  Result->SetStringField(TEXT("variableName"), VerifiedNode->GetVariableName().ToString());
   Result->SetBoolField(TEXT("compiled"), bCompiled);
   Result->SetBoolField(TEXT("saved"), bSaved);
   AddSCSNodeVerification(Result, SCS, VerifiedNode);
@@ -205,6 +209,8 @@ TSharedPtr<FJsonObject> FSCSHandlers::AddSCSComponent(
     if (USceneComponent *SceneComp =
             Cast<USceneComponent>(NewNode->ComponentTemplate)) {
       AddComponentVerification(Result, SceneComp);
+      // AddComponentVerification reports the template object name; keep the SCS name authoritative (dogfood #23).
+      Result->SetStringField(TEXT("componentName"), ComponentName);
     }
   }
 #else

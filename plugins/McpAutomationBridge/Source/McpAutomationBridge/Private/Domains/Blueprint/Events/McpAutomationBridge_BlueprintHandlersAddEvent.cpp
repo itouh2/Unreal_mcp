@@ -38,6 +38,17 @@ bool HandleBlueprintAddEvent(const FBlueprintActionContext &Context) {
     LocalPayload->TryGetStringField(TEXT("eventType"), EventType);
     FString CustomName;
     LocalPayload->TryGetStringField(TEXT("customEventName"), CustomName);
+    if (CustomName.IsEmpty()) {
+      // The schema documents `eventName` as "Custom event name" too. Only a
+      // componentName turns eventName into a delegate name (component-bound
+      // branch below); otherwise it names the custom event, instead of the
+      // request silently producing a generic Event_<guid>.
+      FString ComponentNameProbe;
+      LocalPayload->TryGetStringField(TEXT("componentName"), ComponentNameProbe);
+      if (ComponentNameProbe.IsEmpty()) {
+        LocalPayload->TryGetStringField(TEXT("eventName"), CustomName);
+      }
+    }
     const TArray<TSharedPtr<FJsonValue>> *ParamsField = nullptr;
     LocalPayload->TryGetArrayField(TEXT("parameters"), ParamsField);
     TArray<TSharedPtr<FJsonValue>> Params =
@@ -45,7 +56,7 @@ bool HandleBlueprintAddEvent(const FBlueprintActionContext &Context) {
             ? *ParamsField
             : TArray<TSharedPtr<FJsonValue>>();
 
-#if WITH_EDITOR && MCP_HAS_K2NODE_HEADERS && MCP_HAS_EDGRAPH_SCHEMA_K2
+#if MCP_HAS_K2NODE_HEADERS && MCP_HAS_EDGRAPH_SCHEMA_K2
     if (GBlueprintBusySet.Contains(Path)) {
       Bridge.SendAutomationResponse(RequestingSocket, RequestId, false,
                              TEXT("Blueprint is busy"), nullptr,
@@ -184,10 +195,9 @@ bool HandleBlueprintAddEvent(const FBlueprintActionContext &Context) {
         TEXT("blueprint_add_event requires editor build with K2 node headers"),
         nullptr, TEXT("NOT_AVAILABLE"));
     return true;
-#endif // WITH_EDITOR && MCP_HAS_K2NODE_HEADERS && MCP_HAS_EDGRAPH_SCHEMA_K2
+#endif // MCP_HAS_K2NODE_HEADERS && MCP_HAS_EDGRAPH_SCHEMA_K2
   }
 
-  // Remove an event from the blueprint (registry-backed implementation)
   return false;
 }
 #endif

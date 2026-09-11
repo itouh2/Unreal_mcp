@@ -188,16 +188,10 @@
 // Animation State Graph (for creating individual states with BoundGraph)
 #if __has_include("AnimationStateGraph.h")
 #include "AnimationStateGraph.h"
-#define MCP_HAS_ANIMATION_STATE_GRAPH 1
-#else
-#define MCP_HAS_ANIMATION_STATE_GRAPH 0
 #endif
 
 #if __has_include("AnimationStateGraphSchema.h")
 #include "AnimationStateGraphSchema.h"
-#define MCP_HAS_ANIMATION_STATE_GRAPH_SCHEMA 1
-#else
-#define MCP_HAS_ANIMATION_STATE_GRAPH_SCHEMA 0
 #endif
 
 // Blend node types
@@ -279,6 +273,15 @@ TSharedPtr<FJsonObject> HandleRigUtilityActions(const FString& SubAction, const 
 TSharedPtr<FJsonObject> HandleIKRigActions(const FString& SubAction, const TSharedPtr<FJsonObject>& Params, TSharedPtr<FJsonObject> Response);
 TSharedPtr<FJsonObject> HandleIKRetargetActions(const FString& SubAction, const TSharedPtr<FJsonObject>& Params, TSharedPtr<FJsonObject> Response);
 TSharedPtr<FJsonObject> HandleAnimationInfoActions(const FString& SubAction, const TSharedPtr<FJsonObject>& Params, TSharedPtr<FJsonObject> Response);
+
+// Notify helpers shared by add_notify / add_notify_state (SequenceEvents /
+// SequenceNotifyStates). Resolves "PlaySound", "AnimNotify_PlaySound",
+// "/Script/Engine.AnimNotify_PlaySound" or a Blueprint class path to a class
+// deriving from BaseClass; OutTried lists the candidates looked up.
+UClass* ResolveNotifyClassByName(const FString& Requested, const TCHAR* Prefix, UClass* BaseClass, TArray<FString>& OutTried);
+// "AnimNotify_PlaySound" -> "PlaySound", "BP_Footstep_C" -> "BP_Footstep".
+FString NotifyNameFromClass(const UClass* NotifyClass, const TCHAR* Prefix);
+TSharedPtr<FJsonObject> HandleSequenceNotifyStateAction(const TSharedPtr<FJsonObject>& Params, TSharedPtr<FJsonObject> Response);
 
 } // namespace McpAnimationAuthoring
 

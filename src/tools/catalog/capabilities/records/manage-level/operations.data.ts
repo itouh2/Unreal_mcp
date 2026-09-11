@@ -116,9 +116,51 @@ export const OPERATIONS_RECORDS: readonly CapabilityRecordSource[] = [
     exampleOutput: { success: true, message: 'Metadata set' },
     normalizationClass: 'C_SAME_VERB_DIFFERENT_TARGET', normalizationRationale: NR,
   }),
+  // The native Level dispatch has always routed `set_level_world_settings`
+  // (McpAutomationBridge_LevelHandlers.cpp), but no record published it, so the
+  // only way to set a level's GameMode override through the gateway was to fall
+  // back to system_control.execute_python. Published here against the same
+  // native action; the handler re-validates and reports what it applied.
+  buildCoreRecord({
+    parentTool: 'manage_level', action: 'set_world_settings', dispatchAction: 'set_level_world_settings', dispatchMode: 'action',
+    domain: D, family: 'settings',
+    summary: "Set the loaded level's WorldSettings: GameMode override, kill Z, gravity, time dilation, and world bounds checks.",
+    whenToUse: ['A level needs its GameMode override or physics/world defaults set.'],
+    whenNotToUse: ['The GameMode class itself must be configured; use manage_networking.'],
+    inputProps: {
+      levelPath: P.levelPath,
+      gameMode: P.gameMode,
+      killZ: P.killZ,
+      gravityZ: P.gravityZ,
+      timeDilation: P.timeDilation,
+      enableWorldBoundsChecks: P.enableWorldBoundsChecks,
+    },
+    required: [],
+    // The handler rejects a call that supplies no setting, so the group is the
+    // contract rather than a convenience.
+    requiredOneOf: ['gameMode', 'killZ', 'gravityZ', 'timeDilation', 'enableWorldBoundsChecks'],
+    outputProps: {
+      levelPath: P.levelPath,
+      settingsApplied: P.settingsApplied,
+      appliedSettings: P.appliedSettings,
+      gameMode: P.gameMode,
+      killZ: P.killZ,
+      gravityZ: P.gravityZ,
+      timeDilation: P.timeDilation,
+    },
+    effect: 'write', behavior: { idempotency: 'idempotent' }, costLatency: 'instant', costResources: 'low',
+    exampleInput: { action: 'set_world_settings', gameMode: '/Game/Maps/BP_RaceGameMode' },
+    exampleOutput: {
+      success: true, message: 'World settings updated (1 applied)',
+      levelPath: '/Game/Maps/Demo', settingsApplied: true, appliedSettings: ['gameMode'],
+      gameMode: '/Game/Maps/BP_RaceGameMode.BP_RaceGameMode_C', killZ: -100000, gravityZ: -980, timeDilation: 1,
+    },
+    normalizationClass: 'C_SAME_VERB_DIFFERENT_TARGET', normalizationRationale: NR,
+  }),
   buildCoreRecord({
     parentTool: 'manage_level', action: 'list_levels', dispatchAction: 'list_levels', dispatchMode: 'action',
     domain: D, family: 'query',
+    topics: ['all levels', 'maps in project', 'list maps', 'available levels'],
     summary: 'List all levels available in the project.',
     whenToUse: ['The set of available level assets must be enumerated.'],
     whenNotToUse: ['A single level summary is needed; use get_summary.'],
@@ -174,6 +216,7 @@ export const OPERATIONS_RECORDS: readonly CapabilityRecordSource[] = [
   buildCoreRecord({
     parentTool: 'manage_level', action: 'get_current_level', dispatchAction: 'get_current_level',
     domain: D, family: 'query',
+    topics: ['current level', 'current map', 'which level is open', 'active level', 'level name'],
     summary: 'Return the path of the level currently loaded in the editor.',
     whenToUse: ['The active level path must be inspected.'],
     whenNotToUse: ['All levels must be enumerated; use list_levels.'],
@@ -192,7 +235,7 @@ export const OPERATIONS_RECORDS: readonly CapabilityRecordSource[] = [
     whenToUse: ['Metadata and stats for a specific level must be inspected.'],
     whenNotToUse: ['The current level path is needed; use get_current_level.'],
     inputProps: { levelPath: P.levelPath },
-    required: ['levelPath'],
+    required: [], // levelPath defaults to the loaded world (dogfood #14)
     effect: 'read', costLatency: 'instant', costResources: 'low',
     exampleInput: { action: 'get_summary', levelPath: '/Game/Maps/Demo' },
     exampleOutput: {
@@ -270,7 +313,8 @@ export const OPERATIONS_RECORDS: readonly CapabilityRecordSource[] = [
       subLevelPath: P.subLevelPath, sublevelPath: P.sublevelPath, levelPath: P.levelPath,
       parentLevel: P.parentLevel, parentPath: P.parentPath, streamingMethod: P.streamingMethod,
     },
-    required: ['subLevelPath'],
+    required: [],
+    requiredOneOf: ['subLevelPath', 'sublevelPath', 'levelPath'],
     effect: 'write', costLatency: 'interactive', costResources: 'low',
     exampleInput: { action: 'add_sublevel', subLevelPath: '/Game/Maps/Sub01', parentLevel: '/Game/Maps/Demo' },
     exampleOutput: { success: true, message: 'Sub-level added' },

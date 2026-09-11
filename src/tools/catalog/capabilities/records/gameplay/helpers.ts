@@ -32,11 +32,8 @@ import {
 } from '../../index.js';
 import { getParentToolMetadata } from '../parent-metadata.js';
 import type { PropertyMap } from './properties.js';
-import { policy, behavior } from '../shared/record-presets.js';
+import { policy, behavior, SCHEMA_URI, V5_0, V5_8_P1 } from '../shared/record-presets.js';
 
-const SCHEMA_URI = 'https://json-schema.org/draft/2020-12/schema';
-const V5_0 = { major: 5 as const, minor: 0, patch: 0, channel: 'stable' as const };
-const V5_8_P1 = { major: 5 as const, minor: 8, patch: 0, channel: 'preview' as const, preview: 1 };
 
 export function schema(
   properties: PropertyMap,
@@ -57,6 +54,13 @@ function outputSchema(props: PropertyMap, required: readonly string[]): Draft202
   const full: PropertyMap = {
     success: { type: 'boolean', description: 'Whether the action succeeded.' },
     message: { type: 'string', description: 'Human-readable result message.' },
+    // Both gateways fold handler fields the contract does not name into this
+    // boundary, so a read action's payload survives projection.
+    details: {
+      type: 'object',
+      'x-unreal-reflection-boundary': true,
+      description: 'Additional handler result fields not named by the contract.',
+    },
     ...props,
   };
   return schema(full, ['success', ...required]);
@@ -119,6 +123,7 @@ export interface RecordSpec {
   readonly normalizationProvenance?: CapabilityRecordSource['normalization']['provenance'];
   readonly deprecation?: CapabilityDeprecation;
   readonly aliases?: readonly string[];
+  readonly topics?: readonly string[];
   readonly exampleInput: JsonObject;
   readonly exampleOutput: JsonObject;
 }
@@ -140,7 +145,7 @@ export function buildRecord(spec: RecordSpec): CapabilityRecordSource {
     discovery: {
       domain: spec.parentTool.replace(/_/g, ' '),
       family: spec.family,
-      topics: [spec.action],
+      topics: [spec.action, ...(spec.topics ?? [])],
       summary: spec.summary,
       whenToUse: [...spec.whenToUse],
       whenNotToUse: [...spec.whenNotToUse],
@@ -168,4 +173,3 @@ export function buildRecord(spec: RecordSpec): CapabilityRecordSource {
   };
 }
 
-export { availability, behavior, outputSchema, policy, routing, V5_0, V5_8_P1 };

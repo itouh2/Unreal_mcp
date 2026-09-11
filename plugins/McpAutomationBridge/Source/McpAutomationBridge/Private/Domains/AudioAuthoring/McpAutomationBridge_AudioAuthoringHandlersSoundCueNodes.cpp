@@ -112,18 +112,38 @@ TSharedPtr<FJsonObject> HandleSoundCueNodeActions(const FString& SubAction, cons
 
 		USoundNode* SourceNode = nullptr;
 		USoundNode* TargetNode = nullptr;
+
+		// BB-032: resolve root/output identifiers to Cue->FirstNode.
+		auto ResolveCueRoot = [&Cue, &AssetPath](const FString& NodeId) -> USoundNode* {
+			if (NodeId.Equals(TEXT("Output"), ESearchCase::IgnoreCase) ||
+				NodeId.Equals(TEXT("Root"), ESearchCase::IgnoreCase) ||
+				NodeId.Equals(FPackageName::GetShortName(AssetPath), ESearchCase::IgnoreCase))
+			{
+				return Cue->FirstNode;
+			}
+			return nullptr;
+		};
+
+		SourceNode = ResolveCueRoot(SourceNodeId);
+		TargetNode = ResolveCueRoot(TargetNodeId);
+
 		for (USoundNode* Node : Cue->AllNodes)
 		{
-			if (Node && Node->GetName() == SourceNodeId) { SourceNode = Node; }
-			if (Node && Node->GetName() == TargetNodeId) { TargetNode = Node; }
+			if (Node && Node->GetName() == SourceNodeId && !SourceNode) { SourceNode = Node; }
+			if (Node && Node->GetName() == TargetNodeId && !TargetNode) { TargetNode = Node; }
 		}
+		// Dogfood #116: name the nodes that exist so the caller can pick a real id.
+		TArray<FString> AvailableNodes;
+		AvailableNodes.Add(TEXT("Output"));
+		for (USoundNode* Node : Cue->AllNodes) { if (Node) { AvailableNodes.Add(Node->GetName()); } }
+		const FString AvailableText = FString::Join(AvailableNodes, TEXT(", "));
 		if (!SourceNode)
 		{
-			return McpHandlerUtils::BuildErrorResponse(TEXT("SOURCE_NODE_NOT_FOUND"), FString::Printf(TEXT("Source node not found: %s"), *SourceNodeId));
+			return McpHandlerUtils::BuildErrorResponse(TEXT("SOURCE_NODE_NOT_FOUND"), FString::Printf(TEXT("Source node not found: %s (connections run source -> target child input; available nodes: %s)"), *SourceNodeId, *AvailableText));
 		}
 		if (!TargetNode)
 		{
-			return McpHandlerUtils::BuildErrorResponse(TEXT("TARGET_NODE_NOT_FOUND"), FString::Printf(TEXT("Target node not found: %s"), *TargetNodeId));
+			return McpHandlerUtils::BuildErrorResponse(TEXT("TARGET_NODE_NOT_FOUND"), FString::Printf(TEXT("Target node not found: %s (available nodes: %s)"), *TargetNodeId, *AvailableText));
 		}
 
 		USoundCueGraphNode* SourceGraphNode = Cast<USoundCueGraphNode>(SourceNode->GetGraphNode());
@@ -145,7 +165,7 @@ TSharedPtr<FJsonObject> HandleSoundCueNodeActions(const FString& SubAction, cons
 		{
 			if (SourceNode->GetMaxChildNodes() <= InputPins.Num())
 			{
-				return McpHandlerUtils::BuildErrorResponse(TEXT("MAX_CHILDREN_EXCEEDED"), FString::Printf(TEXT("Source node supports max %d children, requested index %d"), SourceNode->GetMaxChildNodes(), ChildIndex));
+				return McpHandlerUtils::BuildErrorResponse(TEXT("MAX_CHILDREN_EXCEEDED"), FString::Printf(TEXT("Source node accepts %d child inputs, requested index %d. sourceNodeId is the PARENT that receives the child on one of its input pins; pass the receiving node as sourceNodeId and the child as targetNodeId (dogfood #116)"), SourceNode->GetMaxChildNodes(), ChildIndex));
 			}
 			SourceNode->InsertChildNode(SourceNode->ChildNodes.Num());
 			InputPins.Empty();
@@ -206,19 +226,18 @@ TSharedPtr<FJsonObject> HandleSoundCueNodeActions(const FString& SubAction, cons
 			return McpHandlerUtils::BuildErrorResponse(TEXT("CUE_NOT_FOUND"), FString::Printf(TEXT("Could not load SoundCue: %s"), *AssetPath));
 		}
 
-		if (!ConcurrencyPath.IsEmpty())
+		// Dogfood #114: a missing concurrencyPath used to silently clear the set and report success.
+		if (ConcurrencyPath.IsEmpty())
 		{
-			USoundConcurrency* Conc = Cast<USoundConcurrency>(StaticLoadObject(USoundConcurrency::StaticClass(), nullptr, *NormalizeAudioPath(ConcurrencyPath)));
-			if (Conc)
-			{
-				Cue->ConcurrencySet.Empty();
-				Cue->ConcurrencySet.Add(Conc);
-			}
+			return McpHandlerUtils::BuildErrorResponse(TEXT("INVALID_ARGUMENT"), TEXT("concurrencyPath is required (a SoundConcurrency asset path)"));
 		}
-		else
+		USoundConcurrency* Conc = Cast<USoundConcurrency>(StaticLoadObject(USoundConcurrency::StaticClass(), nullptr, *NormalizeAudioPath(ConcurrencyPath)));
+		if (!Conc)
 		{
-			Cue->ConcurrencySet.Empty();
+			return McpHandlerUtils::BuildErrorResponse(TEXT("CONCURRENCY_NOT_FOUND"), FString::Printf(TEXT("SoundConcurrency asset not found: %s"), *ConcurrencyPath));
 		}
+		Cue->ConcurrencySet.Empty();
+		Cue->ConcurrencySet.Add(Conc);
 
 		SaveAudioAsset(Cue, bSave);
 		Response->SetNumberField(TEXT("concurrencyCount"), Cue->ConcurrencySet.Num());

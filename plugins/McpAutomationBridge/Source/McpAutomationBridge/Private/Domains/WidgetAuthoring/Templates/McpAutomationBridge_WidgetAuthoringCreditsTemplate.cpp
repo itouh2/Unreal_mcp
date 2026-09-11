@@ -1,4 +1,5 @@
 #include "Domains/WidgetAuthoring/McpAutomationBridge_WidgetAuthoringActions.h"
+#include "Domains/WidgetAuthoring/Support/McpAutomationBridge_WidgetAuthoringBlueprintLoading.h"
 #include "Domains/WidgetAuthoring/Support/McpAutomationBridge_WidgetAuthoringTreeMutation.h"
 
 #include "AssetRegistry/AssetRegistryModule.h"
@@ -30,10 +31,6 @@ bool HandleWidgetAuthoringCreditsTemplate(
     TSharedPtr<FMcpBridgeWebSocket> RequestingSocket,
     TSharedPtr<FJsonObject> ResultJson)
 {
-    // =========================================================================
-    // 19.16 Additional Template Actions
-    // =========================================================================
-
     if (SubAction.Equals(TEXT("create_credits_screen"), ESearchCase::IgnoreCase))
     {
         FString Name = GetJsonStringField(Payload, TEXT("name"), TEXT("WBP_Credits"));
@@ -112,7 +109,7 @@ bool HandleWidgetAuthoringCreditsTemplate(
 
         Package->MarkPackageDirty();
         FAssetRegistryModule::AssetCreated(WidgetBP);
-        FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(WidgetBP);
+        WidgetAuthoringHelpers::MarkWidgetBlueprintModifiedAndSave(WidgetBP);
 
         ResultJson->SetBoolField(TEXT("success"), true);
         ResultJson->SetStringField(TEXT("widgetPath"), WidgetBP->GetPathName());

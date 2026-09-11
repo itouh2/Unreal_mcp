@@ -21,6 +21,10 @@ class FSocket;
 class FRunnableThread;
 class FEvent;
 class ISocketSubsystem;
+// Forward-declared so the admission call can surface the precise queue
+// rejection; the full enum comes from McpAutomationBridgeSubsystem.h in every
+// .cpp that reads/writes it.
+enum class EAutomationQueueRejection : uint8;
 
 /**
  * Native MCP Streamable HTTP transport with SSE streaming.
@@ -49,8 +53,6 @@ public:
 	bool IsRunning() const { return Thread != nullptr && !bStopping.load(); }
 	int32 GetListenPort() const { return ListenPort; }
 	int32 GetActiveSessionCount() const;
-	int32 GetEnabledToolCount() const { return ToolManager.GetEnabledToolNames().Num(); }
-	int32 GetTotalToolCount() const;
 
 	/**
 	 * Complete a pending SSE request with the handler's result.
@@ -61,12 +63,6 @@ public:
 	bool CompletePendingRequest(const FString& RequestId, bool bSuccess,
 		const FString& Message, const TSharedPtr<FJsonObject>& Result,
 		const FString& ErrorCode);
-
-	/** Check if a request ID belongs to an active SSE connection. */
-	bool HasPendingRequest(const FString& RequestId) const;
-
-	/** Extend timeout for a pending request (called on progress updates). */
-	void TouchPendingRequest(const FString& RequestId);
 
 	/** Stream progress notification via SSE to the client. */
 	void SendSSEProgressUpdate(const FString& RequestId, float Percent,
@@ -204,6 +200,7 @@ private:
 		const FString& DispatchAction,
 		const TSharedPtr<FJsonObject>& Arguments,
 		bool& bOutSessionActive,
+		EAutomationQueueRejection& OutRejection,
 		const TMap<EMcpStateKind, int64>& ExpectedRevisions =
 			TMap<EMcpStateKind, int64>());
 	void CloseSessionConnections(const FString& SessionId);
@@ -303,6 +300,7 @@ private:
 	std::atomic<bool> bBindSuccess{false};
 	std::atomic<int32> ActiveConnectionCount{0};
 	std::atomic<int32> PendingAsyncWrites{0};  // tracks in-flight SSE progress/complete writes
+	std::atomic<double> LastGameThreadHeartbeat{0.0};  // GameThread cleanup pass timestamp; stale => modal/blocking op (dogfood #79)
 	static constexpr int32 MaxConcurrentConnections = 32;
 	static constexpr int32 MaxActiveSessions = 16;
 	static constexpr int32 MaxPendingToolCalls = 16;

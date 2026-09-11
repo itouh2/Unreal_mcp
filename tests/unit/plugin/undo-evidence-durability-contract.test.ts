@@ -298,11 +298,15 @@ const HISTORICAL_FALSE_UNDO_CLAIMS = [
   { id: 'blueprint.delete_node', file: `${GRAPH_DIR}/McpAutomationBridge_BlueprintGraphHandlersNodeMutations.cpp`, line: 40, direct: true },
   { id: 'blueprint.create_reroute_node', file: `${GRAPH_DIR}/McpAutomationBridge_BlueprintGraphHandlersNodeMutations.cpp`, line: 63, direct: true },
   // Shifted down by the posX/posY fallback added to CreateRerouteNode above it.
-  { id: 'blueprint.set_node_property', file: `${GRAPH_DIR}/McpAutomationBridge_BlueprintGraphHandlersNodeMutations.cpp`, line: 108, direct: true },
+  // Shifted again by the nodeGuid echo added to CreateRerouteNode (dogfood #186).
+  { id: 'blueprint.set_node_property', file: `${GRAPH_DIR}/McpAutomationBridge_BlueprintGraphHandlersNodeMutations.cpp`, line: 110, direct: true },
   { id: 'blueprint.connect_pins', file: `${GRAPH_DIR}/McpAutomationBridge_BlueprintGraphHandlersPinMutations.cpp`, line: 37, direct: true },
   { id: 'blueprint.break_pin_links', file: `${GRAPH_DIR}/McpAutomationBridge_BlueprintGraphHandlersPinMutations.cpp`, line: 196, direct: true },
   // Split out of the PinMutations translation unit under the 250-pure-line gate.
-  { id: 'blueprint.set_pin_default_value', file: `${GRAPH_DIR}/PinMutations/McpAutomationBridge_BlueprintGraphPinSetDefaultValue.cpp`, line: 48, direct: true },
+  // Shifted down by the propertyValue/object-pin handling: the contract spelling
+  // fallback, the JSON literal renderer, and object resolution now all run above
+  // the transaction so an unresolvable path leaves no empty undo entry.
+  { id: 'blueprint.set_pin_default_value', file: `${GRAPH_DIR}/PinMutations/McpAutomationBridge_BlueprintGraphPinSetDefaultValue.cpp`, line: 175, direct: true },
   // The one that hid: the save is several frames below the transaction.
   { id: 'blueprint.create_node', file: `${GRAPH_DIR}/McpAutomationBridge_BlueprintGraphHandlersNodeCreation.cpp`, line: 85, direct: false }
 ] as const;

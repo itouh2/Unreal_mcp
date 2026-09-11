@@ -8,9 +8,6 @@ namespace McpLevelHandlers {
 #if WITH_EDITOR
 #define SendAutomationResponse(...) Subsystem.SendAutomationResponse(__VA_ARGS__)
 #define SendAutomationError(...) Subsystem.SendAutomationError(__VA_ARGS__)
-#define HandleExecuteEditorFunction(...) Subsystem.HandleExecuteEditorFunction(__VA_ARGS__)
-#define HandleManageLevelStructureAction(...) Subsystem.HandleManageLevelStructureAction(__VA_ARGS__)
-#define HandleSetMetadata(...) Subsystem.HandleSetMetadata(__VA_ARGS__)
 bool HandleGetCurrentLevelAction(UMcpAutomationBridgeSubsystem& Subsystem, const FString& RequestId, const TSharedPtr<FJsonObject>& Payload, TSharedPtr<FMcpBridgeWebSocket> RequestingSocket) {
     UWorld* EditorWorld = GEditor ? GEditor->GetEditorWorldContext().World() : nullptr;
     if (!EditorWorld) {
@@ -56,6 +53,10 @@ bool HandleGetCurrentLevelAction(UMcpAutomationBridgeSubsystem& Subsystem, const
     Result->SetStringField(TEXT("mapPath"), WorldPackage ? WorldPackage->GetName() : TEXT(""));
     Result->SetStringField(TEXT("levelName"), CurrentLevel->GetName());
     Result->SetStringField(TEXT("levelPath"), LevelPackage ? LevelPackage->GetName() : TEXT(""));
+    // The editor's "current level" can be a streaming sub-level; also publish
+    // the persistent map so callers do not mistake one for the other (dogfood #155).
+    Result->SetStringField(TEXT("persistentLevelPath"), WorldPackage ? WorldPackage->GetName() : TEXT(""));
+    Result->SetBoolField(TEXT("currentLevelIsSubLevel"), CurrentLevel != EditorWorld->PersistentLevel);
     // Include editor-world identity separately from the map package so agents
     // can distinguish persistent map state from transient PIE/editor worlds.
     Result->SetStringField(TEXT("editorWorldName"), EditorWorld->GetName());
@@ -70,8 +71,5 @@ bool HandleGetCurrentLevelAction(UMcpAutomationBridgeSubsystem& Subsystem, const
 }
 #undef SendAutomationResponse
 #undef SendAutomationError
-#undef HandleExecuteEditorFunction
-#undef HandleManageLevelStructureAction
-#undef HandleSetMetadata
 #endif
 } // namespace McpLevelHandlers

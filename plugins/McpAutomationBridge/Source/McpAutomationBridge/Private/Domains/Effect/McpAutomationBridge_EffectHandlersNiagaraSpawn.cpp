@@ -19,7 +19,10 @@ bool HandleSpawnNiagara(const FEffectActionContext& Context, bool bIsCreateEffec
     if (bIsCreateEffect)
     {
         FString SubAction;
-        Context.Payload->TryGetStringField(TEXT("action"), SubAction);
+        if (!Context.Payload->TryGetStringField(TEXT("subAction"), SubAction) || SubAction.IsEmpty())
+        {
+            Context.Payload->TryGetStringField(TEXT("action"), SubAction);
+        }
         const FString LowerSubAction = SubAction.ToLower();
         bSpawnNiagara =
             bSpawnNiagara || LowerSubAction == TEXT("niagara") ||
@@ -30,22 +33,22 @@ bool HandleSpawnNiagara(const FEffectActionContext& Context, bool bIsCreateEffec
         return false;
     }
 
-    FString SystemPath;
-    Context.Payload->TryGetStringField(TEXT("systemPath"), SystemPath);
-    if (SystemPath.IsEmpty())
-    {
-        Context.Payload->TryGetStringField(TEXT("system"), SystemPath);
-    }
+    // systemPath is canonical; system / niagaraSystemPath / assetPath are accepted aliases.
+    const FString SystemPath = ReadNiagaraSystemPathField(Context.Payload);
     if (SystemPath.IsEmpty())
     {
         Context.Bridge.SendAutomationResponse(
             Context.Socket, Context.RequestId, false,
-            TEXT("systemPath required"), nullptr, TEXT("INVALID_ARGUMENT"));
+            TEXT("systemPath required (aliases: system, niagaraSystemPath, assetPath)"), nullptr, TEXT("INVALID_ARGUMENT"));
         return true;
     }
 
+    // BB-028: canonicalize the path so both package ('/Game/Dir/NS') and object
+    // ('/Game/Dir/NS.NS') forms resolve identically for the existence check and load.
+    const FString CanonicalPath = FPackageName::ObjectPathToPackageName(SystemPath);
+
 #if WITH_EDITOR
-    if (!UEditorAssetLibrary::DoesAssetExist(SystemPath))
+    if (!UEditorAssetLibrary::DoesAssetExist(CanonicalPath))
     {
         Context.Bridge.SendAutomationResponse(
             Context.Socket, Context.RequestId, false,
@@ -70,7 +73,7 @@ bool HandleSpawnNiagara(const FEffectActionContext& Context, bool bIsCreateEffec
         return true;
     }
 
-    UObject* NiagaraObject = UEditorAssetLibrary::LoadAsset(SystemPath);
+    UObject* NiagaraObject = UEditorAssetLibrary::LoadAsset(CanonicalPath);
     if (!NiagaraObject)
     {
         TSharedPtr<FJsonObject> Response = McpHandlerUtils::CreateResultObject();
@@ -94,15 +97,32 @@ bool HandleSpawnNiagara(const FEffectActionContext& Context, bool bIsCreateEffec
         return true;
     }
 
-    if (UNiagaraComponent* NiagaraComponent = Spawned->FindComponentByClass<UNiagaraComponent>())
+    UNiagaraComponent* NiagaraComponent = Spawned->FindComponentByClass<UNiagaraComponent>();
+    UNiagaraSystem* NiagaraSystem = Cast<UNiagaraSystem>(NiagaraObject);
+    if (!NiagaraComponent || !NiagaraSystem)
     {
-        if (NiagaraObject->IsA<UNiagaraSystem>())
-        {
-            NiagaraComponent->SetAsset(Cast<UNiagaraSystem>(NiagaraObject));
-            NiagaraComponent->SetWorldScale3D(ReadScaleField(Context.Payload));
-            NiagaraComponent->Activate(true);
-        }
+        Spawned->Destroy();
+        Context.Bridge.SendAutomationResponse(
+            Context.Socket, Context.RequestId, false,
+            NiagaraSystem
+                ? TEXT("Spawned NiagaraActor has no NiagaraComponent")
+                : *FString::Printf(TEXT("%s is not a Niagara system asset"), *SystemPath),
+            nullptr, NiagaraSystem ? TEXT("SPAWN_FAILED") : TEXT("ASSET_TYPE_MISMATCH"));
+        return true;
     }
+    NiagaraComponent->SetAsset(NiagaraSystem);
+    NiagaraComponent->SetWorldScale3D(ReadScaleField(Context.Payload));
+    NiagaraComponent->Activate(true);
+    // Activation needs a ticking world: in edit mode the component stays inactive even
+    // though the asset is assigned, so only a missing asset is a failure (dogfood #107).
+    if (!NiagaraComponent->GetAsset())
+    {
+        Context.Bridge.SendAutomationResponse(
+            Context.Socket, Context.RequestId, false,
+            TEXT("NiagaraComponent asset not set after spawn"), nullptr, TEXT("SPAWN_FAILED"));
+        return true;
+    }
+    const bool bActive = NiagaraComponent->IsActive();
 
     FString AttachToActor;
     Context.Payload->TryGetStringField(TEXT("attachToActor"), AttachToActor);
@@ -126,10 +146,13 @@ bool HandleSpawnNiagara(const FEffectActionContext& Context, bool bIsCreateEffec
             : FString::Printf(TEXT("Niagara_%lld"), FDateTime::Now().ToUnixTimestamp()));
 
     TSharedPtr<FJsonObject> Response = McpHandlerUtils::CreateResultObject();
+    Response->SetStringField(TEXT("actorName"), Spawned->GetActorLabel());
+    Response->SetStringField(TEXT("systemPath"), NiagaraSystem->GetPathName());
+    Response->SetBoolField(TEXT("active"), bActive);
     McpHandlerUtils::AddVerification(Response, Spawned);
     Context.Bridge.SendAutomationResponse(
         Context.Socket, Context.RequestId, true,
-        TEXT("Niagara spawned"), Response);
+        bActive ? TEXT("Niagara spawned") : TEXT("Niagara spawned (inactive until the world ticks)"), Response);
     return true;
 #else
     Context.Bridge.SendAutomationResponse(

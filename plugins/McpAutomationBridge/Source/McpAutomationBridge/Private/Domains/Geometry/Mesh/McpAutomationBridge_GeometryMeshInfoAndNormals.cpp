@@ -21,15 +21,7 @@ bool HandleGetMeshInfo(UMcpAutomationBridgeSubsystem* Self, const FString& Reque
         return true;
     }
 
-    ADynamicMeshActor* TargetActor = nullptr;
-    for (TActorIterator<ADynamicMeshActor> It(World); It; ++It)
-    {
-        if (It->GetActorLabel() == ActorName)
-        {
-            TargetActor = *It;
-            break;
-        }
-    }
+    ADynamicMeshActor* TargetActor = FindDynamicMeshActorForGeometry(ActorName);
 
     if (!TargetActor)
     {
@@ -73,7 +65,6 @@ bool HandleRecalculateNormals(UMcpAutomationBridgeSubsystem* Self, const FString
 {
     FString ActorName = GetJsonStringField(Payload, TEXT("actorName"));
     bool bAreaWeighted = GetJsonBoolField(Payload, TEXT("areaWeighted"), true);
-    double SplitAngle = GetJsonNumberField(Payload, TEXT("splitAngle"), 60.0);
 
     if (ActorName.IsEmpty())
     {
@@ -88,15 +79,7 @@ bool HandleRecalculateNormals(UMcpAutomationBridgeSubsystem* Self, const FString
         return true;
     }
 
-    ADynamicMeshActor* TargetActor = nullptr;
-    for (TActorIterator<ADynamicMeshActor> It(World); It; ++It)
-    {
-        if (It->GetActorLabel() == ActorName)
-        {
-            TargetActor = *It;
-            break;
-        }
-    }
+    ADynamicMeshActor* TargetActor = FindDynamicMeshActorForGeometry(ActorName);
 
     if (!TargetActor)
     {
@@ -154,18 +137,7 @@ bool HandleFlipNormals(UMcpAutomationBridgeSubsystem* Self, const FString& Reque
         return true;
     }
 
-    UWorld* World = GEditor ? GEditor->GetEditorWorldContext().World() : nullptr;
-    ADynamicMeshActor* TargetActor = nullptr;
-
-    for (TActorIterator<ADynamicMeshActor> It(World); It; ++It)
-    {
-        if (It->GetActorLabel() == ActorName)
-        {
-            TargetActor = *It;
-            break;
-        }
-    }
-
+    ADynamicMeshActor* TargetActor = FindDynamicMeshActorForGeometry(ActorName);
     if (!TargetActor)
     {
         Self->SendAutomationError(Socket, RequestId, FString::Printf(TEXT("Actor not found: %s"), *ActorName), TEXT("ACTOR_NOT_FOUND"));

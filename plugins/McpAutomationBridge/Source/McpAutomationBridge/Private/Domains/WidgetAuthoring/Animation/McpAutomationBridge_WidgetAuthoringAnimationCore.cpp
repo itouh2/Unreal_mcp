@@ -1,4 +1,5 @@
 #include "Domains/WidgetAuthoring/McpAutomationBridge_WidgetAuthoringActions.h"
+#include "Domains/WidgetAuthoring/Support/McpAutomationBridge_WidgetAuthoringAnimationKeys.h"
 #include "Domains/WidgetAuthoring/Support/McpAutomationBridge_WidgetAuthoringBlueprintLoading.h"
 #include "Domains/WidgetAuthoring/Support/McpAutomationBridge_WidgetAuthoringGuidRegistry.h"
 #include "Domains/WidgetAuthoring/McpAutomationBridge_WidgetAuthoringPayload.h"
@@ -27,10 +28,6 @@ bool HandleWidgetAuthoringAnimationCore(
     TSharedPtr<FMcpBridgeWebSocket> RequestingSocket,
     TSharedPtr<FJsonObject> ResultJson)
 {
-    // =========================================================================
-    // 19.6 Widget Animations - Real Implementation
-    // =========================================================================
-
     if (SubAction.Equals(TEXT("create_widget_animation"), ESearchCase::IgnoreCase))
     {
         FString WidgetPath = GetJsonStringField(Payload, TEXT("widgetPath"));
@@ -50,15 +47,12 @@ bool HandleWidgetAuthoringAnimationCore(
             return true;
         }
 
-        for (UWidgetAnimation* ExistingAnim : WidgetBP->Animations)
+        if (WidgetAuthoringHelpers::FindWidgetAnimation(WidgetBP, AnimationName))
         {
-            if (ExistingAnim && ExistingAnim->GetName().Equals(AnimationName, ESearchCase::IgnoreCase))
-            {
-                Subsystem.SendAutomationError(RequestingSocket, RequestId,
-                    FString::Printf(TEXT("Animation '%s' already exists"), *AnimationName),
-                    TEXT("ALREADY_EXISTS"));
-                return true;
-            }
+            Subsystem.SendAutomationError(RequestingSocket, RequestId,
+                FString::Printf(TEXT("Animation '%s' already exists"), *AnimationName),
+                TEXT("ALREADY_EXISTS"));
+            return true;
         }
 
         UWidgetAnimation* NewAnim = NewObject<UWidgetAnimation>(WidgetBP, FName(*AnimationName), RF_Transactional);
@@ -125,15 +119,7 @@ bool HandleWidgetAuthoringAnimationCore(
             return true;
         }
 
-        UWidgetAnimation* Animation = nullptr;
-        for (UWidgetAnimation* Anim : WidgetBP->Animations)
-        {
-            if (Anim && Anim->GetFName().ToString().Equals(AnimationName, ESearchCase::IgnoreCase))
-            {
-                Animation = Anim;
-                break;
-            }
-        }
+        UWidgetAnimation* Animation = WidgetAuthoringHelpers::FindWidgetAnimation(WidgetBP, AnimationName);
 
         if (!Animation)
         {
@@ -195,54 +181,8 @@ bool HandleWidgetAuthoringAnimationCore(
 
     if (SubAction.Equals(TEXT("add_animation_keyframe"), ESearchCase::IgnoreCase))
     {
-        FString WidgetPath = GetJsonStringField(Payload, TEXT("widgetPath"));
-        FString AnimationName = GetJsonStringField(Payload, TEXT("animationName"));
-        double Time = GetJsonNumberField(Payload, TEXT("time"), 0.0);
-        double Value = GetJsonNumberField(Payload, TEXT("value"), 1.0);
-
-        if (WidgetPath.IsEmpty() || AnimationName.IsEmpty())
-        {
-            Subsystem.SendAutomationError(RequestingSocket, RequestId, TEXT("Missing required parameters: widgetPath, animationName"), TEXT("MISSING_PARAMETER"));
-            return true;
-        }
-
-        UWidgetBlueprint* WidgetBP = LoadWidgetBlueprint(WidgetPath);
-        if (!WidgetBP)
-        {
-            Subsystem.SendAutomationError(RequestingSocket, RequestId, TEXT("Widget blueprint not found"), TEXT("NOT_FOUND"));
-            return true;
-        }
-
-        UWidgetAnimation* Animation = nullptr;
-        for (UWidgetAnimation* Anim : WidgetBP->Animations)
-        {
-            if (Anim && Anim->GetFName().ToString().Equals(AnimationName, ESearchCase::IgnoreCase))
-            {
-                Animation = Anim;
-                break;
-            }
-        }
-
-        if (!Animation)
-        {
-            Subsystem.SendAutomationError(RequestingSocket, RequestId, FString::Printf(TEXT("Animation '%s' not found"), *AnimationName), TEXT("ANIMATION_NOT_FOUND"));
-            return true;
-        }
-
-        // Note: Adding keyframes requires accessing MovieSceneFloatChannel which is complex
-        // The animation is set up and the user can add keyframes via the editor
-        ResultJson->SetBoolField(TEXT("success"), true);
-        ResultJson->SetStringField(TEXT("animationName"), AnimationName);
-        ResultJson->SetNumberField(TEXT("time"), Time);
-        ResultJson->SetNumberField(TEXT("value"), Value);
-        ResultJson->SetStringField(TEXT("note"), TEXT("Keyframe timing set. Use Widget Blueprint Editor Animation tab for precise keyframe editing."));
-
-        FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(WidgetBP);
-
-        Subsystem.SendAutomationResponse(RequestingSocket, RequestId, true, TEXT("Animation keyframe info set"), ResultJson);
-        return true;
+        return HandleWidgetAuthoringAnimationKeyframe(Subsystem, RequestId, Payload, RequestingSocket, ResultJson);
     }
-
     if (SubAction.Equals(TEXT("set_animation_loop"), ESearchCase::IgnoreCase))
     {
         FString WidgetPath = GetJsonStringField(Payload, TEXT("widgetPath"));
@@ -263,15 +203,7 @@ bool HandleWidgetAuthoringAnimationCore(
             return true;
         }
 
-        UWidgetAnimation* Animation = nullptr;
-        for (UWidgetAnimation* Anim : WidgetBP->Animations)
-        {
-            if (Anim && Anim->GetFName().ToString().Equals(AnimationName, ESearchCase::IgnoreCase))
-            {
-                Animation = Anim;
-                break;
-            }
-        }
+        UWidgetAnimation* Animation = WidgetAuthoringHelpers::FindWidgetAnimation(WidgetBP, AnimationName);
 
         if (!Animation)
         {
@@ -287,7 +219,7 @@ bool HandleWidgetAuthoringAnimationCore(
         ResultJson->SetNumberField(TEXT("loopCount"), LoopCount);
         ResultJson->SetStringField(TEXT("note"), TEXT("Loop settings configured. Apply via PlayAnimation() with NumLoopsToPlay parameter at runtime."));
 
-        FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(WidgetBP);
+        WidgetAuthoringHelpers::MarkWidgetBlueprintModifiedAndSave(WidgetBP);
 
         Subsystem.SendAutomationResponse(RequestingSocket, RequestId, true, TEXT("Animation loop settings configured"), ResultJson);
         return true;

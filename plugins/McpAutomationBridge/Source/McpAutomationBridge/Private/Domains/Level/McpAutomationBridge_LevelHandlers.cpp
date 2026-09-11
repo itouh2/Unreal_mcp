@@ -1,4 +1,3 @@
-
 #include "Domains/Level/McpAutomationBridge_LevelHandlersActions.h"
 
 bool UMcpAutomationBridgeSubsystem::HandleLevelAction(
@@ -30,7 +29,9 @@ bool UMcpAutomationBridgeSubsystem::HandleLevelAction(
     }
 
     FString SubAction;
-    Payload->TryGetStringField(TEXT("action"), SubAction);
+    if (!Payload->TryGetStringField(TEXT("subAction"), SubAction) || SubAction.IsEmpty()) {
+      Payload->TryGetStringField(TEXT("action"), SubAction);
+    }
     const FString LowerSub = SubAction.ToLower();
     if (LowerSub == TEXT("load") || LowerSub == TEXT("load_level")) {
       return McpLevelHandlers::HandleLoadLevelAction(*this, RequestId, Payload,
@@ -51,6 +52,12 @@ bool UMcpAutomationBridgeSubsystem::HandleLevelAction(
       EffectiveAction = TEXT("build_lighting");
     } else if (LowerSub == TEXT("set_metadata")) {
       EffectiveAction = TEXT("set_metadata");
+    } else if (LowerSub == TEXT("set_world_settings") ||
+               LowerSub == TEXT("set_level_world_settings")) {
+      // Published as manage_level.set_world_settings; the gateway forwards the
+      // canonical action name rather than the record's dispatchAction, so the
+      // normalizer has to accept it alongside the native spelling.
+      EffectiveAction = TEXT("set_level_world_settings");
     } else if (LowerSub == TEXT("validate_level")) {
       EffectiveAction = TEXT("validate_level");
     } else if (LowerSub == TEXT("list") || LowerSub == TEXT("list_levels")) {
@@ -78,8 +85,6 @@ bool UMcpAutomationBridgeSubsystem::HandleLevelAction(
       bForceStreamUnload = true;
     } else if (LowerSub == TEXT("get_level_info")) {
       EffectiveAction = TEXT("get_level_info");
-    } else if (LowerSub == TEXT("set_level_world_settings")) {
-      EffectiveAction = TEXT("set_level_world_settings");
     } else if (LowerSub == TEXT("set_level_lighting")) {
       EffectiveAction = TEXT("set_level_lighting");
     } else if (LowerSub == TEXT("add_level_to_world")) {
@@ -140,7 +145,7 @@ bool UMcpAutomationBridgeSubsystem::HandleLevelAction(
       {TEXT("get_level_actors"), McpLevelHandlers::HandleGetLevelActorsAction},
       {TEXT("get_level_bounds"), McpLevelHandlers::HandleGetLevelBoundsAction},
       {TEXT("get_level_lighting_scenarios"), McpLevelHandlers::HandleGetLevelLightingScenariosAction},
-      {TEXT("build_level_lighting"), McpLevelHandlers::HandleBuildLevelLightingAction},
+      {TEXT("build_level_lighting"), McpLevelHandlers::HandleBuildLightingAction},
       {TEXT("build_level_navigation"), McpLevelHandlers::HandleBuildLevelNavigationAction},
       {TEXT("build_all_level"), McpLevelHandlers::HandleBuildAllLevelAction},
   };

@@ -24,7 +24,9 @@ bool UMcpAutomationBridgeSubsystem::HandleAnimationPhysicsAction(
   }
 
   FString SubAction;
-  Payload->TryGetStringField(TEXT("action"), SubAction);
+  if (!Payload->TryGetStringField(TEXT("subAction"), SubAction) || SubAction.IsEmpty()) {
+    Payload->TryGetStringField(TEXT("action"), SubAction);
+  }
   const FString LowerSub = SubAction.ToLower();
   UE_LOG(LogMcpAutomationBridgeSubsystem, Verbose,
          TEXT("HandleAnimationPhysicsAction: subaction='%s'"), *LowerSub);
@@ -54,6 +56,10 @@ bool UMcpAutomationBridgeSubsystem::HandleAnimationPhysicsAction(
           return HandlePlayAnimMontage(RequestId, ForcedAction, RoutedPayload,
                                        RequestingSocket);
         }
+        if (ForcedAction == TEXT("setup_ragdoll")) {
+          return HandleSetupRagdoll(RequestId, ForcedAction, RoutedPayload,
+                                   RequestingSocket);
+        }
         if (ForcedAction == TEXT("create_animation_blueprint")) {
           return HandleCreateAnimBlueprint(RequestId, ForcedAction,
                                            RoutedPayload, RequestingSocket);
@@ -82,7 +88,6 @@ bool UMcpAutomationBridgeSubsystem::HandleAnimationPhysicsAction(
       {TEXT("play_montage"), McpAnimationHandlers::HandleAnimationPlayMontageAliasAction},
       {TEXT("play_anim_montage"), McpAnimationHandlers::HandleAnimationPlayMontageAliasAction},
       {TEXT("add_notify"), McpAnimationHandlers::HandleAnimationAddNotifyAction},
-      {TEXT("add_notify_old_unused"), McpAnimationHandlers::HandleAnimationAddNotifyLegacyAction},
       {TEXT("create_animation_sequence"), McpAnimationHandlers::HandleAnimationCreateAnimationSequenceAction},
       {TEXT("set_sequence_length"), McpAnimationHandlers::HandleAnimationSetSequenceLengthAction},
       {TEXT("add_bone_track"), McpAnimationHandlers::HandleAnimationAddBoneTrackAction},
@@ -118,6 +123,7 @@ bool UMcpAutomationBridgeSubsystem::HandleAnimationPhysicsAction(
       {TEXT("create_pose_library"), McpAnimationHandlers::HandleAnimationCreatePoseLibraryAction},
       {TEXT("create_ik_rig"), McpAnimationHandlers::HandleAnimationCreateIKRigAction},
       {TEXT("add_ik_chain"), McpAnimationHandlers::HandleAnimationAddIKChainAction},
+      {TEXT("setup_ragdoll"), McpAnimationHandlers::HandleAnimationSetupRagdollRouteAction},
   };
 
   bool bMatchedAction = false;

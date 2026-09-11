@@ -15,10 +15,18 @@ bool UMcpAutomationBridgeSubsystem::HandleControlActorAction(
     return true;
   }
 
+  // subAction FIRST, `action` only as the fallback — the same priority the
+  // pre-queue gate's McpHandlerUtils::NormalizeAction uses. This domain spans
+  // read actions (find_by_class) and destructive ones (delete), so a dispatcher
+  // that read `action` while the gate read `subAction` let a read-scoped caller
+  // delete actors. AuthorizeAutomationRequest already refuses a payload whose
+  // two fields disagree; resolving them in the gate's own order means this
+  // handler cannot diverge even if that guard is ever bypassed.
   FString SubAction;
-  Payload->TryGetStringField(TEXT("action"), SubAction);
+  if (!Payload->TryGetStringField(TEXT("subAction"), SubAction) || SubAction.IsEmpty()) {
+    Payload->TryGetStringField(TEXT("action"), SubAction);
+  }
   const FString LowerSub = SubAction.ToLower();
-
 
 #if WITH_EDITOR
   if (!GEditor) {
@@ -37,7 +45,7 @@ bool UMcpAutomationBridgeSubsystem::HandleControlActorAction(
   if (LowerSub == TEXT("spawn_blueprint"))
     return HandleControlActorSpawnBlueprint(RequestId, Payload,
                                             RequestingSocket);
-  if (LowerSub == TEXT("delete") || LowerSub == TEXT("remove") ||
+  if (LowerSub == TEXT("delete") || LowerSub == TEXT("remove") || LowerSub == TEXT("delete_object") ||
       LowerSub == TEXT("destroy_actor"))
     return HandleControlActorDelete(RequestId, Payload, RequestingSocket);
   if (LowerSub == TEXT("apply_force") ||
@@ -78,7 +86,7 @@ bool UMcpAutomationBridgeSubsystem::HandleControlActorAction(
     return HandleControlActorAttach(RequestId, Payload, RequestingSocket);
   if (LowerSub == TEXT("detach") || LowerSub == TEXT("detach_actor"))
     return HandleControlActorDetach(RequestId, Payload, RequestingSocket);
-  if (LowerSub == TEXT("find_by_tag"))
+  if (LowerSub == TEXT("find_by_tag") || LowerSub == TEXT("find_actors_by_tag"))
     return HandleControlActorFindByTag(RequestId, Payload, RequestingSocket);
   if (LowerSub == TEXT("add_tag"))
     return HandleControlActorAddTag(RequestId, Payload, RequestingSocket);

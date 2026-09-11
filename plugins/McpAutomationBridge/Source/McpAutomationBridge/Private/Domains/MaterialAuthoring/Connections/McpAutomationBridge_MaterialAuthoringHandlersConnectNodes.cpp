@@ -89,68 +89,18 @@ bool HandleConnectNodes(UMcpAutomationBridgeSubsystem* Bridge, const FString& Re
       }
     }
 
-    // "Main" target: for UMaterial this means the material attributes inputs;
+    // Root target: for UMaterial this means the material attributes inputs;
     // for UMaterialFunction this means a FunctionOutput node matched by name
     // (InputName) or, if InputName is empty, the first FunctionOutput.
-    if (TargetNodeId.IsEmpty() || TargetNodeId == TEXT("Main")) {
+    const bool bTargetsRoot = IsMaterialRootTarget(TargetNodeId);
+    if (bTargetsRoot) {
+      // Root only: an expression input is matched against an exact property name, so a pin
+      // spelling bound for an expression has to survive untouched.
+      InputName = NormalizeMaterialInputName(InputName);
       if (Material) {
-        bool bFound = false;
-#if WITH_EDITORONLY_DATA
-        if (InputName == TEXT("BaseColor")) {
-          MCP_GET_MATERIAL_INPUT(Material, BaseColor).Expression = SourceExpr;
-          bFound = true;
-        } else if (InputName == TEXT("EmissiveColor")) {
-          MCP_GET_MATERIAL_INPUT(Material, EmissiveColor).Expression = SourceExpr;
-          bFound = true;
-        } else if (InputName == TEXT("Roughness")) {
-          MCP_GET_MATERIAL_INPUT(Material, Roughness).Expression = SourceExpr;
-          bFound = true;
-        } else if (InputName == TEXT("Metallic")) {
-          MCP_GET_MATERIAL_INPUT(Material, Metallic).Expression = SourceExpr;
-          bFound = true;
-        } else if (InputName == TEXT("Specular")) {
-          MCP_GET_MATERIAL_INPUT(Material, Specular).Expression = SourceExpr;
-          bFound = true;
-        } else if (InputName == TEXT("Normal")) {
-          MCP_GET_MATERIAL_INPUT(Material, Normal).Expression = SourceExpr;
-          bFound = true;
-        } else if (InputName == TEXT("Opacity")) {
-          MCP_GET_MATERIAL_INPUT(Material, Opacity).Expression = SourceExpr;
-          bFound = true;
-        } else if (InputName == TEXT("OpacityMask")) {
-          MCP_GET_MATERIAL_INPUT(Material, OpacityMask).Expression = SourceExpr;
-          bFound = true;
-        } else if (InputName == TEXT("AmbientOcclusion")) {
-          MCP_GET_MATERIAL_INPUT(Material, AmbientOcclusion).Expression = SourceExpr;
-          bFound = true;
-        } else if (InputName == TEXT("SubsurfaceColor")) {
-          MCP_GET_MATERIAL_INPUT(Material, SubsurfaceColor).Expression = SourceExpr;
-          bFound = true;
-        } else if (InputName == TEXT("WorldPositionOffset")) {
-          MCP_GET_MATERIAL_INPUT(Material, WorldPositionOffset).Expression = SourceExpr;
-          bFound = true;
-        }
-#endif
-
-        // Set OutputIndex on whichever main input was just connected
-        if (bFound) {
-          // Re-lookup the input to set OutputIndex (main inputs are FScalar/FColor/FVectorMaterialInput)
-          auto SetMainInputOutputIndex = [&](FExpressionInput& Input) {
-            Input.OutputIndex = SourceOutputIndex;
-          };
-#if WITH_EDITORONLY_DATA
-          if (InputName == TEXT("BaseColor")) { SetMainInputOutputIndex(MCP_GET_MATERIAL_INPUT(Material, BaseColor)); }
-          else if (InputName == TEXT("EmissiveColor")) { SetMainInputOutputIndex(MCP_GET_MATERIAL_INPUT(Material, EmissiveColor)); }
-          else if (InputName == TEXT("Roughness")) { SetMainInputOutputIndex(MCP_GET_MATERIAL_INPUT(Material, Roughness)); }
-          else if (InputName == TEXT("Metallic")) { SetMainInputOutputIndex(MCP_GET_MATERIAL_INPUT(Material, Metallic)); }
-          else if (InputName == TEXT("Specular")) { SetMainInputOutputIndex(MCP_GET_MATERIAL_INPUT(Material, Specular)); }
-          else if (InputName == TEXT("Normal")) { SetMainInputOutputIndex(MCP_GET_MATERIAL_INPUT(Material, Normal)); }
-          else if (InputName == TEXT("Opacity")) { SetMainInputOutputIndex(MCP_GET_MATERIAL_INPUT(Material, Opacity)); }
-          else if (InputName == TEXT("OpacityMask")) { SetMainInputOutputIndex(MCP_GET_MATERIAL_INPUT(Material, OpacityMask)); }
-          else if (InputName == TEXT("AmbientOcclusion")) { SetMainInputOutputIndex(MCP_GET_MATERIAL_INPUT(Material, AmbientOcclusion)); }
-          else if (InputName == TEXT("SubsurfaceColor")) { SetMainInputOutputIndex(MCP_GET_MATERIAL_INPUT(Material, SubsurfaceColor)); }
-          else if (InputName == TEXT("WorldPositionOffset")) { SetMainInputOutputIndex(MCP_GET_MATERIAL_INPUT(Material, WorldPositionOffset)); }
-#endif
+        if (FExpressionInput* MainInput = GetMainMaterialInput(Material, InputName)) {
+          MainInput->Expression = SourceExpr;
+          MainInput->OutputIndex = SourceOutputIndex;
           FINALIZE_HOST();
           Bridge->SendAutomationResponse(Socket, RequestId, true,
                                  TEXT("Connected to main material node."));
@@ -193,7 +143,10 @@ bool HandleConnectNodes(UMcpAutomationBridgeSubsystem* Bridge, const FString& Re
     // Connect to another expression
     UMaterialExpression *TargetExpr = FIND_EXPR_IN_HOST(TargetNodeId);
     if (!TargetExpr) {
-      Bridge->SendAutomationError(Socket, RequestId, TEXT("Target node not found."),
+      // Name the sentinel: the root output is the one target that can never resolve here,
+      // and it is the one callers most often mean when this fires.
+      Bridge->SendAutomationError(Socket, RequestId,
+                          FString::Printf(TEXT("Target node '%s' not found. To connect to the material output node, pass targetNodeId \"Main\"."), *TargetNodeId),
                           TEXT("NODE_NOT_FOUND"));
       return true;
     }
@@ -250,9 +203,6 @@ bool HandleConnectNodes(UMcpAutomationBridgeSubsystem* Bridge, const FString& Re
     return true;
   }
 
-  // --------------------------------------------------------------------------
-  // disconnect_nodes
-  // --------------------------------------------------------------------------
   return false;
 }
 }

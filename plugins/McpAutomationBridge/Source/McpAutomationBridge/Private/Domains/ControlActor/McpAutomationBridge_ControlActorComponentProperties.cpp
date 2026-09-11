@@ -1,4 +1,5 @@
 #include "Domains/ControlActor/McpAutomationBridge_ControlActorSupport.h"
+#include "Foundation/BridgeHelpers/Properties/McpAutomationBridgeHelpersNestedPropertyPath.h"
 
 #if WITH_EDITOR
 #include "ComponentReregisterContext.h"
@@ -202,7 +203,43 @@ bool UMcpAutomationBridgeSubsystem::HandleControlActorSetComponentProperties(
     Data->SetArrayField(TEXT("applied"), PropsArray);
   }
 
+  // PropertyWarnings was collected above and then thrown away: a value the
+  // converter could not handle came back as "Component properties updated",
+  // success:true, just with no `applied` entry -- so the caller had to diff the
+  // property afterwards to discover nothing happened.
+  if (PropertyWarnings.Num() > 0) {
+    TArray<TSharedPtr<FJsonValue>> WarnArray;
+    for (const FString &Warning : PropertyWarnings)
+      WarnArray.Add(MakeShared<FJsonValueString>(Warning));
+    Data->SetArrayField(TEXT("warnings"), WarnArray);
+  }
+
 	McpHandlerUtils::AddVerification(Data, Found);
+
+  // Nothing asked for could be written: that is a failure, not an update.
+  if (AppliedProperties.Num() == 0 && PropertyWarnings.Num() > 0) {
+    SendAutomationResponse(
+        Socket, RequestId, false,
+        FString::Printf(TEXT("No component properties were applied: %s"),
+                        *FString::Join(PropertyWarnings, TEXT("; "))),
+        Data, TEXT("PROPERTY_CONVERSION_FAILED"));
+    return true;
+  }
+
+  // A partial apply is reported as a failure (PARTIAL_FAILURE) carrying the applied list (dogfood #151); it used to look identical to a clean one: success:true, the same message, and a `warnings`
+  // array the model will not read. Put the shortfall where it cannot be missed.
+  if (PropertyWarnings.Num() > 0) {
+    Data->SetBoolField(TEXT("partial"), true);
+    SendAutomationResponse(
+        Socket, RequestId, false,
+        FString::Printf(TEXT("Applied %d of %d component properties (%d failed): %s"),
+                        AppliedProperties.Num(),
+                        AppliedProperties.Num() + PropertyWarnings.Num(),
+                        PropertyWarnings.Num(),
+                        *FString::Join(PropertyWarnings, TEXT("; "))),
+        Data, TEXT("PARTIAL_FAILURE"));
+    return true;
+  }
 
 	SendAutomationResponse(Socket, RequestId, true, TEXT("Component properties updated"), Data);
   return true;
@@ -243,7 +280,11 @@ bool UMcpAutomationBridgeSubsystem::HandleControlActorGetComponentProperty(
     return true;
   }
 
-  FProperty* Property = Component->GetClass()->FindPropertyByName(*PropertyName);
+  // BB-022/023: resolve through the shared nested-path boundary so dotted
+  // paths (e.g. BodyInstance.CollisionEnabled) resolve, not just single names.
+  void* ContainerPtr = nullptr;
+  FString ResolveError;
+  FProperty* Property = ResolveNestedPropertyPath(Component, PropertyName, ContainerPtr, ResolveError);
   if (!Property) {
     SendAutomationError(Socket, RequestId,
         FString::Printf(TEXT("Property not found: %s on component: %s"), *PropertyName, *ComponentName),
@@ -257,7 +298,8 @@ bool UMcpAutomationBridgeSubsystem::HandleControlActorGetComponentProperty(
   Data->SetStringField(TEXT("propertyName"), PropertyName);
   Data->SetStringField(TEXT("propertyType"), Property->GetClass()->GetName());
 
-  TSharedPtr<FJsonValue> PropertyValue = ExportPropertyToJsonValue(Component, Property);
+  // Read from the resolved container (== Component for single-name paths).
+  TSharedPtr<FJsonValue> PropertyValue = ExportPropertyToJsonValue(ContainerPtr, Property);
   if (PropertyValue.IsValid()) {
     Data->SetField(TEXT("value"), PropertyValue);
   } else {

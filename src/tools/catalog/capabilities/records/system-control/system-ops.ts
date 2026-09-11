@@ -52,6 +52,7 @@ export const SYSTEM_OPS_RECORDS: readonly CapabilityRecordSource[] = [
     action: 'run_tests',
     domain: 'build',
     family: 'build',
+    topics: ['automation tests', 'run tests', 'test suite', 'functional tests'],
     summary: 'Run the automation test suite via the manage_tests bridge action with an optional filter.',
     whenToUse: ['The project automation tests must be executed.'],
     whenNotToUse: ['A single ad-hoc console command is needed.'],
@@ -141,12 +142,24 @@ export const SYSTEM_OPS_RECORDS: readonly CapabilityRecordSource[] = [
     action: 'execute_python',
     domain: 'python',
     family: 'python',
+    topics: ['python', 'run python', 'python script', 'execute script', 'py code'],
     summary: 'Execute inline Python code or a .py file in the editor via the native HandleExecutePython handler.',
     whenToUse: ['Editor-side Python automation must run inline or from a script file.'],
     whenNotToUse: ['Untrusted code without review; runs arbitrary editor-side code.'],
     inputProps: {
       code: { type: 'string', description: 'Python code to execute inline (1 MB max).', maxLength: 1048576 },
       file: { type: 'string', description: 'Path to a .py file to execute.', maxLength: 4096 },
+    },
+    // The handler already returns stdout and the interpreter traceback, but the
+    // default {success, message} output schema is closed, so both were stripped
+    // before reaching the caller. A failing script reported only "Python
+    // execution failed" — no traceback on the receipt and none in the editor
+    // log either, leaving the failure undiagnosable from either transport.
+    outputProps: {
+      output: { type: 'string', description: 'Captured stdout from the script.' },
+      error: { type: 'string', description: 'Captured stderr and the interpreter traceback when the script raises.' },
+      executionId: { type: 'string', description: 'Correlates the run with the temp wrapper under Saved/Temp/MCP_Python.' },
+      codeSha256: { type: 'string', description: 'SHA-256 of the executed code, as logged.' },
     },
     required: [],
     requiredOneOf: ['code', 'file'],
@@ -195,10 +208,28 @@ export const SYSTEM_OPS_RECORDS: readonly CapabilityRecordSource[] = [
     whenToUse: ['Project settings must be read for a section.'],
     whenNotToUse: ['A single setting must be written (use set_project_setting).'],
     inputProps: {
+      key: { type: 'string', description: 'Single config property to read from the section; the reply then carries key and value.' },
       section: { type: 'string', description: 'Settings section.' },
       category: { type: 'string', description: 'Alternate section selector.' },
     },
     required: [],
+    // The local TS wrapper re-dispatches to system_control; the native Ui
+    // project-settings handler (UiHandlersProjectSettings.cpp:18-57) returns a
+    // settings object with engine/project identity plus GameUserSettings values.
+    outputProps: {
+      settings: {
+        type: 'object',
+        'x-unreal-reflection-boundary': true,
+        description: 'Config properties of the requested section (every CPF_Config property of the settings class as text), or the project snapshot (engineVersion, projectName, projectDir, maps, general) when no section is given.',
+      },
+      section: { type: 'string', description: 'Resolved settings class path.' },
+      configName: { type: 'string', description: 'Config file family (Engine, Game, Input, ...).' },
+      settingCount: { type: 'number', description: 'Number of config properties returned.' },
+      key: { type: 'string', description: 'Requested key, when one was asked for.' },
+      value: { type: 'string', description: 'Value of the requested key.' },
+      hint: { type: 'string', description: 'How to get a full section dump.' },
+    },
+    outputRequired: [],
     effect: 'read',
     costLatency: 'interactive',
     costResources: 'low',

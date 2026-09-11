@@ -1,5 +1,7 @@
 #include "Domains/LevelStructure/McpAutomationBridge_LevelStructureActions.h"
 
+DEFINE_LOG_CATEGORY(LogMcpLevelStructureHandlers);
+
 #include "Dom/JsonObject.h"
 #include "McpAutomationBridgeSubsystem.h"
 #include "Core/Module/McpAutomationBridgeGlobals.h"
@@ -111,6 +113,10 @@ bool UMcpAutomationBridgeSubsystem::HandleManageLevelStructureAction(
     {
         bHandled = HandleAddLevelBlueprintNode(this, RequestId, Payload, Socket);
     }
+    else if (SubAction == TEXT("remove_level_blueprint_node"))
+    {
+        bHandled = HandleRemoveLevelBlueprintNode(this, RequestId, Payload, Socket);
+    }
     else if (SubAction == TEXT("connect_level_blueprint_nodes"))
     {
         bHandled = HandleConnectLevelBlueprintNodes(this, RequestId, Payload, Socket);
@@ -133,6 +139,12 @@ bool UMcpAutomationBridgeSubsystem::HandleManageLevelStructureAction(
     }
     else
     {
+        // Only claim unknown sub-actions when this handler was addressed directly;
+        // in the shared fallback chain it must not swallow other domains' requests (dogfood #112/#176).
+        if (!Action.Equals(TEXT("manage_level_structure"), ESearchCase::IgnoreCase))
+        {
+            return false;
+        }
         SendAutomationResponse(Socket, RequestId, false,
             FString::Printf(TEXT("Unknown manage_level_structure action: %s"), *SubAction), nullptr);
         return true;

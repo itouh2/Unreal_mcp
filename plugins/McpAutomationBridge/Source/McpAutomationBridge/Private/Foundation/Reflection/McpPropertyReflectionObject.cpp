@@ -24,6 +24,52 @@ TSharedPtr<FJsonObject> ExportObjectToJson(UObject* Object, bool bIncludeTransie
     return Result;
 }
 
+TSharedPtr<FJsonObject> ExportObjectToJsonBounded(UObject* Object, bool bIncludeTransient, int32 MaxProperties)
+{
+    if (!Object) return nullptr;
+
+    const int32 Cap = FMath::Max(0, MaxProperties);
+    TSharedPtr<FJsonObject> Result = MakeShared<FJsonObject>();
+    int32 Total = 0;
+    int32 Emitted = 0;
+    bool bTruncated = false;
+
+    for (TFieldIterator<FProperty> It(Object->GetClass()); It; ++It)
+    {
+        FProperty* Property = *It;
+        if (!Property ||
+            (!bIncludeTransient && Property->HasAnyPropertyFlags(CPF_Transient)) ||
+            Property->HasAnyPropertyFlags(CPF_Deprecated))
+        {
+            continue;
+        }
+
+        ++Total;
+        // Truncation is claimed ONLY when the cap is what stopped us. A property
+        // that simply fails to export must not be reported as withheld.
+        if (Emitted >= Cap)
+        {
+            bTruncated = true;
+            continue;
+        }
+
+        TSharedPtr<FJsonValue> Value = McpPropertyReflection::ExportPropertyToJsonValue(Object, Property);
+        if (Value.IsValid())
+        {
+            Result->SetField(Property->GetName(), Value);
+            ++Emitted;
+        }
+    }
+
+    // The leading dollar cannot occur in a UPROPERTY name, so these bookkeeping
+    // keys can never collide with a reflected property on this same object.
+    Result->SetNumberField(TEXT("$mcpPropertyCount"), Total);
+    Result->SetNumberField(TEXT("$mcpMaxProperties"), Cap);
+    Result->SetBoolField(TEXT("$mcpTruncated"), bTruncated);
+
+    return Result;
+}
+
 TSharedPtr<FJsonObject> ExportPropertiesToJson(UObject* Object, const TArray<FName>& PropertyNames)
 {
     if (!Object) return nullptr;
@@ -39,41 +85,5 @@ TSharedPtr<FJsonObject> ExportPropertiesToJson(UObject* Object, const TArray<FNa
     }
 
     return Result;
-}
-
-int32 ApplyJsonValuesToObject(UObject* Object, const TMap<FName, TSharedPtr<FJsonValue>>& JsonValues, TMap<FName, FString>* OutErrors)
-{
-    if (!Object) return 0;
-
-    int32 SuccessCount = 0;
-    UClass* Class = Object->GetClass();
-    for (const auto& Pair : JsonValues)
-    {
-        FProperty* Property = Class->FindPropertyByName(Pair.Key);
-        if (!Property)
-        {
-            if (OutErrors) OutErrors->Add(Pair.Key, TEXT("Property not found"));
-            continue;
-        }
-
-        FString Error;
-        if (McpPropertyReflection::ApplyJsonValueToProperty(Object, Property, Pair.Value, Error)) ++SuccessCount;
-        else if (OutErrors) OutErrors->Add(Pair.Key, Error);
-    }
-
-    return SuccessCount;
-}
-
-int32 ApplyJsonObjectToObject(UObject* Object, const TSharedPtr<FJsonObject>& JsonObject, TMap<FName, FString>* OutErrors)
-{
-    if (!Object || !JsonObject.IsValid()) return 0;
-
-    TMap<FName, TSharedPtr<FJsonValue>> Values;
-    for (const auto& Pair : JsonObject->Values)
-    {
-        Values.Add(FName(*Pair.Key), Pair.Value);
-    }
-
-    return ApplyJsonValuesToObject(Object, Values, OutErrors);
 }
 }

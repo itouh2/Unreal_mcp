@@ -17,37 +17,13 @@ bool HandleAppendVertex(UMcpAutomationBridgeSubsystem* Self, const FString& Requ
 
     FVector Position = ReadVectorFromPayload(Payload, TEXT("position"), FVector::ZeroVector);
 
-    UWorld* World = GEditor ? GEditor->GetEditorWorldContext().World() : nullptr;
-    if (!World)
-    {
-        Self->SendAutomationError(Socket, RequestId, TEXT("No world available"), TEXT("NO_WORLD"));
-        return true;
-    }
-
     ADynamicMeshActor* TargetActor = nullptr;
-    for (TActorIterator<ADynamicMeshActor> It(World); It; ++It)
+    UDynamicMeshComponent* DMC = nullptr;
+    UDynamicMesh* Mesh = nullptr;
+    if (!ResolveDynamicMeshForGeometry(Self, RequestId, ActorName, Socket, TargetActor, DMC, Mesh))
     {
-        if (It->GetActorLabel() == ActorName)
-        {
-            TargetActor = *It;
-            break;
-        }
-    }
-
-    if (!TargetActor)
-    {
-        Self->SendAutomationError(Socket, RequestId, FString::Printf(TEXT("Actor not found: %s"), *ActorName), TEXT("ACTOR_NOT_FOUND"));
         return true;
     }
-
-    UDynamicMeshComponent* DMC = TargetActor->GetDynamicMeshComponent();
-    if (!DMC || !DMC->GetDynamicMesh())
-    {
-        Self->SendAutomationError(Socket, RequestId, TEXT("DynamicMesh not available"), TEXT("MESH_NOT_FOUND"));
-        return true;
-    }
-
-    UDynamicMesh* Mesh = DMC->GetDynamicMesh();
     UE::Geometry::FDynamicMesh3& EditMesh = Mesh->GetMeshRef();
 
     int32 VertexIndex = EditMesh.AppendVertex(UE::Geometry::FVertexInfo(Position));
@@ -74,43 +50,19 @@ bool HandleDeleteVertex(UMcpAutomationBridgeSubsystem* Self, const FString& Requ
         return true;
     }
 
-    UWorld* World = GEditor ? GEditor->GetEditorWorldContext().World() : nullptr;
-    if (!World)
-    {
-        Self->SendAutomationError(Socket, RequestId, TEXT("No world available"), TEXT("NO_WORLD"));
-        return true;
-    }
-
     ADynamicMeshActor* TargetActor = nullptr;
-    for (TActorIterator<ADynamicMeshActor> It(World); It; ++It)
+    UDynamicMeshComponent* DMC = nullptr;
+    UDynamicMesh* Mesh = nullptr;
+    if (!ResolveDynamicMeshForGeometry(Self, RequestId, ActorName, Socket, TargetActor, DMC, Mesh))
     {
-        if (It->GetActorLabel() == ActorName)
-        {
-            TargetActor = *It;
-            break;
-        }
-    }
-
-    if (!TargetActor)
-    {
-        Self->SendAutomationError(Socket, RequestId, FString::Printf(TEXT("Actor not found: %s"), *ActorName), TEXT("ACTOR_NOT_FOUND"));
         return true;
     }
-
-    UDynamicMeshComponent* DMC = TargetActor->GetDynamicMeshComponent();
-    if (!DMC || !DMC->GetDynamicMesh())
-    {
-        Self->SendAutomationError(Socket, RequestId, TEXT("DynamicMesh not available"), TEXT("MESH_NOT_FOUND"));
-        return true;
-    }
-
-    UDynamicMesh* Mesh = DMC->GetDynamicMesh();
     UE::Geometry::FDynamicMesh3& EditMesh = Mesh->GetMeshRef();
 
     if (!EditMesh.IsVertex(VertexIndex))
     {
         Self->SendAutomationError(Socket, RequestId,
-            FString::Printf(TEXT("Invalid vertex index: %d"), VertexIndex), TEXT("INVALID_VERTEX"));
+            FString::Printf(TEXT("Invalid vertex index: %d (the dynamic mesh has %d vertices; build or import geometry first)"), VertexIndex, Mesh->GetMeshRef().VertexCount()), TEXT("INVALID_VERTEX"));
         return true;
     }
 
@@ -141,32 +93,13 @@ bool HandleGetVertexPosition(UMcpAutomationBridgeSubsystem* Self, const FString&
         return true;
     }
 
-    UWorld* World = GEditor ? GEditor->GetEditorWorldContext().World() : nullptr;
     ADynamicMeshActor* TargetActor = nullptr;
-
-    for (TActorIterator<ADynamicMeshActor> It(World); It; ++It)
+    UDynamicMeshComponent* DMC = nullptr;
+    UDynamicMesh* Mesh = nullptr;
+    if (!ResolveDynamicMeshForGeometry(Self, RequestId, ActorName, Socket, TargetActor, DMC, Mesh))
     {
-        if (It->GetActorLabel() == ActorName)
-        {
-            TargetActor = *It;
-            break;
-        }
-    }
-
-    if (!TargetActor)
-    {
-        Self->SendAutomationError(Socket, RequestId, FString::Printf(TEXT("Actor not found: %s"), *ActorName), TEXT("ACTOR_NOT_FOUND"));
         return true;
     }
-
-    UDynamicMeshComponent* DMC = TargetActor->GetDynamicMeshComponent();
-    if (!DMC || !DMC->GetDynamicMesh())
-    {
-        Self->SendAutomationError(Socket, RequestId, TEXT("DynamicMesh not available"), TEXT("MESH_NOT_FOUND"));
-        return true;
-    }
-
-    UDynamicMesh* Mesh = DMC->GetDynamicMesh();
 
     bool bIsValidVertex = false;
     FVector Position = UGeometryScriptLibrary_MeshQueryFunctions::GetVertexPosition(Mesh, VertexIndex, bIsValidVertex);
@@ -174,7 +107,7 @@ bool HandleGetVertexPosition(UMcpAutomationBridgeSubsystem* Self, const FString&
     if (!bIsValidVertex)
     {
         Self->SendAutomationError(Socket, RequestId,
-            FString::Printf(TEXT("Invalid vertex index: %d"), VertexIndex), TEXT("INVALID_VERTEX"));
+            FString::Printf(TEXT("Invalid vertex index: %d (the dynamic mesh has %d vertices; build or import geometry first)"), VertexIndex, Mesh->GetMeshRef().VertexCount()), TEXT("INVALID_VERTEX"));
         return true;
     }
 
@@ -205,38 +138,19 @@ bool HandleSetVertexPosition(UMcpAutomationBridgeSubsystem* Self, const FString&
         return true;
     }
 
-    UWorld* World = GEditor ? GEditor->GetEditorWorldContext().World() : nullptr;
     ADynamicMeshActor* TargetActor = nullptr;
-
-    for (TActorIterator<ADynamicMeshActor> It(World); It; ++It)
+    UDynamicMeshComponent* DMC = nullptr;
+    UDynamicMesh* Mesh = nullptr;
+    if (!ResolveDynamicMeshForGeometry(Self, RequestId, ActorName, Socket, TargetActor, DMC, Mesh))
     {
-        if (It->GetActorLabel() == ActorName)
-        {
-            TargetActor = *It;
-            break;
-        }
-    }
-
-    if (!TargetActor)
-    {
-        Self->SendAutomationError(Socket, RequestId, FString::Printf(TEXT("Actor not found: %s"), *ActorName), TEXT("ACTOR_NOT_FOUND"));
         return true;
     }
-
-    UDynamicMeshComponent* DMC = TargetActor->GetDynamicMeshComponent();
-    if (!DMC || !DMC->GetDynamicMesh())
-    {
-        Self->SendAutomationError(Socket, RequestId, TEXT("DynamicMesh not available"), TEXT("MESH_NOT_FOUND"));
-        return true;
-    }
-
-    UDynamicMesh* Mesh = DMC->GetDynamicMesh();
     UE::Geometry::FDynamicMesh3& EditMesh = Mesh->GetMeshRef();
 
     if (!EditMesh.IsVertex(VertexIndex))
     {
         Self->SendAutomationError(Socket, RequestId,
-            FString::Printf(TEXT("Invalid vertex index: %d"), VertexIndex), TEXT("INVALID_VERTEX"));
+            FString::Printf(TEXT("Invalid vertex index: %d (the dynamic mesh has %d vertices; build or import geometry first)"), VertexIndex, EditMesh.VertexCount()), TEXT("INVALID_VERTEX"));
         return true;
     }
 

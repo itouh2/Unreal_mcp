@@ -35,14 +35,17 @@ bool HandleAmbientActions(
         LocArr->Num() >= 3) {
       Location = FVector((*LocArr)[0]->AsNumber(), (*LocArr)[1]->AsNumber(),
                          (*LocArr)[2]->AsNumber());
+    } else {
+      const TSharedPtr<FJsonObject> *LocObj = nullptr; // {x, y, z} spelling (dogfood #226)
+      if (Payload->TryGetObjectField(TEXT("location"), LocObj) && LocObj) {
+        Location = FVector((*LocObj)->GetNumberField(TEXT("x")), (*LocObj)->GetNumberField(TEXT("y")), (*LocObj)->GetNumberField(TEXT("z")));
+      }
     }
 
     double Volume = 1.0;
     Payload->TryGetNumberField(TEXT("volume"), Volume);
     double Pitch = 1.0;
     Payload->TryGetNumberField(TEXT("pitch"), Pitch);
-    double StartTime = 0.0;
-    Payload->TryGetNumberField(TEXT("startTime"), StartTime);
 
     USoundAttenuation *Attenuation = nullptr;
     FString AttenPath;
@@ -77,6 +80,10 @@ bool HandleAmbientActions(
     AAmbientSound* AmbientActor = World->SpawnActor<AAmbientSound>(AAmbientSound::StaticClass(), Location, FRotator::ZeroRotator, SpawnParams);
     if (AmbientActor)
     {
+      FString AmbientName; // dogfood #114: allow naming the spawned actor
+      if (Payload->TryGetStringField(TEXT("name"), AmbientName) && !AmbientName.IsEmpty()) {
+        AmbientActor->SetActorLabel(AmbientName);
+      }
       AudioComp = AmbientActor->GetAudioComponent();
       if (AudioComp)
       {
@@ -96,6 +103,7 @@ bool HandleAmbientActions(
 
       TSharedPtr<FJsonObject> Resp = McpHandlerUtils::CreateResultObject();
       Resp->SetStringField(TEXT("componentName"), AudioComp->GetName());
+      if (AmbientActor) { Resp->SetStringField(TEXT("actorName"), AmbientActor->GetActorLabel()); } // contract output
       McpHandlerUtils::AddVerification(Resp, Sound);
       AddComponentVerification(Resp, AudioComp);
       Self->SendAutomationResponse(RequestingSocket, RequestId, true,
@@ -133,6 +141,11 @@ bool HandleAmbientActions(
         LocArr->Num() >= 3) {
       Location = FVector((*LocArr)[0]->AsNumber(), (*LocArr)[1]->AsNumber(),
                          (*LocArr)[2]->AsNumber());
+    } else {
+      const TSharedPtr<FJsonObject> *LocObj = nullptr; // {x, y, z} spelling (dogfood #226)
+      if (Payload->TryGetObjectField(TEXT("location"), LocObj) && LocObj) {
+        Location = FVector((*LocObj)->GetNumberField(TEXT("x")), (*LocObj)->GetNumberField(TEXT("y")), (*LocObj)->GetNumberField(TEXT("z")));
+      }
     }
 
     FRotator Rotation = FRotator::ZeroRotator;
@@ -147,8 +160,6 @@ bool HandleAmbientActions(
     Payload->TryGetNumberField(TEXT("volume"), Volume);
     double Pitch = 1.0;
     Payload->TryGetNumberField(TEXT("pitch"), Pitch);
-    double StartTime = 0.0;
-    Payload->TryGetNumberField(TEXT("startTime"), StartTime);
 
     if (!GEditor)
     {
@@ -163,7 +174,15 @@ bool HandleAmbientActions(
       return true;
     }
 
-    UAudioComponent *AudioComp = CreateAudioComponentAtEditorLocation(World, Sound, Location, Rotation, FString());
+    // Honour name/actorName for the spawned sound actor (dogfood #114).
+    FString SpawnedName;
+    if (!Payload->TryGetStringField(TEXT("name"), SpawnedName)) {
+      Payload->TryGetStringField(TEXT("actorName"), SpawnedName);
+    }
+    if (SpawnedName.IsEmpty()) {
+      Payload->TryGetStringField(TEXT("componentName"), SpawnedName); // dogfood #114
+    }
+    UAudioComponent *AudioComp = CreateAudioComponentAtEditorLocation(World, Sound, Location, Rotation, SpawnedName);
 
     if (AudioComp) {
       AudioComp->SetVolumeMultiplier((float)Volume);

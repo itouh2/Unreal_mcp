@@ -50,48 +50,29 @@ bool HandleWidgetAuthoringSlotAppearance(
             return true;
         }
 
-        // Check for different slot types
-        if (UHorizontalBoxSlot* HBoxSlot = Cast<UHorizontalBoxSlot>(Widget->Slot))
+        TSharedPtr<FJsonObject> PaddingObj = GetObjectField(Payload, TEXT("padding"));
+        if (PaddingObj.IsValid())
         {
-            TSharedPtr<FJsonObject> PaddingObj = GetObjectField(Payload, TEXT("padding"));
-            if (PaddingObj.IsValid())
+            FMargin Padding;
+            Padding.Left = GetJsonNumberField(PaddingObj, TEXT("left"), 0.0);
+            Padding.Top = GetJsonNumberField(PaddingObj, TEXT("top"), 0.0);
+            Padding.Right = GetJsonNumberField(PaddingObj, TEXT("right"), 0.0);
+            Padding.Bottom = GetJsonNumberField(PaddingObj, TEXT("bottom"), 0.0);
+            if (UHorizontalBoxSlot* HBoxSlot = Cast<UHorizontalBoxSlot>(Widget->Slot))
             {
-                FMargin Padding;
-                Padding.Left = GetJsonNumberField(PaddingObj, TEXT("left"), 0.0);
-                Padding.Top = GetJsonNumberField(PaddingObj, TEXT("top"), 0.0);
-                Padding.Right = GetJsonNumberField(PaddingObj, TEXT("right"), 0.0);
-                Padding.Bottom = GetJsonNumberField(PaddingObj, TEXT("bottom"), 0.0);
                 HBoxSlot->SetPadding(Padding);
             }
-        }
-        else if (UVerticalBoxSlot* VBoxSlot = Cast<UVerticalBoxSlot>(Widget->Slot))
-        {
-            TSharedPtr<FJsonObject> PaddingObj = GetObjectField(Payload, TEXT("padding"));
-            if (PaddingObj.IsValid())
+            else if (UVerticalBoxSlot* VBoxSlot = Cast<UVerticalBoxSlot>(Widget->Slot))
             {
-                FMargin Padding;
-                Padding.Left = GetJsonNumberField(PaddingObj, TEXT("left"), 0.0);
-                Padding.Top = GetJsonNumberField(PaddingObj, TEXT("top"), 0.0);
-                Padding.Right = GetJsonNumberField(PaddingObj, TEXT("right"), 0.0);
-                Padding.Bottom = GetJsonNumberField(PaddingObj, TEXT("bottom"), 0.0);
                 VBoxSlot->SetPadding(Padding);
             }
-        }
-        else if (UOverlaySlot* OverlaySlotWidget = Cast<UOverlaySlot>(Widget->Slot))
-        {
-            TSharedPtr<FJsonObject> PaddingObj = GetObjectField(Payload, TEXT("padding"));
-            if (PaddingObj.IsValid())
+            else if (UOverlaySlot* OverlaySlotWidget = Cast<UOverlaySlot>(Widget->Slot))
             {
-                FMargin Padding;
-                Padding.Left = GetJsonNumberField(PaddingObj, TEXT("left"), 0.0);
-                Padding.Top = GetJsonNumberField(PaddingObj, TEXT("top"), 0.0);
-                Padding.Right = GetJsonNumberField(PaddingObj, TEXT("right"), 0.0);
-                Padding.Bottom = GetJsonNumberField(PaddingObj, TEXT("bottom"), 0.0);
                 OverlaySlotWidget->SetPadding(Padding);
             }
         }
 
-        FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(WidgetBP);
+        WidgetAuthoringHelpers::MarkWidgetBlueprintModifiedAndSave(WidgetBP);
 
         ResultJson->SetBoolField(TEXT("success"), true);
         ResultJson->SetStringField(TEXT("message"), TEXT("Padding set"));
@@ -127,12 +108,18 @@ bool HandleWidgetAuthoringSlotAppearance(
         }
 
         UCanvasPanelSlot* CanvasSlot = Cast<UCanvasPanelSlot>(Widget->Slot);
-        if (CanvasSlot)
-        {
-            CanvasSlot->SetZOrder(ZOrder);
-        }
 
-        FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(WidgetBP);
+        if (!CanvasSlot)
+        {
+            // Only canvas slots carry this setting; reporting success on a box/overlay slot was a no-op (dogfood #190).
+            Subsystem.SendAutomationError(RequestingSocket, RequestId,
+                FString::Printf(TEXT("set_z_order needs a CanvasPanel child; '%s' sits in a %s"), *SlotName, Widget->Slot ? *Widget->Slot->GetClass()->GetName() : TEXT("no slot")),
+                TEXT("INVALID_SLOT"));
+            return true;
+        }
+        CanvasSlot->SetZOrder(ZOrder);
+
+        WidgetAuthoringHelpers::MarkWidgetBlueprintModifiedAndSave(WidgetBP);
 
         ResultJson->SetBoolField(TEXT("success"), true);
         ResultJson->SetStringField(TEXT("message"), FString::Printf(TEXT("Z-order set to %d"), ZOrder));
@@ -196,7 +183,7 @@ bool HandleWidgetAuthoringSlotAppearance(
 
         Widget->SetRenderTransform(RenderTransform);
 
-        FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(WidgetBP);
+        WidgetAuthoringHelpers::MarkWidgetBlueprintModifiedAndSave(WidgetBP);
 
         ResultJson->SetBoolField(TEXT("success"), true);
         ResultJson->SetStringField(TEXT("message"), TEXT("Render transform set"));
@@ -234,7 +221,7 @@ bool HandleWidgetAuthoringSlotAppearance(
         ESlateVisibility Visibility = GetVisibility(VisibilityStr);
         Widget->SetVisibility(Visibility);
 
-        FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(WidgetBP);
+        WidgetAuthoringHelpers::MarkWidgetBlueprintModifiedAndSave(WidgetBP);
 
         ResultJson->SetBoolField(TEXT("success"), true);
         ResultJson->SetStringField(TEXT("message"), FString::Printf(TEXT("Visibility set to %s"), *VisibilityStr));

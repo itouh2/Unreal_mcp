@@ -1,14 +1,15 @@
 # src/server/gateway/ — GATEWAY ROUTING ENGINE
 
-The 16 files here own search/describe/execute/configure routing for the `unreal` gateway tool. They decide WHAT to call and HOW to shape the request, then hand off to the canonical 23-tool boundary. They do not implement domain logic.
+The 23 source files here own search/describe/execute/configure routing for the `unreal` gateway tool. They decide WHAT to call and HOW to shape the request, then hand off to the canonical 23-tool boundary. They do not implement domain logic. (Plus 3 colocated unit-test files and this guide; 27 entries total.)
 
 NOTE: `src/gateway/` (sibling, 3 of 4 files generated) is only the manifest DATA + loader. Never edit it from here; never route through it at runtime.
 
 ## STRUCTURE
 
+The gateway ENTRY lives one level up: `src/server/tool-registry-gateway.ts` -> `handleUnrealGatewayCall()` -> `dispatchGatewayOperation()` switching search/describe/execute/configure (`configure` wraps `handleManageToolsCall()`).
+
 | File | Owns |
 |------|------|
-| `tool-registry-gateway.ts` | Entry: `handleUnrealGatewayCall()` -> `dispatchGatewayOperation()` switching search/describe/execute/configure. `configure` wraps `handleManageToolsCall()`. |
 | `gateway-shared.ts` | `getString` `getBoundedInteger` `gatewayError` `isGatewayFailure` `findTool` `allToolNames` `nextGatewayCorrelationId` |
 | `gateway-search.ts` | `searchGatewayCapabilities()` |
 | `gateway-search-filters.ts` | `readFilters` `validateFilters` `selectCandidates`; cursor encode/decode |
@@ -20,9 +21,16 @@ NOTE: `src/gateway/` (sibling, 3 of 4 files generated) is only the manifest DATA
 | `gateway-availability.ts` | `capabilityAvailability()` |
 | `gateway-execute.ts` | `executeGatewayCall()` |
 | `gateway-execute-resolve.ts` | `executeTargetIndex` `resolveExecuteTarget` (capability id, tool+action, alias, migration) |
-| `gateway-execute-validate.ts` | `validateAgainstCapabilitySchema` `applyDeclaredDefaults` `validateExecutionOptions` `findControlKeyInParams` |
+| `gateway-execute-validate.ts` | Facade re-exporting the validation stages below (`applyDeclaredDefaults` `validateExecutionOptions` `findControlKeyInParams` `validateAgainstCapabilitySchema`) |
+| `gateway-option-validate.ts` | Stage 2-3 execution-option rules: supported keys, timeout bounds, idempotency-key format, `expectedRevisions` shape, preview refusal, unimplemented-option refusal |
+| `gateway-schema-validate.ts` | Stage 4 Draft-2020-12 subset validator: supported keywords, fail-closed unknown keyword, `hasOwn` prototype-safe lookup, declared defaults |
 | `gateway-execute-envelope.ts` | `refuseWithTarget` `executeErrorEnvelope` `executeSuccessEnvelope` `toSemanticError` |
+| `gateway-execute-policy.ts` | execute-stage policy gate (authorization preflight) |
+| `gateway-execute-idempotency.ts` | execute-stage idempotency slot handling (delegates to `idempotency-ledger.ts`) |
+| `idempotency-ledger.ts` | Principal-scoped idempotency ledger (cap 1024, SHA-256 slot; native mirror cap 4096) |
+| `gateway-receipt-context.ts` | `buildReceiptContext()` — correlation, catalog revision, echoed options |
 | `gateway-execute-dispatch.ts` | `dispatchAndValidate()` -> `maybeElicitMissingArgs()` -> `handleConsolidatedToolCall()` |
+| `direct-call-migration.ts` | `DIRECT_TOOL_CALL_REMOVED` receipt for direct canonical-name calls |
 | `gateway-guidance.ts` | `closestMatches()` (Levenshtein+prefix, `MAX_SUGGESTIONS=3`) `buildNextCall()` |
 | `gateway-schema-normalize.ts` | `normalizeSchemaTypes()` |
 
@@ -58,11 +66,12 @@ Unknown tool/action/param returns `suggestions` (`closestMatches`) + executable 
 
 - The gateway never calls a domain handler directly. `handleConsolidatedToolCall(record.routing.parentTool, targetArgs, context.tools)` is the canonical 23-tool boundary.
 - No mode toggle: the public surface is permanently the single `unreal` gateway tool. The `config.MCP_GATEWAY_MODE` flag and the `tool-registry-legacy.ts` direct-listing path were removed.
-- Native mirror: `plugins/McpAutomationBridge/Source/McpAutomationBridge/Private/MCP/Gateway/`. Keep behaviorally in sync; it is likewise permanent (the `bEnableNativeGateway` setting was removed).
+- Native mirror: `plugins/McpAutomationBridge/Source/McpAutomationBridge/Private/MCP/Gateway/`. Keep behaviorally in sync; it is likewise permanent (the `bEnableNativeGateway` setting was removed). Native search matching lives in `McpNativeGatewaySearchMatch.cpp` and must stay byte-identical to `tests/unit/plugin/gateway/native-discovery-search.ts` (the POSIX harness diffs their output on every fixture in `tests/harness/native-discovery/cases.json`): change both or neither.
+- A response with nothing to copy makes a model invent names, so an empty `search` page answers with a rephrase hint plus `nextCall: { operation: 'describe' }` (`envelope()` in `gateway-search.ts`) and the `{ tool }` summary adds `browse` (search filtered to that tool, rows with summaries). Keep both when editing those envelopes.
 
 ## ANTI-PATTERNS
 
 - Routing around `handleConsolidatedToolCall` to a domain handler.
 - Editing `src/gateway/` manifest data from this engine.
 - Dumping full `inputSchema` at the describe summary level (breaks progressive disclosure).
-- Drifting the native `MCP/Gateway/` mirror out of sync with these 16 files.
+- Drifting the native `MCP/Gateway/` mirror out of sync with these 23 files.

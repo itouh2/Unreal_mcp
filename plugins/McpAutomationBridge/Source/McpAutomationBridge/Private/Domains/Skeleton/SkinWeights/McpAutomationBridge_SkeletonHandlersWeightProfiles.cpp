@@ -18,7 +18,7 @@ namespace McpSkeletonHandlers {
 
 bool HandleSetVertexWeightsAction(UMcpAutomationBridgeSubsystem* Subsystem, const FString& RequestId, const TSharedPtr<FJsonObject>& Payload, TSharedPtr<FMcpBridgeWebSocket> RequestingSocket)
 {
-FString SkeletalMeshPath = GetJsonStringField(Payload, TEXT("skeletalMeshPath"));
+        FString SkeletalMeshPath = GetJsonStringField(Payload, TEXT("skeletalMeshPath"));
         FString ProfileName = GetJsonStringField(Payload, TEXT("profileName"));
         if (ProfileName.IsEmpty())
         {
@@ -153,7 +153,7 @@ FString SkeletalMeshPath = GetJsonStringField(Payload, TEXT("skeletalMeshPath"))
 
 bool HandleAutoSkinWeightsAction(UMcpAutomationBridgeSubsystem* Subsystem, const FString& RequestId, const TSharedPtr<FJsonObject>& Payload, TSharedPtr<FMcpBridgeWebSocket> RequestingSocket)
 {
-// Auto skin weights computation - typically done during import
+        // Auto skin weights computation - typically done during import
         // We trigger a mesh rebuild which recalculates default weights
         FString SkeletalMeshPath = GetJsonStringField(Payload, TEXT("skeletalMeshPath"));
 
@@ -177,6 +177,18 @@ bool HandleAutoSkinWeightsAction(UMcpAutomationBridgeSubsystem* Subsystem, const
 
         TSharedPtr<FJsonObject> Result = McpHandlerUtils::CreateResultObject();
         Result->SetStringField(TEXT("skeletalMeshPath"), SkeletalMeshPath);
+        // Verification counts so the rebuild is checkable (dogfood #99).
+        if (FSkeletalMeshModel* Model = Mesh->GetImportedModel())
+        {
+            if (Model->LODModels.Num() > 0)
+            {
+                Result->SetNumberField(TEXT("vertexCount"), Model->LODModels[0].NumVertices);
+                Result->SetNumberField(TEXT("sectionCount"), Model->LODModels[0].Sections.Num());
+                Result->SetNumberField(TEXT("maxBoneInfluences"), Model->LODModels[0].GetMaxBoneInfluences());
+            }
+            Result->SetNumberField(TEXT("lodCount"), Model->LODModels.Num());
+        }
+        Result->SetNumberField(TEXT("boneCount"), Mesh->GetRefSkeleton().GetNum());
         Result->SetBoolField(TEXT("rebuilt"), true);
 
         Subsystem->SendAutomationResponse(RequestingSocket, RequestId, true,

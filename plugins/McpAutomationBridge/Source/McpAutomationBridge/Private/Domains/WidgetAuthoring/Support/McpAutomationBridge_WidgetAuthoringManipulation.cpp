@@ -25,10 +25,6 @@ bool HandleWidgetAuthoringManipulation(
     TSharedPtr<FMcpBridgeWebSocket> RequestingSocket,
     TSharedPtr<FJsonObject> ResultJson)
 {
-    // =========================================================================
-    // 19.11 Widget Manipulation Actions
-    // =========================================================================
-
     if (SubAction.Equals(TEXT("remove_widget"), ESearchCase::IgnoreCase))
     {
         FString WidgetPath = GetJsonStringField(Payload, TEXT("widgetPath"));
@@ -55,7 +51,7 @@ bool HandleWidgetAuthoringManipulation(
         }
 
         WidgetBP->WidgetTree->RemoveWidget(TargetWidget);
-        FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(WidgetBP);
+        WidgetAuthoringHelpers::MarkWidgetBlueprintModifiedAndSave(WidgetBP);
 
         ResultJson->SetBoolField(TEXT("success"), true);
         ResultJson->SetStringField(TEXT("widgetPath"), WidgetPath);
@@ -91,9 +87,30 @@ bool HandleWidgetAuthoringManipulation(
             return true;
         }
 
-        // Rename requires FBlueprintEditorUtils for proper undo/redo support
-        TargetWidget->Rename(*NewName);
-        FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(WidgetBP);
+        // Dogfood #192: a bare UObject::Rename left WidgetVariableNameToGuidMap keyed by the old
+        // name, so the next compile ensured twice ("was added but did not get a GUID" / "was
+        // deleted but still has a GUID"). Mirror FWidgetBlueprintEditorUtils::RenameWidget.
+        if (WidgetBP->WidgetTree->FindWidget(FName(*NewName)) != nullptr)
+        {
+            Subsystem.SendAutomationError(RequestingSocket, RequestId, FString::Printf(TEXT("A widget named '%s' already exists"), *NewName), TEXT("ALREADY_EXISTS"));
+            return true;
+        }
+        const FName OldFName(*OldName);
+        const FName NewFName(*NewName);
+        WidgetBP->Modify();
+        TargetWidget->Modify();
+        TargetWidget->Rename(*NewName, nullptr, REN_DontCreateRedirectors);
+        TargetWidget->SetDisplayLabel(NewName);
+        FGuid WidgetGuid;
+        if (WidgetBP->WidgetVariableNameToGuidMap.RemoveAndCopyValue(OldFName, WidgetGuid))
+        {
+            WidgetBP->WidgetVariableNameToGuidMap.Add(NewFName, WidgetGuid);
+        }
+        if (TargetWidget->bIsVariable)
+        {
+            FBlueprintEditorUtils::ReplaceVariableReferences(WidgetBP, OldFName, NewFName);
+        }
+        WidgetAuthoringHelpers::MarkWidgetBlueprintModifiedAndSave(WidgetBP);
 
         ResultJson->SetBoolField(TEXT("success"), true);
         ResultJson->SetStringField(TEXT("widgetPath"), WidgetPath);
@@ -143,7 +160,7 @@ bool HandleWidgetAuthoringManipulation(
         }
         NewParentWidget->AddChild(TargetWidget);
 
-        FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(WidgetBP);
+        WidgetAuthoringHelpers::MarkWidgetBlueprintModifiedAndSave(WidgetBP);
 
         ResultJson->SetBoolField(TEXT("success"), true);
         ResultJson->SetStringField(TEXT("widgetPath"), WidgetPath);

@@ -27,10 +27,6 @@ bool HandleWidgetAuthoringGridPanels(
     TSharedPtr<FMcpBridgeWebSocket> RequestingSocket,
     TSharedPtr<FJsonObject> ResultJson)
 {
-    // =========================================================================
-    // 19.2 Layout Panels (continued)
-    // =========================================================================
-
     if (SubAction.Equals(TEXT("add_grid_panel"), ESearchCase::IgnoreCase))
     {
         FString WidgetPath = GetJsonStringField(Payload, TEXT("widgetPath"));
@@ -71,7 +67,7 @@ bool HandleWidgetAuthoringGridPanels(
             return true;
         }
 
-        FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(WidgetBP);
+        WidgetAuthoringHelpers::MarkWidgetBlueprintModifiedAndSave(WidgetBP);
 
         // CRITICAL: Validate widget creation succeeded and check for engine errors
         FString ValidationError;
@@ -150,7 +146,7 @@ bool HandleWidgetAuthoringGridPanels(
             return true;
         }
 
-        FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(WidgetBP);
+        WidgetAuthoringHelpers::MarkWidgetBlueprintModifiedAndSave(WidgetBP);
 
         // CRITICAL: Validate widget creation succeeded and check for engine errors
         FString ValidationError;
@@ -225,7 +221,7 @@ bool HandleWidgetAuthoringGridPanels(
             return true;
         }
 
-        FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(WidgetBP);
+        WidgetAuthoringHelpers::MarkWidgetBlueprintModifiedAndSave(WidgetBP);
 
         // CRITICAL: Validate widget creation succeeded and check for engine errors
         FString ValidationError;

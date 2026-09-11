@@ -16,10 +16,8 @@ import type { CapabilityRecordSource, JsonObject } from '../../../index.js';
 import { buildRecord } from '../helpers.js';
 import { P } from '../properties.js';
 import type { PropertyMap } from '../properties.js';
+import { str, num, bool } from '../../shared/schema-props.js';
 
-const str = (desc: string): JsonObject => ({ type: 'string', description: desc });
-const num = (desc: string): JsonObject => ({ type: 'number', description: desc });
-const bool = (desc: string): JsonObject => ({ type: 'boolean', description: desc });
 
 /** Inventory parameter vocabulary, keyed by the exact payload field name. */
 export const IP: PropertyMap = {
@@ -95,12 +93,15 @@ export const IP: PropertyMap = {
 export interface InventoryActionSpec {
   readonly action: string;
   readonly summary: string;
+  readonly topics?: readonly string[];
   readonly inputProps: PropertyMap;
   readonly required?: readonly string[];
   readonly requiredOneOf?: readonly string[];
   readonly exampleInput: JsonObject;
   /** Only get_inventory_info reads without writing. */
   readonly read?: boolean;
+  readonly outputProps?: PropertyMap;
+  readonly outputRequired?: readonly string[];
 }
 
 /**
@@ -116,13 +117,14 @@ export function inventoryRecord(spec: InventoryActionSpec): CapabilityRecordSour
     action: spec.action,
     family: 'inventory',
     summary: spec.summary,
+    topics: spec.topics,
     whenToUse: [`Use the leaf-backed ${spec.action} capability.`],
     whenNotToUse: ['Do not substitute a similarly named action with different semantics.'],
     inputProps: { action: P.action, ...spec.inputProps },
     required: ['action', ...(spec.required ?? [])],
     requiredOneOf: spec.requiredOneOf,
-    outputProps: { assetPath: P.assetPath },
-    outputRequired: [],
+    outputProps: spec.outputProps ?? { assetPath: P.assetPath },
+    outputRequired: spec.outputRequired ?? [],
     effect: spec.read === true ? 'read' : 'write',
     latency: 'interactive',
     resources: 'medium',

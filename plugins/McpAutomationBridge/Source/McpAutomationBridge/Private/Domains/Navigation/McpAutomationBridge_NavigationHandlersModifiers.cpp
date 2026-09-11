@@ -9,10 +9,10 @@ bool HandleCreateNavModifierComponent(
     const TSharedPtr<FJsonObject>& Payload,
     TSharedPtr<FMcpBridgeWebSocket> Socket)
 {
-    FString BlueprintPath = GetJsonStringFieldNav(Payload, TEXT("blueprintPath"));
-    FString ComponentName = GetJsonStringFieldNav(Payload, TEXT("componentName"), TEXT("NavModifier"));
-    FString AreaClassPath = GetJsonStringFieldNav(Payload, TEXT("areaClass"));
-    FVector FailsafeExtent = GetJsonVectorFieldNav(Payload, TEXT("failsafeExtent"), FVector(100, 100, 100));
+    FString BlueprintPath = GetJsonStringField(Payload, TEXT("blueprintPath"));
+    FString ComponentName = GetJsonStringField(Payload, TEXT("componentName"), TEXT("NavModifier"));
+    FString AreaClassPath = GetJsonStringField(Payload, TEXT("areaClass"));
+    FVector FailsafeExtent = ExtractVectorField(Payload, TEXT("failsafeExtent"), FVector(100, 100, 100));
 
     if (BlueprintPath.IsEmpty())
     {
@@ -30,6 +30,23 @@ bool HandleCreateNavModifierComponent(
         Self->SendAutomationResponse(Socket, RequestId, false,
             TEXT("Invalid areaClass: must not contain path traversal (..) or invalid format"), nullptr, TEXT("SECURITY_VIOLATION"));
         return true;
+    }
+    // Resolve the area class up front so an unknown class is refused instead of
+    // silently falling back to the default area (dogfood #61).
+    UClass* ResolvedAreaClass = nullptr;
+    if (!AreaClassPath.IsEmpty())
+    {
+        ResolvedAreaClass = LoadClass<UNavArea>(nullptr, *AreaClassPath);
+        if (!ResolvedAreaClass)
+        {
+            ResolvedAreaClass = StaticLoadClass(UNavArea::StaticClass(), nullptr, *AreaClassPath);
+        }
+        if (!ResolvedAreaClass)
+        {
+            Self->SendAutomationResponse(Socket, RequestId, false,
+                FString::Printf(TEXT("areaClass not found or not a UNavArea subclass: %s"), *AreaClassPath), nullptr, TEXT("INVALID_AREA_CLASS"));
+            return true;
+        }
     }
 
     UBlueprint* Blueprint = LoadObject<UBlueprint>(nullptr, *BlueprintPath);
@@ -70,17 +87,16 @@ bool HandleCreateNavModifierComponent(
         ModComp->FailsafeExtent = FailsafeExtent;
         if (!AreaClassPath.IsEmpty())
         {
-            UClass* AreaClass = LoadClass<UNavArea>(nullptr, *AreaClassPath);
-            if (AreaClass)
+            if (ResolvedAreaClass)
             {
-                ModComp->AreaClass = AreaClass;
+                ModComp->AreaClass = ResolvedAreaClass;
             }
         }
     }
 
     SCS->AddNode(NewNode);
     FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(Blueprint);
-    if (GetJsonBoolFieldNav(Payload, TEXT("save"), false))
+    if (GetJsonBoolField(Payload, TEXT("save"), false))
     {
         McpSafeAssetSave(Blueprint);
     }
@@ -102,9 +118,9 @@ bool HandleSetNavAreaClass(
     const TSharedPtr<FJsonObject>& Payload,
     TSharedPtr<FMcpBridgeWebSocket> Socket)
 {
-    FString ActorName = GetJsonStringFieldNav(Payload, TEXT("actorName"));
-    FString ComponentName = GetJsonStringFieldNav(Payload, TEXT("componentName"));
-    FString AreaClassPath = GetJsonStringFieldNav(Payload, TEXT("areaClass"));
+    FString ActorName = GetJsonStringField(Payload, TEXT("actorName"));
+    FString ComponentName = GetJsonStringField(Payload, TEXT("componentName"));
+    FString AreaClassPath = GetJsonStringField(Payload, TEXT("areaClass"));
 
     if (ActorName.IsEmpty() || AreaClassPath.IsEmpty())
     {
@@ -203,8 +219,8 @@ bool HandleConfigureNavAreaCost(
     const TSharedPtr<FJsonObject>& Payload,
     TSharedPtr<FMcpBridgeWebSocket> Socket)
 {
-    FString AreaClassPath = GetJsonStringFieldNav(Payload, TEXT("areaClass"));
-    double AreaCost = GetJsonNumberFieldNav(Payload, TEXT("areaCost"), 1.0);
+    FString AreaClassPath = GetJsonStringField(Payload, TEXT("areaClass"));
+    double AreaCost = GetJsonNumberField(Payload, TEXT("areaCost"), 1.0);
     if (AreaClassPath.IsEmpty())
     {
         Self->SendAutomationResponse(Socket, RequestId, false, TEXT("areaClass is required"), nullptr, TEXT("MISSING_PARAM"));

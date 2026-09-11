@@ -23,10 +23,8 @@ import type { CapabilityRecordSource, JsonObject } from '../../../index.js';
 import { buildRecord } from '../helpers.js';
 import { P } from '../properties.js';
 import type { PropertyMap } from '../properties.js';
+import { str, num, bool } from '../../shared/schema-props.js';
 
-const str = (desc: string): JsonObject => ({ type: 'string', description: desc });
-const num = (desc: string): JsonObject => ({ type: 'number', description: desc });
-const bool = (desc: string): JsonObject => ({ type: 'boolean', description: desc });
 
 /** Interaction parameter vocabulary, keyed by the exact payload field name. */
 export const NP: PropertyMap = {
@@ -62,11 +60,18 @@ export const NP: PropertyMap = {
 export interface InteractionActionSpec {
   readonly action: string;
   readonly summary: string;
+  readonly topics?: readonly string[];
   readonly inputProps: PropertyMap;
   readonly required?: readonly string[];
   readonly exampleInput: JsonObject;
   /** Only get_interaction_info reads without writing. */
   readonly read?: boolean;
+  /**
+   * Extra declared output fields, MERGED over the shared assetPath handle.
+   * Merged rather than replaced so a record cannot accidentally drop the
+   * identity handle records.test.ts requires of every capability.
+   */
+  readonly outputProps?: PropertyMap;
 }
 
 /**
@@ -82,11 +87,12 @@ export function interactionRecord(spec: InteractionActionSpec): CapabilityRecord
     action: spec.action,
     family: 'interaction',
     summary: spec.summary,
+    topics: spec.topics,
     whenToUse: [`Use the leaf-backed ${spec.action} capability.`],
     whenNotToUse: ['Do not substitute a similarly named action with different semantics.'],
     inputProps: { action: P.action, ...spec.inputProps },
     required: ['action', ...(spec.required ?? [])],
-    outputProps: { assetPath: P.assetPath },
+    outputProps: { assetPath: P.assetPath, ...(spec.outputProps ?? {}) },
     outputRequired: [],
     effect: spec.read === true ? 'read' : 'write',
     latency: 'interactive',

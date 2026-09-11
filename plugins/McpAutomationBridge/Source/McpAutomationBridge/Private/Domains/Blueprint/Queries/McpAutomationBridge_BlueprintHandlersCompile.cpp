@@ -3,6 +3,7 @@
 #include "Foundation/BridgeHelpers/Blueprints/McpAutomationBridgeHelpersBlueprintAssetLoad.h"
 #include "Foundation/BridgeHelpers/Blueprints/McpAutomationBridgeHelpersBlueprintCompilation.h"
 #include "Foundation/HandlerUtils/McpHandlerUtils.h"
+#include "Foundation/BridgeHelpers/Responses/McpAutomationBridgeHelpersMutationEvidence.h"
 
 #if WITH_EDITOR
 #include "Engine/Blueprint.h"
@@ -29,7 +30,6 @@ bool HandleBlueprintCompile(const FBlueprintActionContext &Context) {
       LocalPayload->TryGetBoolField(TEXT("saveAfterCompile"),
                                     bSaveAfterCompile);
     // Editor-only compile
-#if WITH_EDITOR
     FString Normalized;
     FString LoadErr;
     UBlueprint *BP = LoadBlueprintAsset(Path, Normalized, LoadErr);
@@ -79,6 +79,13 @@ bool HandleBlueprintCompile(const FBlueprintActionContext &Context) {
                "broken blueprint was NOT written to disk."));
     }
     Out->SetStringField(TEXT("blueprintPath"), Path);
+    // Derived from what actually happened, never from the request: a failed
+    // compile with a skipped save contributes nothing and the receipt stays
+    // truthfully empty rather than reporting a write that did not occur.
+    TArray<FString> CompileChanges;
+    if (bCompiled) { CompileChanges.Add(TEXT("compiled")); }
+    if (bSaved) { CompileChanges.Add(TEXT("saved")); }
+    AddMutationEvidence(Out, BP, CompileChanges);
     Bridge.SendAutomationResponse(
         RequestingSocket, RequestId, /*bSuccess=*/bCompiled,
         bCompiled ? TEXT("Blueprint compiled")
@@ -86,12 +93,6 @@ bool HandleBlueprintCompile(const FBlueprintActionContext &Context) {
                          "Results / log for the errors."),
         Out, bCompiled ? FString() : FString(TEXT("COMPILE_FAILED")));
     return true;
-#else
-    Bridge.SendAutomationResponse(RequestingSocket, RequestId, false,
-                           TEXT("blueprint_compile requires editor build"),
-                           nullptr, TEXT("NOT_AVAILABLE"));
-    return true;
-#endif
   }
 
   return false;

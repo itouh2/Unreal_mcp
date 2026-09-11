@@ -3,7 +3,7 @@ import { ALL_CAPABILITY_RECORDS } from '../../../src/tools/catalog/capabilities/
 import { executeTargetIndex, resolveExecuteTarget } from '../../../src/server/gateway/gateway-execute-resolve.js';
 import { migrationMap } from '../../../src/tools/catalog/capabilities/migration/migration-map.js';
 
-const EXPECTED_RECORDS = 1381;
+const EXPECTED_RECORDS = 1401;
 const EXPECTED_PARENTS = 23;
 const REMOVED_ERROR_CODE = 'CAPABILITY_REMOVED';
 
@@ -28,11 +28,10 @@ const EXPECTED_UNREACHABLE_PAIRS = [
   'manage_blueprint::apply_style_to_widget',
   'manage_blueprint::get_nodes',
   'manage_blueprint::set_animation_speed',
-  'manage_effect::shadowed_effect_module_stubs',
 ];
 
 describe('Task 29 - canonical and deprecated legacy client paths normalize identically', () => {
-  it('all 1,381 legacy {tool, action} pairs reach a capability or a typed removal', () => {
+  it('all 1,383 legacy {tool, action} pairs reach a capability or a typed removal', () => {
     const index = executeTargetIndex();
     const unexplained: string[] = [];
     const removals: string[] = [];
@@ -76,7 +75,7 @@ describe('Task 29 - canonical and deprecated legacy client paths normalize ident
     expect(resolved + removals.length).toBe(EXPECTED_RECORDS);
   });
 
-  it('the canonical form and the legacy form reach the identical outcome for all 1,381', () => {
+  it('the canonical form and the legacy form reach the identical outcome for all 1,383', () => {
     const index = executeTargetIndex();
     const divergences: string[] = [];
     let compared = 0;

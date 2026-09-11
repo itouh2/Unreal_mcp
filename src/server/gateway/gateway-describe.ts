@@ -97,7 +97,8 @@ function describeToolSummary(
     scope: 'tool',
     perActionSchemas: false,
     drillDown: buildNextCall({ operation: 'describe', tool: tool.name, action: first }),
-    message: 'Legacy parent-tool summary. Drill into an action to get that action\'s exact capability contract.'
+    browse: { operation: 'search', tool: tool.name },
+    message: 'Legacy parent-tool summary: action names only. To choose one, send the browse call (search filtered to this tool; add query words and read the row summaries), or drill into an action for its exact contract.'
   };
 }
 
@@ -164,7 +165,15 @@ function paramWithoutCapabilityError(toolArg: string | undefined): Record<string
 
 export function describeGatewayCapability(args: Record<string, unknown>): Record<string, unknown> {
   const query = (getString(args, 'query') ?? '').toLowerCase();
-  const offset = getBoundedInteger(args.offset, 0, 0, Number.MAX_SAFE_INTEGER);
+  // `actionOffset` is accepted as an alias of `offset`: the tool-summary response
+  // echoes its paging state as actionOffset/actionLimit/actionHasMore, so a client
+  // replaying the response's own field name must not silently stay on page one.
+  const offset = getBoundedInteger(
+    args.offset ?? args.actionOffset,
+    0,
+    0,
+    Number.MAX_SAFE_INTEGER
+  );
   const limit = getBoundedInteger(args.limit, DEFAULT_BROWSE_LIMIT, 1, MAX_DESCRIBE_LIMIT);
   const page: Page = { limit, offset };
 

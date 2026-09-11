@@ -4,7 +4,7 @@
 
 # Legacy to canonical migration reference
 
-Catalog revision: `0abb865ac0aef993`
+Catalog revision: `ece82004f6618113`
 
 Both transports expose exactly ONE public MCP tool, `unreal`, with the four
 operations `search` / `describe` / `execute` / `configure`. The parent tools
@@ -13,16 +13,16 @@ by `tools/list` and a direct `tools/call` on one returns a
 `DIRECT_TOOL_CALL_REMOVED` receipt rather than executing
 (`src/server/gateway/direct-call-migration.ts`).
 
-Every one of the 1340 shipped legacy `{tool, action}` occurrences
+Every one of the 1345 shipped legacy `{tool, action}` occurrences
 resolves to exactly one disposition. Nothing falls through to a default.
 
 ## Dispositions
 
 | Disposition | Count | Meaning |
 | --- | --- | --- |
-| canonical | 1327 | Maps 1:1 to a live capability record. |
+| canonical | 1333 | Maps 1:1 to a live capability record. |
 | alias | 5 | An alias of a canonical capability; resolves losslessly. |
-| removed | 8 | The verb was retired. A typed removal with guidance — NOT a silent fallback. |
+| removed | 7 | The verb was retired. A typed removal with guidance — NOT a silent fallback. |
 | non-translatable | 0 | Refuses translation rather than coercing lossy parameters. |
 
 ## Retired verbs (typed removals)
@@ -39,7 +39,6 @@ error, never as a reason to fall back to the old behavior.
 | `manage_blueprint::apply_style_to_widget` | 5.0 | C20/O38: body-proven no-op; returns success without applying the named style (runtime binding setup required). Remove or implement real styling. | — |
 | `manage_blueprint::get_nodes` | 5.0 | C20/O38: orphaned graph op; implemented but absent from TS blueprintGraphActionSet, native core, and every manifest tool. Remove or promote to blueprint graph. | — |
 | `manage_blueprint::set_animation_speed` | 5.0 | C20/O38: body-proven no-op; returns success without applying the named playback speed (no SetPlayRate/SetPlaybackSpeed). Remove or implement real speed. | — |
-| `manage_effect::shadowed_effect_module_stubs` | 5.0 | C18/O21: five false-return module helpers are shadowed for canonical module actions but still run on fallback paths; remove the shadowed stubs. | — |
 
 ## Full migration map
 
@@ -332,12 +331,15 @@ error, never as a reason to fall back to the old behavior.
 | `control_editor::close_asset` | canonical | `control_editor.close_asset` |
 | `control_editor::console_command` | canonical | `control_editor.console_command` |
 | `control_editor::create_bookmark` | canonical | `control_editor.create_bookmark` |
+| `control_editor::describe_reflected_api` | canonical | `control_editor.describe_reflected_api` |
 | `control_editor::eject` | canonical | `control_editor.eject` |
 | `control_editor::execute_command` | canonical | `control_editor.execute_command` |
 | `control_editor::focus_actor` | canonical | `control_editor.focus_actor` |
 | `control_editor::hide_stats` | canonical | `control_editor.hide_stats` |
+| `control_editor::invoke_reflected_function` | canonical | `control_editor.invoke_reflected_function` |
 | `control_editor::jump_to_bookmark` | canonical | `control_editor.jump_to_bookmark` |
 | `control_editor::open_asset` | canonical | `control_editor.open_asset` |
+| `control_editor::open_editor_tab` | canonical | `control_editor.open_editor_tab` |
 | `control_editor::open_level` | canonical | `control_editor.open_level` |
 | `control_editor::pause` | canonical | `control_editor.pause` |
 | `control_editor::play` | canonical | `control_editor.play` |
@@ -606,6 +608,7 @@ error, never as a reason to fall back to the old behavior.
 | `manage_asset::set_material_domain` | canonical | `material.set_material_domain` |
 | `manage_asset::set_material_parameter` | canonical | `material.set_material_parameter` |
 | `manage_asset::set_metadata` | canonical | `asset.set_metadata` |
+| `manage_asset::set_node_position` | canonical | `material.set_node_position` |
 | `manage_asset::set_scalar_parameter_value` | canonical | `material.set_scalar_parameter_value` |
 | `manage_asset::set_shading_model` | canonical | `material.set_shading_model` |
 | `manage_asset::set_static_switch_parameter_value` | canonical | `material.set_static_switch_parameter_value` |
@@ -907,7 +910,6 @@ error, never as a reason to fall back to the old behavior.
 | `manage_effect::set_niagara_dynamic_input` | canonical | `manage_effect.set_niagara_dynamic_input` |
 | `manage_effect::set_niagara_parameter` | canonical | `manage_effect.set_niagara_parameter` |
 | `manage_effect::set_parameter_value` | canonical | `manage_effect.set_parameter_value` |
-| `manage_effect::shadowed_effect_module_stubs` | removed | — |
 | `manage_effect::spawn_niagara` | canonical | `manage_effect.spawn_niagara` |
 | `manage_effect::validate_niagara_system` | canonical | `manage_effect.validate_niagara_system` |
 | `manage_gas::add_ability_system_component` | canonical | `manage_gas.add_ability_system_component` |
@@ -1088,6 +1090,7 @@ error, never as a reason to fall back to the old behavior.
 | `manage_level::save_level` | canonical | `manage_level.save_level` |
 | `manage_level::save_level_as` | canonical | `manage_level.save_level_as` |
 | `manage_level::set_metadata` | canonical | `manage_level.set_metadata` |
+| `manage_level::set_world_settings` | canonical | `manage_level.set_world_settings` |
 | `manage_level::stream` | canonical | `manage_level.stream` |
 | `manage_level::unload` | canonical | `manage_level.unload` |
 | `manage_level::unload_level` | canonical | `manage_level.unload_level` |
@@ -1197,6 +1200,7 @@ error, never as a reason to fall back to the old behavior.
 | `manage_networking::set_autonomous_proxy` | canonical | `manage_networking.set_autonomous_proxy` |
 | `manage_networking::set_default_pawn_class` | canonical | `manage_networking.set_default_pawn_class` |
 | `manage_networking::set_game_state_class` | canonical | `manage_networking.set_game_state_class` |
+| `manage_networking::set_hud_class` | canonical | `manage_networking.set_hud_class` |
 | `manage_networking::set_input_modifier` | canonical | `manage_networking.set_input_modifier` |
 | `manage_networking::set_input_trigger` | canonical | `manage_networking.set_input_trigger` |
 | `manage_networking::set_net_dormancy` | canonical | `manage_networking.set_net_dormancy` |

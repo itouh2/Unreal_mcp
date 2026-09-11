@@ -89,7 +89,10 @@ FString ResolveCreateEffectSubAction(
     const TSharedPtr<FJsonObject>& Payload)
 {
     FString SubAction;
-    Payload->TryGetStringField(TEXT("action"), SubAction);
+    if (!Payload->TryGetStringField(TEXT("subAction"), SubAction) || SubAction.IsEmpty())
+    {
+        Payload->TryGetStringField(TEXT("action"), SubAction);
+    }
     if (Lower.Equals(TEXT("create_niagara_system")))
     {
         SubAction = TEXT("create_niagara_system");
@@ -112,7 +115,7 @@ bool HandleCreateEffectSubAction(
     }
     if (LowerSubAction == TEXT("particle"))
     {
-        return HandleParticleDebugShape(Context);
+        return HandleParticleEffect(Context);
     }
     if (LowerSubAction == TEXT("niagara") ||
         LowerSubAction == TEXT("spawn_niagara"))

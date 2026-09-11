@@ -26,10 +26,6 @@ bool HandleWidgetAuthoringAdditionalPanels(
     TSharedPtr<FMcpBridgeWebSocket> RequestingSocket,
     TSharedPtr<FJsonObject> ResultJson)
 {
-    // =========================================================================
-    // 19.12 Additional Layout Panels
-    // =========================================================================
-
     if (SubAction.Equals(TEXT("add_safe_zone"), ESearchCase::IgnoreCase))
     {
         FString WidgetPath = GetJsonStringField(Payload, TEXT("widgetPath"));
@@ -66,7 +62,7 @@ bool HandleWidgetAuthoringAdditionalPanels(
             Parent->AddChild(SafeZone);
         }
 
-        FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(WidgetBP);
+        WidgetAuthoringHelpers::MarkWidgetBlueprintModifiedAndSave(WidgetBP);
 
         // CRITICAL: Validate widget creation succeeded and check for engine errors
         FString ValidationError;
@@ -123,7 +119,7 @@ bool HandleWidgetAuthoringAdditionalPanels(
             Parent->AddChild(Spacer);
         }
 
-        FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(WidgetBP);
+        WidgetAuthoringHelpers::MarkWidgetBlueprintModifiedAndSave(WidgetBP);
 
         // CRITICAL: Validate widget creation succeeded and check for engine errors
         FString ValidationError;
@@ -181,7 +177,7 @@ bool HandleWidgetAuthoringAdditionalPanels(
             Parent->AddChild(Switcher);
         }
 
-        FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(WidgetBP);
+        WidgetAuthoringHelpers::MarkWidgetBlueprintModifiedAndSave(WidgetBP);
 
         // CRITICAL: Validate widget creation succeeded and check for engine errors
         FString ValidationError;

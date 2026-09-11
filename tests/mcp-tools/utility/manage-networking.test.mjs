@@ -571,6 +571,7 @@ const testCases = [
     { scenario: 'CREATE: create_game_instance', toolName: 'manage_networking', arguments: { action: 'create_game_instance', name: GAME_INSTANCE_NAME, path: TEST_FOLDER, parentClass: '/Script/Engine.GameInstance' }, expected: 'success', assertions: createBlueprintAssertions(GAME_INSTANCE_ASSET_PATH, GAME_INSTANCE_OBJECT_PATH, GAME_INSTANCE_NAME, 'game instance blueprint') },
 
     { scenario: 'CONFIG: set_default_pawn_class', toolName: 'manage_networking', arguments: { action: 'set_default_pawn_class', gameModeBlueprint: GAME_MODE_OBJECT_PATH, pawnClass: DEFAULT_PAWN_CLASS }, expected: 'success', assertions: gameModePathAssertion('default pawn class') },
+    { scenario: 'CONFIG: set_hud_class', toolName: 'manage_networking', arguments: { action: 'set_hud_class', gameModeBlueprint: GAME_MODE_OBJECT_PATH, hudClass: HUD_OBJECT_PATH }, expected: 'success', assertions: gameModePathAssertion('hud class') },
     { scenario: 'INFO: read back default pawn class', toolName: 'manage_networking', arguments: { action: 'get_game_framework_info', gameModeBlueprint: GAME_MODE_OBJECT_PATH }, expected: 'success', assertions: [{ path: 'structuredContent.result.gameFrameworkInfo.defaultPawnClass', equals: DEFAULT_PAWN_CLASS, label: 'default pawn class read back from CDO' }] },
     { scenario: 'CONFIG: set_player_controller_class', toolName: 'manage_networking', arguments: { action: 'set_player_controller_class', gameModeBlueprint: GAME_MODE_OBJECT_PATH, playerControllerClass: PLAYER_CONTROLLER_CLASS }, expected: 'success', assertions: gameModePathAssertion('player controller class') },
     { scenario: 'INFO: read back player controller class', toolName: 'manage_networking', arguments: { action: 'get_game_framework_info', gameModeBlueprint: GAME_MODE_OBJECT_PATH }, expected: 'success', assertions: [{ path: 'structuredContent.result.gameFrameworkInfo.playerControllerClass', equals: PLAYER_CONTROLLER_CLASS, label: 'player controller class read back from CDO' }] },
@@ -618,6 +619,7 @@ const testCases = [
 
     // === CREATE ===
     { scenario: 'CREATE: create_input_action', toolName: 'manage_networking', arguments: {"action": "create_input_action", "name": "Testinput_action", "path": INPUT_FOLDER_ALIAS}, expected: 'success|already exists' },
+    { scenario: 'CREATE: create_input_action axis2d', toolName: 'manage_networking', arguments: { action: 'create_input_action', name: `Testmove_${ts}`, path: INPUT_FOLDER_ALIAS, valueType: 'axis2d' }, expected: 'success|already exists' },
     { scenario: 'CREATE: create_input_mapping_context', toolName: 'manage_networking', arguments: {"action": "create_input_mapping_context", "name": "Testinput_mapping_context", "path": INPUT_FOLDER_ALIAS}, expected: 'success|already exists' },
     // === ADD ===
     { scenario: 'ADD: add_mapping', toolName: 'manage_networking', arguments: { action: 'add_mapping', contextPath: INPUT_CONTEXT, actionPath: INPUT_ACTION, key: 'SpaceBar' }, expected: 'success|already exists' },

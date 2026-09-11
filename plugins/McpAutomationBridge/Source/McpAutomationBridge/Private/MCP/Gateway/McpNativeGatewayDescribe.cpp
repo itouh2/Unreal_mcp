@@ -169,7 +169,7 @@ TSharedPtr<FJsonObject> CapabilityContract(
 	const FMcpCapabilityRecord& Record, const FString& Tool, const FString& Revision, bool bAvailable)
 {
 	auto Out = MakeShared<FJsonObject>();
-	Out->SetStringField(TEXT("action"), Record.DispatchAction);
+	Out->SetStringField(TEXT("action"), McpCapabilityPublicAction(Record));
 	SetObjectOrEmpty(Out, TEXT("availability"), Record.Availability);
 	Out->SetBoolField(TEXT("available"), bAvailable);
 	SetObjectOrEmpty(Out, TEXT("behavior"), Record.Behavior);
@@ -181,9 +181,13 @@ TSharedPtr<FJsonObject> CapabilityContract(
 	Out->SetStringField(TEXT("domain"), Record.Domain);
 	Out->SetStringField(TEXT("effect"), Record.Effect);
 	Out->SetNumberField(TEXT("exampleCount"), Record.ExampleCount);
+	if (Record.Examples.Num() > 0)
+	{
+		Out->SetArrayField(TEXT("examples"), Record.Examples);
+	}
 	Out->SetStringField(TEXT("family"), Record.Family);
 	SetObjectOrEmpty(Out, TEXT("hashes"), Record.Hashes);
-	SetObjectOrEmpty(Out, TEXT("inputSchema"), Record.InputSchema);
+	SetObjectOrEmpty(Out, TEXT("inputSchema"), McpStripActionFromInputSchema(Record.InputSchema));
 	Out->SetStringField(TEXT("message"),
 		TEXT("Exact capability contract. Every parameter below is action-specific, not a tool union."));
 	Out->SetStringField(TEXT("operation"), TEXT("describe"));
@@ -217,6 +221,7 @@ TSharedPtr<FJsonObject> McpGatewayDescribeCapability(
 	const int32 Offset = FMath::Max(0, Input.Offset);
 	const FString Query = Input.Query.TrimStartAndEnd().ToLower();
 
+	if (Input.Tool.IsEmpty() && !Input.bHasAction) return McpGatewayDescribeToolOverview(Input, Store);
 	const TArray<FString> Parents = Store.GetParents();
 	if (!Parents.ContainsByPredicate([&](const FString& P) { return P.Equals(Input.Tool, ESearchCase::CaseSensitive); }))
 	{

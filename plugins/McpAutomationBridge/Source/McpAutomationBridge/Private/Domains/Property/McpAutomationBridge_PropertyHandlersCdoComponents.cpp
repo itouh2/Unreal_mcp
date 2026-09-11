@@ -1,6 +1,6 @@
-#include "Core/Compatibility/McpVersionCompatibility.h"
-
 #include "Domains/Property/McpAutomationBridge_PropertyHandlersCdoComponents.h"
+
+#include "Core/Compatibility/McpVersionCompatibility.h"
 
 #if WITH_EDITOR
 #include "Foundation/BridgeHelpers/McpAutomationBridgeHelpers.h"
@@ -78,7 +78,7 @@ TSharedPtr<FJsonObject> BuildComponentSummary(
     else if (bDetailed)
     {
         TSharedPtr<FJsonObject> Props =
-            McpPropertyReflection::ExportObjectToJson(Template, false);
+            McpPropertyReflection::ExportObjectToJsonBounded(Template, false);
         if (Props.IsValid())
         {
             CompObj->SetObjectField(TEXT("properties"), Props);
@@ -141,6 +141,35 @@ UActorComponent* FindCdoComponent(
         for (UActorComponent* Comp : Components)
         {
             if (Comp && Comp->GetName().Equals(ComponentName, ESearchCase::IgnoreCase))
+            {
+                if (bOutFoundComponent)
+                {
+                    *bOutFoundComponent = true;
+                }
+                return Comp;
+            }
+        }
+
+        // Native components are usually referred to by the UPROPERTY that holds
+        // them, not by their object name: ACharacter's skeletal mesh is declared
+        // as `Mesh` but is constructed as `CharacterMesh0`, and
+        // ACharacter::CapsuleComponent is `CollisionCylinder`. Matching only the
+        // object name above made the documented, discoverable name fail with
+        // COMPONENT_NOT_FOUND. Resolve the property name too.
+        for (TFieldIterator<FObjectProperty> It(DefaultActor->GetClass()); It; ++It)
+        {
+            FObjectProperty* ObjProp = *It;
+            if (!ObjProp || !ObjProp->PropertyClass ||
+                !ObjProp->PropertyClass->IsChildOf(UActorComponent::StaticClass()))
+            {
+                continue;
+            }
+            if (!ObjProp->GetName().Equals(ComponentName, ESearchCase::IgnoreCase))
+            {
+                continue;
+            }
+            if (UActorComponent* Comp = Cast<UActorComponent>(
+                    ObjProp->GetObjectPropertyValue_InContainer(DefaultActor)))
             {
                 if (bOutFoundComponent)
                 {

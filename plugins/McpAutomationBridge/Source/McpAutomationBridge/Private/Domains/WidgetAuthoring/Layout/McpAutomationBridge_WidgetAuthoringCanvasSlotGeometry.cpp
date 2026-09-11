@@ -23,10 +23,6 @@ bool HandleWidgetAuthoringCanvasSlotGeometry(
     TSharedPtr<FMcpBridgeWebSocket> RequestingSocket,
     TSharedPtr<FJsonObject> ResultJson)
 {
-    // =========================================================================
-    // 19.4 Layout & Styling
-    // =========================================================================
-
     if (SubAction.Equals(TEXT("set_anchor"), ESearchCase::IgnoreCase))
     {
         FString WidgetPath = GetJsonStringField(Payload, TEXT("widgetPath"));
@@ -137,7 +133,7 @@ bool HandleWidgetAuthoringCanvasSlotGeometry(
             CanvasSlot->SetAnchors(Anchors);
         }
 
-        FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(WidgetBP);
+        WidgetAuthoringHelpers::MarkWidgetBlueprintModifiedAndSave(WidgetBP);
 
         ResultJson->SetBoolField(TEXT("success"), true);
         ResultJson->SetStringField(TEXT("message"), TEXT("Anchor set"));
@@ -183,7 +179,7 @@ bool HandleWidgetAuthoringCanvasSlotGeometry(
             }
         }
 
-        FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(WidgetBP);
+        WidgetAuthoringHelpers::MarkWidgetBlueprintModifiedAndSave(WidgetBP);
 
         ResultJson->SetBoolField(TEXT("success"), true);
         ResultJson->SetStringField(TEXT("message"), TEXT("Alignment set"));
@@ -229,7 +225,7 @@ bool HandleWidgetAuthoringCanvasSlotGeometry(
             }
         }
 
-        FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(WidgetBP);
+        WidgetAuthoringHelpers::MarkWidgetBlueprintModifiedAndSave(WidgetBP);
 
         ResultJson->SetBoolField(TEXT("success"), true);
         ResultJson->SetStringField(TEXT("message"), TEXT("Position set"));
@@ -263,19 +259,25 @@ bool HandleWidgetAuthoringCanvasSlotGeometry(
         }
 
         UCanvasPanelSlot* CanvasSlot = Cast<UCanvasPanelSlot>(Widget->Slot);
-        if (CanvasSlot)
+
+        if (!CanvasSlot)
         {
-            TSharedPtr<FJsonObject> SizeObj = GetObjectField(Payload, TEXT("size"));
-            if (SizeObj.IsValid())
-            {
-                FVector2D Size;
-                Size.X = GetJsonNumberField(SizeObj, TEXT("x"), 100.0);
-                Size.Y = GetJsonNumberField(SizeObj, TEXT("y"), 100.0);
-                CanvasSlot->SetSize(Size);
-            }
+            // Only canvas slots carry this setting; reporting success on a box/overlay slot was a no-op (dogfood #190).
+            Subsystem.SendAutomationError(RequestingSocket, RequestId,
+                FString::Printf(TEXT("set_size needs a CanvasPanel child; '%s' sits in a %s"), *SlotName, Widget->Slot ? *Widget->Slot->GetClass()->GetName() : TEXT("no slot")),
+                TEXT("INVALID_SLOT"));
+            return true;
+        }
+        TSharedPtr<FJsonObject> SizeObj = GetObjectField(Payload, TEXT("size"));
+        if (SizeObj.IsValid())
+        {
+            FVector2D Size;
+            Size.X = GetJsonNumberField(SizeObj, TEXT("x"), 100.0);
+            Size.Y = GetJsonNumberField(SizeObj, TEXT("y"), 100.0);
+            CanvasSlot->SetSize(Size);
         }
 
-        FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(WidgetBP);
+        WidgetAuthoringHelpers::MarkWidgetBlueprintModifiedAndSave(WidgetBP);
 
         ResultJson->SetBoolField(TEXT("success"), true);
         ResultJson->SetStringField(TEXT("message"), TEXT("Size set"));

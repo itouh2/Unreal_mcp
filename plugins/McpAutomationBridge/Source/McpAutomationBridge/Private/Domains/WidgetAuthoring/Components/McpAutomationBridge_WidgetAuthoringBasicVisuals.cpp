@@ -29,10 +29,6 @@ bool HandleWidgetAuthoringBasicVisuals(
     TSharedPtr<FMcpBridgeWebSocket> RequestingSocket,
     TSharedPtr<FJsonObject> ResultJson)
 {
-    // =========================================================================
-    // 19.3 Common Widgets
-    // =========================================================================
-
     if (SubAction.Equals(TEXT("add_text_block"), ESearchCase::IgnoreCase))
     {
         FString WidgetPath = GetJsonStringField(Payload, TEXT("widgetPath"));
@@ -99,7 +95,7 @@ bool HandleWidgetAuthoringBasicVisuals(
             return true;
         }
 
-        FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(WidgetBP);
+        WidgetAuthoringHelpers::MarkWidgetBlueprintModifiedAndSave(WidgetBP);
 
         // CRITICAL: Validate widget creation succeeded and check for engine errors
         FString ValidationError;
@@ -174,7 +170,7 @@ bool HandleWidgetAuthoringBasicVisuals(
             return true;
         }
 
-        FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(WidgetBP);
+        WidgetAuthoringHelpers::MarkWidgetBlueprintModifiedAndSave(WidgetBP);
 
         // CRITICAL: Validate widget creation succeeded and check for engine errors
         FString ValidationError;
@@ -244,7 +240,7 @@ bool HandleWidgetAuthoringBasicVisuals(
             return true;
         }
 
-        FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(WidgetBP);
+        WidgetAuthoringHelpers::MarkWidgetBlueprintModifiedAndSave(WidgetBP);
 
         // CRITICAL: Validate widget creation succeeded and check for engine errors
         FString ValidationError;

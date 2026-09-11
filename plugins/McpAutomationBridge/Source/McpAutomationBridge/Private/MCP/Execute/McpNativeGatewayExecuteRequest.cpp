@@ -50,7 +50,7 @@ bool McpValidateExecutionOptions(
 		return true;
 	}
 	const TArray<FString>& Supported = McpExecutionOptionKeys();
-	for (const TPair<FString, TSharedPtr<FJsonValue>>& Entry : Options->Values)
+	for (const TPair<FString, TSharedPtr<FJsonValue>> Entry : Options->Values)
 	{
 		if (!Supported.Contains(Entry.Key))
 		{
@@ -230,10 +230,11 @@ bool McpParseGatewayExecuteRequest(
 	const FMcpCapabilityRecord* Record = FromCapability ? FromCapability : FromLegacy;
 	if (!Record)
 	{
+		// describe {} lists the parent tools, so point the caller there (dogfood #2).
 		OutGuidance = BuildGuidance({},
-			GatewayBuildNextCall(TEXT("search"), FString(), FString(), FString()));
+			GatewayBuildNextCall(TEXT("describe"), FString(), FString(), FString()));
 		OutError = McpValidationError(TEXT("UNKNOWN_CAPABILITY"),
-			TEXT("execute requires either capability or tool + action."));
+			TEXT("execute requires either capability or tool + action. Call describe with no arguments to list the parent tools, or search to find a capability."));
 		return false;
 	}
 
@@ -279,7 +280,6 @@ bool McpParseGatewayExecuteRequest(
 	}
 
 	OutRequest.Record = Record;
-	OutRequest.CapabilityId = Record->Id;
 	OutRequest.Params = ActionParams;
 	OutRequest.Options = Options;
 	return true;

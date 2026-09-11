@@ -5,13 +5,13 @@
  * bridge actions (spawn_light, create_light, create_sky_light, etc.) and
  * native lighting handlers. list_light_types is a read action.
  */
-import type { CapabilityRecordSource, JsonObject } from '../../index.js';
+import type { CapabilityRecordSource } from '../../index.js';
 import { buildRecord } from './helpers.js';
 import { P } from './properties.js';
+import { str } from '../shared/schema-props.js';
 
 const F = 'lighting';
 const WU = ['A light actor or lighting setting must be created or configured.'];
-const str = (d: string): JsonObject => ({ type: 'string', description: d });
 
 export const LIGHTING_RECORDS: readonly CapabilityRecordSource[] = [
   buildRecord({
@@ -85,7 +85,7 @@ export const LIGHTING_RECORDS: readonly CapabilityRecordSource[] = [
     summary: 'Create a level with lighting enabled.',
     whenToUse: ['A new level with lighting setup is needed.'],
     whenNotToUse: ['An existing level should be modified.'],
-    inputProps: { action: P.action, name: P.name, path: P.path },
+    inputProps: { action: P.action, name: P.name, path: P.path, levelName: str('Level name; appended when path is a folder.') },
     required: ['action'],
     effect: 'write', latency: 'interactive', resources: 'medium',
     exampleInput: { action: 'create_lighting_enabled_level', name: 'LightingLevel' },
@@ -137,7 +137,7 @@ export const LIGHTING_RECORDS: readonly CapabilityRecordSource[] = [
     summary: 'Set exposure settings for the camera or auto-exposure.',
     whenToUse: ['Exposure must be adjusted.'],
     whenNotToUse: ['Default exposure is sufficient.'],
-    inputProps: { action: P.action, compensationValue: P.compensationValue, minBrightness: P.minBrightness, maxBrightness: P.maxBrightness },
+    inputProps: { action: P.action, actorName: P.actorName, compensationValue: P.compensationValue, minBrightness: P.minBrightness, maxBrightness: P.maxBrightness },
     required: ['action'],
     effect: 'write', behavior: { idempotency: 'idempotent' }, latency: 'instant', resources: 'low',
     exampleInput: { action: 'set_exposure', compensationValue: 1.0 },
@@ -148,7 +148,7 @@ export const LIGHTING_RECORDS: readonly CapabilityRecordSource[] = [
     summary: 'Set ambient occlusion settings.',
     whenToUse: ['AO intensity or method must be tuned.'],
     whenNotToUse: ['AO is not needed.'],
-    inputProps: { action: P.action, amount: P.amount, method: P.method },
+    inputProps: { action: P.action, actorName: P.actorName, amount: P.amount, method: P.method },
     required: ['action'],
     effect: 'write', behavior: { idempotency: 'idempotent' }, latency: 'instant', resources: 'low',
     exampleInput: { action: 'set_ambient_occlusion', amount: 0.5 },
@@ -167,6 +167,7 @@ export const LIGHTING_RECORDS: readonly CapabilityRecordSource[] = [
   }),
   buildRecord({
     id: 'build_environment.build_lighting', action: 'build_lighting', family: F,
+    topics: ['bake lighting', 'lightmass', 'build lights', 'rebuild lighting', 'bake lightmaps'],
     summary: 'Build static lighting for the current level.',
     whenToUse: ['Static lighting must be built.'],
     whenNotToUse: ['Dynamic lighting is used exclusively.'],

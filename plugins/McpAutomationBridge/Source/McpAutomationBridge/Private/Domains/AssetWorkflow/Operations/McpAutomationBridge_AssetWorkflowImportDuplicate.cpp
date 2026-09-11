@@ -162,7 +162,7 @@ bool UMcpAutomationBridgeSubsystem::HandleImportAsset(
 
   return true;
 #else
-  SendAutomationError(RequestingSocket, RequestId, TEXT("Editor build required"), TEXT("NOT_SUPPORTED"));
+  SendAutomationError(Socket, RequestId, TEXT("Editor build required"), TEXT("NOT_SUPPORTED"));
   return true;
 #endif
 }
@@ -191,6 +191,25 @@ bool UMcpAutomationBridgeSubsystem::HandleDuplicateAsset(
       ParentDir = TEXT("/Game");
 
     DestinationPath = ParentDir / DestinationPath;
+  }
+
+  // The published schema is {sourcePath, destinationPath: folder, newName}.
+  // Passing a folder straight to DuplicateAsset used to "succeed" while
+  // creating nothing usable (the folder name became the asset name), so
+  // resolve folder + newName (or the source's own name) to a full asset path.
+  FString NewName;
+  Payload->TryGetStringField(TEXT("newName"), NewName);
+  NewName.TrimStartAndEndInline();
+  const bool bDestinationIsFolder =
+      UEditorAssetLibrary::DoesDirectoryExist(DestinationPath) ||
+      DestinationPath.EndsWith(TEXT("/"));
+  if (!NewName.IsEmpty()) {
+    const FString Folder = bDestinationIsFolder
+                               ? DestinationPath
+                               : FPaths::GetPath(DestinationPath);
+    DestinationPath = Folder / NewName;
+  } else if (bDestinationIsFolder) {
+    DestinationPath = DestinationPath / FPaths::GetBaseFilename(SourcePath);
   }
 
   SourcePath = SanitizeProjectRelativePath(SourcePath);
@@ -304,16 +323,8 @@ bool UMcpAutomationBridgeSubsystem::HandleDuplicateAsset(
   }
   return true;
 #else
-  SendAutomationError(RequestingSocket, RequestId, TEXT("Editor build required"), TEXT("NOT_SUPPORTED"));
+  SendAutomationError(Socket, RequestId, TEXT("Editor build required"), TEXT("NOT_SUPPORTED"));
   return true;
 #endif
 }
 
-/**
- * Handles asset renaming (and moving) requests.
- *
- * @param RequestId Unique request identifier.
- * @param Payload JSON payload containing 'sourcePath' and 'destinationPath'.
- * @param Socket WebSocket connection.
- * @return True if handled.
- */

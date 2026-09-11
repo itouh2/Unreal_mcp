@@ -48,8 +48,8 @@ bool UMcpAutomationBridgeSubsystem::HandleControlEditorScreenshot(
     TArray<uint8> PngData;
     FIntVector ImageSize(0, 0, 0);
     FString CaptureError;
-    if (!CaptureSlateWindowPngForMcp(EditorWindow.ToSharedRef(), PngData,
-                                     ImageSize, CaptureError)) {
+    if (!CaptureSlateWindowPngForMcp(EditorWindow.ToSharedRef(), Payload,
+                                     PngData, ImageSize, CaptureError)) {
       SendStandardErrorResponse(this, Socket, RequestId, TEXT("CAPTURE_FAILED"),
                                 CaptureError, nullptr);
       return true;
@@ -57,7 +57,9 @@ bool UMcpAutomationBridgeSubsystem::HandleControlEditorScreenshot(
 
     const bool bSaved = FFileHelper::SaveArrayToFile(PngData, *FullPath);
 
-    bool bReturnBase64 = true;
+    // Base64 default off (see the comment at the viewport capture site): the
+    // default call must not fail on a standard-size capture.
+    bool bReturnBase64 = false;
     Payload->TryGetBoolField(TEXT("returnBase64"), bReturnBase64);
 
     TSharedPtr<FJsonObject> Resp = McpHandlerUtils::CreateResultObject();
@@ -71,7 +73,7 @@ bool UMcpAutomationBridgeSubsystem::HandleControlEditorScreenshot(
     Resp->SetStringField(TEXT("mimeType"), TEXT("image/png"));
     if (bSaved) {
       Resp->SetStringField(TEXT("path"), FullPath);
-      Resp->SetStringField(TEXT("screenshotPath"), FullPath);
+      Resp->SetStringField(TEXT("screenshotPath"), FPaths::ConvertRelativePathToFull(FullPath));
     }
     AddScreenshotMetadataForMcp(Resp, Payload);
     if (!bSaved && !bReturnBase64) {
@@ -151,10 +153,31 @@ bool UMcpAutomationBridgeSubsystem::HandleControlEditorScreenshot(
     Pixel.A = 255;
   }
 
+  // "resolution" was declared on this capability but never read, so a 4K
+  // viewport could only ever answer IMAGE_TOO_LARGE no matter what the caller
+  // asked for. Resample here and the parameter means what the schema says.
+  FIntPoint OutputSize = ViewportSize;
+  FString ResolutionError;
+  if (!ResolveScreenshotResolutionForMcp(Payload, ViewportSize, OutputSize,
+                                         ResolutionError)) {
+    SendStandardErrorResponse(this, Socket, RequestId, TEXT("INVALID_ARGUMENT"),
+                              ResolutionError, nullptr);
+    return true;
+  }
+
+  TArray<FColor> ResampledBitmap;
+  if (OutputSize != ViewportSize &&
+      Bitmap.Num() >= ViewportSize.X * ViewportSize.Y) {
+    ResampleBitmapForMcp(Bitmap, ViewportSize, ResampledBitmap, OutputSize);
+    Bitmap = MoveTemp(ResampledBitmap);
+  } else {
+    OutputSize = ViewportSize;
+  }
+
   TArray64<uint8> PngData;
   FImageUtils::PNGCompressImageArray(
-      ViewportSize.X,
-      ViewportSize.Y,
+      OutputSize.X,
+      OutputSize.Y,
       TArrayView64<const FColor>(Bitmap.GetData(), Bitmap.Num()),
       PngData);
   if (PngData.Num() == 0) {
@@ -165,6 +188,11 @@ bool UMcpAutomationBridgeSubsystem::HandleControlEditorScreenshot(
 
   const bool bSaved = FFileHelper::SaveArrayToFile(PngData, *FullPath);
 
+  // The base64 default is now off at both sites: a native 2040x949 viewport
+  // PNG is ~2 MB and always blew the base64 size cap, so the DEFAULT call
+  // failed. A plain capture now returns path + metadata; callers opt in with
+  // returnBase64=true (optionally with resolution= to downscale) for inline
+  // image data. The oversize guard below still protects the receipt.
   bool bReturnBase64 = false;
   Payload->TryGetBoolField(TEXT("returnBase64"), bReturnBase64);
 
@@ -173,14 +201,21 @@ bool UMcpAutomationBridgeSubsystem::HandleControlEditorScreenshot(
   Resp->SetStringField(TEXT("filename"), Filename);
   Resp->SetStringField(TEXT("mode"), Mode);
   Resp->SetBoolField(TEXT("saved"), bSaved);
-  Resp->SetNumberField(TEXT("width"), ViewportSize.X);
-  Resp->SetNumberField(TEXT("height"), ViewportSize.Y);
+  // width/height describe the PNG actually returned. When a resample happened
+  // the untouched viewport size rides alongside, so a caller comparing the two
+  // can tell a downscaled frame from a native-resolution one.
+  Resp->SetNumberField(TEXT("width"), OutputSize.X);
+  Resp->SetNumberField(TEXT("height"), OutputSize.Y);
+  if (OutputSize != ViewportSize) {
+    Resp->SetNumberField(TEXT("viewportWidth"), ViewportSize.X);
+    Resp->SetNumberField(TEXT("viewportHeight"), ViewportSize.Y);
+  }
   Resp->SetNumberField(TEXT("sizeBytes"), PngData.Num());
   Resp->SetNumberField(TEXT("fileSizeBytes"), PngData.Num());
   Resp->SetStringField(TEXT("mimeType"), TEXT("image/png"));
   if (bSaved) {
     Resp->SetStringField(TEXT("path"), FullPath);
-    Resp->SetStringField(TEXT("screenshotPath"), FullPath);
+    Resp->SetStringField(TEXT("screenshotPath"), FPaths::ConvertRelativePathToFull(FullPath));
   }
   // Ship the camera with the picture. Without it a caller cannot tell a correct
   // frame from a frame taken somewhere else entirely, which is exactly how a

@@ -11,9 +11,6 @@ namespace McpLevelHandlers {
 #if WITH_EDITOR
 #define SendAutomationResponse(...) Subsystem.SendAutomationResponse(__VA_ARGS__)
 #define SendAutomationError(...) Subsystem.SendAutomationError(__VA_ARGS__)
-#define HandleExecuteEditorFunction(...) Subsystem.HandleExecuteEditorFunction(__VA_ARGS__)
-#define HandleManageLevelStructureAction(...) Subsystem.HandleManageLevelStructureAction(__VA_ARGS__)
-#define HandleSetMetadata(...) Subsystem.HandleSetMetadata(__VA_ARGS__)
 bool HandleGetLevelInfoAction(UMcpAutomationBridgeSubsystem& Subsystem, const FString& RequestId, const TSharedPtr<FJsonObject>& Payload, TSharedPtr<FMcpBridgeWebSocket> RequestingSocket) {
     FString LevelPath;
     if (Payload.IsValid()) {
@@ -52,10 +49,35 @@ bool HandleGetLevelInfoAction(UMcpAutomationBridgeSubsystem& Subsystem, const FS
     if (TargetLevel) {
       // Loaded path: preserve existing JSON shape, only ADD `loaded: true`.
       TSharedPtr<FJsonObject> Result = McpHandlerUtils::CreateResultObject();
-      Result->SetStringField(TEXT("levelPath"), TargetLevel->GetOutermost() ? TargetLevel->GetOutermost()->GetName() : TEXT(""));
-      Result->SetStringField(TEXT("levelName"), TargetLevel->GetName());
+      const FString PackageName =
+          TargetLevel->GetOutermost() ? TargetLevel->GetOutermost()->GetName() : TEXT("");
+      const FString AssetName = FPackageName::GetShortName(PackageName);
+      Result->SetStringField(TEXT("levelPath"), PackageName);
+      Result->SetStringField(TEXT("levelName"), AssetName);
       Result->SetNumberField(TEXT("actorCount"), TargetLevel->Actors.Num());
       Result->SetBoolField(TEXT("loaded"), true);
+
+      // BB-018: a loaded level must be identifiable as a map asset without a
+      // follow-up list_levels call. The record already declares these fields;
+      // the unloaded branch emits them, so mirror that identity here.
+      if (!PackageName.IsEmpty()) {
+        Result->SetStringField(TEXT("packageName"), PackageName);
+        Result->SetStringField(TEXT("assetName"), AssetName);
+        Result->SetStringField(TEXT("objectPath"), PackageName + TEXT(".") + AssetName);
+        IAssetRegistry& AssetRegistry =
+            FModuleManager::LoadModuleChecked<FAssetRegistryModule>("AssetRegistry").Get();
+        FAssetData LevelAssetData = AssetRegistry.GetAssetByObjectPath(
+            FSoftObjectPath(PackageName + TEXT(".") + AssetName));
+        if (LevelAssetData.IsValid()) {
+          Result->SetStringField(TEXT("assetClass"),
+                                 MCP_ASSET_DATA_GET_CLASS_PATH(LevelAssetData));
+          TSharedPtr<FJsonObject> LoadedTags = McpHandlerUtils::CreateResultObject();
+          for (const auto& Kvp : LevelAssetData.TagsAndValues) {
+            LoadedTags->SetStringField(Kvp.Key.ToString(), Kvp.Value.AsString());
+          }
+          Result->SetObjectField(TEXT("tagsAndValues"), LoadedTags);
+        }
+      }
 
       SendAutomationResponse(RequestingSocket, RequestId, true, TEXT("Level info retrieved"), Result);
       return true;
@@ -120,8 +142,5 @@ bool HandleGetLevelInfoAction(UMcpAutomationBridgeSubsystem& Subsystem, const FS
 }
 #undef SendAutomationResponse
 #undef SendAutomationError
-#undef HandleExecuteEditorFunction
-#undef HandleManageLevelStructureAction
-#undef HandleSetMetadata
 #endif
 } // namespace McpLevelHandlers

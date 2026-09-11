@@ -16,6 +16,7 @@ export const FUNCTIONS_EVENTS_RECORDS: readonly CapabilityRecordSource[] = [
     action: 'add_function',
     family: FAMILY,
     domain: DOMAIN,
+    topics: ['new function', 'custom function', 'function graph', 'define function'],
     summary: 'Add a new function graph to a Blueprint with optional inputs and outputs.',
     whenToUse: ['A new callable function must be created on the Blueprint.'],
     whenNotToUse: ['An event handler is needed (use add_event).'],
@@ -53,16 +54,21 @@ export const FUNCTIONS_EVENTS_RECORDS: readonly CapabilityRecordSource[] = [
     action: 'add_event',
     family: FAMILY,
     domain: DOMAIN,
+    topics: ['custom event', 'event node', 'begin play', 'tick event', 'event graph'],
     summary: 'Add an event node (built-in or custom) to the EventGraph of a Blueprint.',
     whenToUse: ['An event handler node must be created in the EventGraph.'],
     whenNotToUse: ['A callable function is needed (use add_function).'],
     inputProps: { action: P.action, blueprintPath: P.blueprintPath, graphName: P.graphName, eventType: P.eventType, eventName: P.eventName, customEventName: P.customEventName, posX: P.posX, posY: P.posY, parameters: P.parameters },
     required: ['action', 'blueprintPath'],
     outputProps: {
-      nodeGuid: { type: 'string', description: 'Event node identifier.' },
+      nodeGuid: { type: 'string', description: 'Event node identifier. Returned for custom events; the built-in-event path may bind an event that already exists in the graph and reports no new node.' },
       eventName: P.eventName,
     },
-    outputRequired: ['nodeGuid'],
+    // NOT required. The built-in path (e.g. ReceiveActorBeginOverlap) creates or
+    // binds the event without reporting a guid, so demanding one turned a
+    // successful call into OUTPUT_SCHEMA_VIOLATION -- the node was really added
+    // and only the receipt was rejected, which reads as "the operation failed".
+    outputRequired: [],
     effect: 'write',
     latency: 'interactive',
     resources: 'low',
