@@ -5,6 +5,8 @@
 #include "Foundation/BridgeHelpers/Responses/McpAutomationBridgeHelpersJsonFields.h"
 #include "Foundation/BridgeHelpers/Blueprints/McpAutomationBridgeHelpersScsLookup.h"
 #include "Domains/Blueprint/Components/McpAutomationBridge_BlueprintHandlersSubobjectTraits.h"
+#include "Domains/Blueprint/Components/McpAutomationBridge_BlueprintHandlersScsTemplateAssets.h"
+#include "Domains/Blueprint/Components/McpAutomationBridge_BlueprintHandlersScsParentResolve.h"
 
 #if WITH_EDITOR
 #include "Foundation/BridgeHelpers/Properties/McpAutomationBridgeHelpersNestedPropertyPath.h"
@@ -22,7 +24,7 @@
 namespace McpBlueprintHandlers {
 #if WITH_EDITOR
 namespace {
-void ApplyModifyScsModifyComponent(USimpleConstructionScript *LocalSCS, const TSharedPtr<FJsonObject> &Op, TSharedPtr<FJsonObject> OpSummary) {
+void ApplyModifyScsModifyComponent(UBlueprint *LocalBP, USimpleConstructionScript *LocalSCS, const TSharedPtr<FJsonObject> &Op, TSharedPtr<FJsonObject> OpSummary) {
 FString ComponentName;
 Op->TryGetStringField(TEXT("componentName"), ComponentName);
 const TSharedPtr<FJsonValue> TransformVal = Op->TryGetField(TEXT("transform"));
@@ -36,18 +38,23 @@ if (ComponentName.IsEmpty()) {
   return;
 }
 USCS_Node *Node = FindScsNodeByName(LocalSCS, ComponentName);
-if (!Node || !Node->ComponentTemplate) {
+// An inherited native component (ACharacter's Mesh, CapsuleComponent, ...) has
+// no USCS_Node, so the SCS-only lookup reported "Component not found" for a
+// component the Blueprint plainly has. set_scs_property has resolved those
+// through the CDO for a while; the batch path had not.
+UActorComponent *Template = Node ? Node->ComponentTemplate : nullptr;
+if (!Template) { Template = McpScsParent::FindInheritedComponent(LocalBP, ComponentName); }
+if (!Template) {
   OpSummary->SetBoolField(TEXT("success"), false);
-  OpSummary->SetStringField(
-      TEXT("warning"),
-      TEXT("Component not found or template missing"));
+  OpSummary->SetStringField(TEXT("warning"), FString::Printf(
+      TEXT("'%s' is neither a component of this Blueprint nor one it inherits; call get_scs to list what it has."), *ComponentName));
   return;
 }
 bool bAnySuccess = false;
 if (TransformObj.IsValid() &&
-    Node->ComponentTemplate->IsA<USceneComponent>()) {
+    Template->IsA<USceneComponent>()) {
   USceneComponent *SceneTemplate =
-      Cast<USceneComponent>(Node->ComponentTemplate);
+      Cast<USceneComponent>(Template);
   FVector Location = SceneTemplate->GetRelativeLocation();
   FRotator Rotation = SceneTemplate->GetRelativeRotation();
   FVector Scale = SceneTemplate->GetRelativeScale3D();
@@ -71,7 +78,7 @@ if (PropertiesObj.IsValid()) {
     void *ContainerPtr = nullptr;
     FString ResolveError;
     FProperty *TargetProp =
-        ResolveNestedPropertyPath(Node->ComponentTemplate,
+        ResolveNestedPropertyPath(Template,
                                   PropName, ContainerPtr, ResolveError);
     if (TargetProp && ContainerPtr) {
       FString FailureMessage;
@@ -82,14 +89,11 @@ if (PropertiesObj.IsValid()) {
     }
   }
 }
-if (bAnySuccess) {
-  OpSummary->SetBoolField(TEXT("success"), true);
-  OpSummary->SetStringField(TEXT("componentName"), ComponentName);
-} else {
-  OpSummary->SetBoolField(TEXT("success"), false);
-  OpSummary->SetStringField(
-      TEXT("warning"),
-      TEXT("No transform or properties applied"));
+bAnySuccess = ApplyScsTemplateAssets(Template, Op) || bAnySuccess;
+OpSummary->SetBoolField(TEXT("success"), bAnySuccess);
+OpSummary->SetStringField(TEXT("componentName"), ComponentName);
+if (!bAnySuccess) {
+  OpSummary->SetStringField(TEXT("warning"), TEXT("No transform or properties applied"));
 }
 }
 
@@ -100,6 +104,11 @@ FString ComponentClassPath;
 Op->TryGetStringField(TEXT("componentClass"), ComponentClassPath);
 FString AttachToName;
 Op->TryGetStringField(TEXT("attachTo"), AttachToName);
+// Each add compiles the Blueprint, which replaces its SCS - so by op 2 the
+// pointer handed in at the start of the batch is stale and every lookup misses.
+if (LocalBP && LocalBP->SimpleConstructionScript) {
+  LocalSCS = LocalBP->SimpleConstructionScript;
+}
 
 // UE 5.7 FIX: Use ResolveClassByName to handle short class names like "StaticMeshComponent"
 // FSoftClassPath triggers ensure failure when given short package names in UE 5.7+
@@ -113,8 +122,7 @@ if (!ComponentClass && ComponentClassPath.Contains(TEXT("/"))) {
 }
 if (!ComponentClass) {
   OpSummary->SetBoolField(TEXT("success"), false);
-  OpSummary->SetStringField(TEXT("warning"),
-                            TEXT("Component class not found"));
+  OpSummary->SetStringField(TEXT("warning"), TEXT("Component class not found"));
 } else {
   USCS_Node *ExistingNode = FindScsNodeByName(LocalSCS, ComponentName);
   if (ExistingNode) {
@@ -122,6 +130,12 @@ if (!ComponentClass) {
     OpSummary->SetStringField(TEXT("componentName"), ComponentName);
     OpSummary->SetStringField(TEXT("warning"),
                               TEXT("Component already exists"));
+    // Re-running a prefab definition is how a caller corrects one, so an
+    // existing node takes this call's transform and properties instead of
+    // being skipped outright.
+    if (Op->HasField(TEXT("transform")) || Op->HasField(TEXT("properties"))) {
+      ApplyModifyScsModifyComponent(LocalBP, LocalSCS, Op, OpSummary);
+    }
   } else {
     bool bAddedViaSubsystem = false;
     FString AdditionMethodStr;
@@ -253,25 +267,35 @@ if (!ComponentClass) {
     if (bAddedViaSubsystem) {
       OpSummary->SetBoolField(TEXT("success"), true);
       OpSummary->SetStringField(TEXT("componentName"), ComponentName);
+      // The parent search above matches AttachToName against the EXPORTED TEXT
+      // of an FSubobjectDataHandle, which is an opaque id and never contains a
+      // component name -- so it always fell through to ExistingHandles[0], the
+      // root. Re-attach by name now that the node exists, and report it.
+      McpScsParent::AttachAndReport(LocalBP, LocalBP->SimpleConstructionScript,
+                                    ComponentName, AttachToName, OpSummary);
       if (!AdditionMethodStr.IsEmpty())
-        OpSummary->SetStringField(TEXT("additionMethod"),
-                                  AdditionMethodStr);
+        OpSummary->SetStringField(TEXT("additionMethod"), AdditionMethodStr);
+      // The contract says add_component also takes `transform` and a
+      // `properties` bag, but this only ever created the node: in a batch every
+      // placement and every mesh assignment was accepted, reported success, and
+      // silently dropped, so a prefab built this way came out as a pile of empty
+      // components at the origin. Reuse the modify path on the node just added.
+      if (Op->HasField(TEXT("transform")) || Op->HasField(TEXT("properties"))) {
+        TSharedPtr<FJsonObject> Applied = MakeShared<FJsonObject>(*Op);
+        FString RenamedTo;
+        if (OpSummary->TryGetStringField(TEXT("renamedTo"), RenamedTo))
+          Applied->SetStringField(TEXT("componentName"), RenamedTo);
+        ApplyModifyScsModifyComponent(LocalBP, LocalSCS, Applied, OpSummary);
+      }
     } else {
       USCS_Node *NewNode =
           LocalSCS->CreateNode(ComponentClass, *ComponentName);
       if (NewNode) {
-        if (!AttachToName.TrimStartAndEnd().IsEmpty()) {
-          if (USCS_Node *ParentNode =
-                  FindScsNodeByName(LocalSCS, AttachToName)) {
-            ParentNode->AddChildNode(NewNode);
-          } else {
-            LocalSCS->AddNode(NewNode);
-          }
-        } else {
-          LocalSCS->AddNode(NewNode);
-        }
+        LocalSCS->AddNode(NewNode);
         OpSummary->SetBoolField(TEXT("success"), true);
         OpSummary->SetStringField(TEXT("componentName"), ComponentName);
+        McpScsParent::AttachAndReport(LocalBP, LocalSCS, ComponentName,
+                                      AttachToName, OpSummary);
       } else {
         OpSummary->SetBoolField(TEXT("success"), false);
         OpSummary->SetStringField(TEXT("warning"),
@@ -285,7 +309,7 @@ if (!ComponentClass) {
 
 void ApplyModifyScsComponentOperation(UBlueprint *LocalBP, USimpleConstructionScript *LocalSCS, const FString &NormalizedType, const TSharedPtr<FJsonObject> &Op, TSharedPtr<FJsonObject> OpSummary) {
   if (NormalizedType == TEXT("modify_component")) {
-    ApplyModifyScsModifyComponent(LocalSCS, Op, OpSummary);
+    ApplyModifyScsModifyComponent(LocalBP, LocalSCS, Op, OpSummary);
   } else if (NormalizedType == TEXT("add_component")) {
     ApplyModifyScsAddComponent(LocalBP, LocalSCS, Op, OpSummary);
   }

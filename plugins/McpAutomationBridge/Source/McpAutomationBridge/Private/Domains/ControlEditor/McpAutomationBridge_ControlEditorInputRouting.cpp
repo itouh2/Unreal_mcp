@@ -1,7 +1,41 @@
 #include "Domains/ControlEditor/McpAutomationBridge_ControlEditorSupport.h"
 
 #if WITH_EDITOR
+#include "Framework/Application/SlateUser.h"
+#include "GenericPlatform/ICursor.h"
+#include "Layout/WidgetPath.h"
+#endif
+
+#if WITH_EDITOR
 namespace {
+// Where the LAST synthetic move left the virtual pointer. Kept here rather than
+// read back from FSlateApplication because the real cursor is deliberately no
+// longer moved, so its position says nothing about this pointer's travel and a
+// drag would compute its delta from whatever the person was doing elsewhere.
+FVector2D &SyntheticCursorPosForMcp() {
+  static FVector2D Position(0.0, 0.0);
+  return Position;
+}
+
+// The innermost widgets Slate hit-tests at a screen point, outermost-last, so a
+// click that went somewhere unintended says where it went.
+FString DescribeWidgetsUnderPointForMcp(const FVector2D &ScreenPosition) {
+  FSlateApplication &SlateApp = FSlateApplication::Get();
+  FWidgetPath PathUnderPoint = SlateApp.LocateWindowUnderMouse(
+      ScreenPosition, SlateApp.GetInteractiveTopLevelWindows());
+  if (!PathUnderPoint.IsValid() || PathUnderPoint.Widgets.Num() == 0) {
+    return TEXT("nothing (no interactive Slate window covers that point - the "
+                "editor window may be minimised or off-screen)");
+  }
+  TArray<FString> Names;
+  const int32 Depth = FMath::Min(PathUnderPoint.Widgets.Num(), 4);
+  for (int32 Index = 0; Index < Depth; ++Index) {
+    const int32 FromLeaf = PathUnderPoint.Widgets.Num() - 1 - Index;
+    Names.Add(PathUnderPoint.Widgets[FromLeaf].Widget->GetTypeAsString());
+  }
+  return FString::Join(Names, TEXT(" < "));
+}
+
 bool RouteKeyToPIEForMcp(const FKey &InputKey, const EInputEvent InputEvent,
                          bool &bOutHandledByPIE) {
   bOutHandledByPIE = false;
@@ -15,8 +49,17 @@ bool RouteKeyToPIEForMcp(const FKey &InputKey, const EInputEvent InputEvent,
   }
 
   APlayerController *PlayerController = PlayWorld->GetFirstPlayerController();
-  if (PlayerController && PlayerController->PlayerInput) {
-    PlayerController->PlayerInput->ForceRebuildingKeyMaps(true);
+  // Rebuild the key maps ONCE per PlayerInput, never per event. Calling
+  // ForceRebuildingKeyMaps on every injected key resets the input state
+  // machine mid-stream, so a second key pressed while an action is already
+  // in flight never raises Enhanced Input's Started. That made a held move
+  // key plus a jump impossible to drive: the pawn jumped fine standing
+  // still, and never left the ground while running.
+  static TWeakObjectPtr<UPlayerInput> LastRebuiltInput;
+  if (PlayerController && PlayerController->PlayerInput &&
+      LastRebuiltInput.Get() != PlayerController->PlayerInput) {
+    PlayerController->PlayerInput->ForceRebuildingKeyMaps(false);
+    LastRebuiltInput = PlayerController->PlayerInput;
   }
 
   const float AmountDepressed = InputEvent == IE_Released ? 0.0f : 1.0f;
@@ -194,6 +237,44 @@ void SimulateEditorInputForMcp(const FString &InputType, const FString &Key,
     // trigger any editor UI. Use the EffectingButton-aware constructor and
     // mirror platform behaviour: down carries the button in PressedButtons,
     // up carries an empty set.
+    // Name what is actually under (x, y) BEFORE dispatching. A synthetic click
+    // that lands on a full-screen scrim, a stale overlay or the wrong panel
+    // answers handledBySlate:true exactly like a click that pressed the button
+    // the caller meant, so without this the only way to tell them apart is to
+    // screenshot and guess at coordinates.
+    const FString HitWidgetSummary = DescribeWidgetsUnderPointForMcp(Position);
+
+    // Carry our own move INTO the click, in this same dispatch. Slate
+    // synthesizes a mouse-move from the REAL cursor position every frame, so a
+    // hover established by a separate simulate_input(mouse_move) call is wiped
+    // out long before the caller's next request arrives -- and SButton only
+    // fires OnClicked when the release lands on a widget it still considers
+    // hovered. That is why a move+click pair used to work only while the
+    // hardware cursor happened to be sitting on the button. Moving first here
+    // makes the click land where it says it lands, wherever the real mouse is.
+    // ...and borrow the hardware cursor for the duration of the click only.
+    // A purely synthetic move is not enough: SButton fires OnClicked only when
+    // the release lands on a widget Slate still considers hovered, and Slate
+    // recomputes hover every frame from the REAL cursor, so the hover is gone
+    // before the release. Parking the cursor on the target permanently is what
+    // made automation unusable alongside other work, so put it back where the
+    // person left it as soon as the release has been routed: they see at most a
+    // single-frame blip instead of losing their pointer.
+    TSharedPtr<ICursor> PlatformCursor =
+        SlateApp.GetPlatformCursor().IsValid() ? SlateApp.GetPlatformCursor() : nullptr;
+    const FVector2D RestoreCursorTo =
+        PlatformCursor.IsValid() ? FVector2D(PlatformCursor->GetPosition()) : Position;
+    if (PlatformCursor.IsValid()) {
+      PlatformCursor->SetPosition(static_cast<int32>(Position.X),
+                                  static_cast<int32>(Position.Y));
+    }
+    TSet<FKey> NoButtons;
+    FPointerEvent PreClickMove(0, Position, SyntheticCursorPosForMcp(),
+                               NoButtons, EKeys::Invalid, 0.0f,
+                               FModifierKeysState());
+    SlateApp.ProcessMouseMoveEvent(PreClickMove);
+    SyntheticCursorPosForMcp() = Position;
+
     FPointerEvent MouseDownEvent(0, Position, Position, PressedButtons,
                                  MouseButtonKey, 0.0f, FModifierKeysState());
     const bool bDownHandled =
@@ -203,20 +284,60 @@ void SimulateEditorInputForMcp(const FString &InputType, const FString &Key,
     FPointerEvent MouseUpEvent(0, Position, Position, ReleasedButtons,
                                MouseButtonKey, 0.0f, FModifierKeysState());
     const bool bUpHandled = SlateApp.ProcessMouseButtonUpEvent(MouseUpEvent);
+    if (PlatformCursor.IsValid()) {
+      PlatformCursor->SetPosition(static_cast<int32>(RestoreCursorTo.X),
+                                  static_cast<int32>(RestoreCursorTo.Y));
+    }
     bHandledBySlate = bDownHandled || bUpHandled;
     bSuccess = true;
-    Message = FString::Printf(TEXT("Mouse click at (%f, %f)"), X, Y);
+
+    // A click can be "handled" and still never reach the widget at (x, y):
+    // while something holds mouse capture, Slate delivers straight to the
+    // captor and skips hit-testing entirely. The usual case is a PIE session
+    // whose viewport still owns the mouse because the game never called
+    // SetInputMode_UIOnly/GameAndUI -- every click then answers
+    // handledBySlate:true while the on-screen button is never pressed. Name the
+    // captor so that is visible here instead of at the next screenshot.
+    FString CaptorName;
+    if (TSharedPtr<FSlateUser> CursorUser = SlateApp.GetCursorUser()) {
+      if (TSharedPtr<SWidget> Captor = CursorUser->GetCursorCaptor()) {
+        CaptorName = Captor->GetTypeAsString();
+      }
+    }
+    Message = CaptorName.IsEmpty()
+                  ? FString::Printf(TEXT("Mouse click at (%f, %f) reached %s"),
+                                    X, Y, *HitWidgetSummary)
+                  : FString::Printf(
+                        TEXT("Mouse click at (%f, %f) was delivered to the "
+                             "widget holding mouse capture (%s), NOT to "
+                             "whatever is drawn at those coordinates."),
+                        X, Y, *CaptorName);
   } else if (InputType == TEXT("mouse_move") || InputType == TEXT("move")) {
     double X = 0;
     double Y = 0;
     Payload->TryGetNumberField(TEXT("x"), X);
     Payload->TryGetNumberField(TEXT("y"), Y);
 
-    FSlateApplication::Get().SetCursorPos(
-        FVector2D(static_cast<float>(X), static_cast<float>(Y)));
-    bHandledBySlate = true;
+    // SetCursorPos drives the REAL system cursor: it yanked the pointer out of
+    // whatever the person was doing on another window, and the editor grabbing
+    // focus to receive it made automation unusable alongside any other work.
+    // Slate routes a pointer event by the position carried ON the event, not by
+    // where the hardware cursor happens to be, so a synthetic move updates
+    // hover and drag state for the widgets under (x, y) while the person's
+    // actual mouse stays exactly where they left it.
+    FSlateApplication &SlateApp = FSlateApplication::Get();
+    const FVector2D Position(static_cast<float>(X), static_cast<float>(Y));
+    TSet<FKey> NoButtons;
+    FPointerEvent MoveEvent(0, Position, SyntheticCursorPosForMcp(),
+                            NoButtons, EKeys::Invalid, 0.0f,
+                            FModifierKeysState());
+    bHandledBySlate = SlateApp.ProcessMouseMoveEvent(MoveEvent);
+    SyntheticCursorPosForMcp() = Position;
     bSuccess = true;
-    Message = FString::Printf(TEXT("Mouse moved to (%f, %f)"), X, Y);
+    Message = FString::Printf(
+        TEXT("Mouse moved to (%f, %f) synthetically; the system cursor was NOT "
+             "moved and no window was focused."),
+        X, Y);
   } else {
     Message = FString::Printf(
         TEXT("Unknown input type: %s. Supported: key_down, key_up, mouse_click, mouse_move"),

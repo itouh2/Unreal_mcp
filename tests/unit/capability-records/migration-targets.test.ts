@@ -93,21 +93,41 @@ describe('Task 29 - migration canonical targets resolve to live capability recor
     expect(String(systemConsole?.canonicalId)).toBe('system_control.console_command');
   });
 
-  it('maps the 1,349 non-removed entries injectively with zero collisions', () => {
+  it('maps every non-removed entry injectively with zero collisions', () => {
     // Given the non-removed entries
     // When their canonical targets are collected
     // Then no two legacy pairs share a capability record.
+    // A folded family is the one sanctioned exception: the old names it
+    // replaced all resolve to the record that folded them, and they are the
+    // only pairs allowed to share a target.
+    const foldedKeys = new Set<string>();
+    for (const record of ALL_CAPABILITY_RECORDS) {
+      for (const legacy of record.legacyIds) {
+        if (legacy.folded !== undefined) foldedKeys.add(`${String(legacy.tool)}::${String(legacy.action)}`);
+      }
+    }
+    // A target that folded pairs point at may also be claimed by the alias
+    // entries generated for those pairs; any other shared target is a collision.
+    const foldedTargets = new Set<string>();
+    for (const record of ALL_CAPABILITY_RECORDS) {
+      if (record.legacyIds.some((legacy) => legacy.folded !== undefined)) foldedTargets.add(String(record.id));
+    }
     const owners = new Map<string, LegacyKey>();
     const collisions: string[] = [];
     for (const entry of nonRemoved) {
       const target = String(entry.canonicalId);
       const owner = owners.get(target);
       if (owner === undefined) owners.set(target, entry.legacyKey);
-      else collisions.push(`${target} claimed by ${owner} and ${entry.legacyKey}`);
+      else if (!foldedTargets.has(target)) {
+        collisions.push(`${target} claimed by ${owner} and ${entry.legacyKey}`);
+      }
     }
 
     expect(collisions, `colliding targets:\n${collisions.slice(0, 10).join('\n')}`).toEqual([]);
-    expect(owners.size).toBe(EXPECTED_NON_REMOVED);
+    expect(foldedKeys.size).toBeGreaterThan(0);
+    // Every non-folded target is claimed exactly once.
+    const unfoldedClaims = nonRemoved.filter((entry) => !foldedTargets.has(String(entry.canonicalId)));
+    expect([...owners.keys()].filter((target) => !foldedTargets.has(target)).length).toBe(unfoldedClaims.length);
   });
 
   it('leaves no `cap:` namespace reference in any migration, alias or lossy target', () => {
@@ -132,7 +152,7 @@ describe('Task 29 - migration canonical targets resolve to live capability recor
   });
 
   it('keeps every removal explicit and canonicalId-free', () => {
-    // Given the 8 retired native routes
+    // Given the EXPECTED_REMOVALS retired native routes
     // When their entries are inspected
     // Then each carries removal guidance and names no canonical target at all.
     for (const entry of removed) {
@@ -165,7 +185,7 @@ describe('Task 29 - migration canonical targets resolve to live capability recor
     const boundsKey = namedKey('manage_level_structure', 'set_volume_bounds');
     const rule = LOSSY_RULES.find((candidate) => candidate.legacyKey === boundsKey);
 
-    expect(String(rule?.canonicalId)).toBe('manage_level_structure.set_volume_extent');
+    expect(String(rule?.canonicalId)).toBe('manage_level_structure.set_volume_properties');
     expect(liveIds.has(String(rule?.canonicalId))).toBe(true);
   });
 
@@ -194,7 +214,7 @@ describe('Task 29 - migration canonical targets resolve to live capability recor
   });
 
   it('still refuses every removed legacy pair at execute time', () => {
-    // Given the 8 retired routes
+    // Given the EXPECTED_REMOVALS retired routes
     // When they are resolved through the production execute resolver
     // Then each is refused as removed or as an action that never shipped.
     const index = executeTargetIndex();

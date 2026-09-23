@@ -145,6 +145,9 @@ bool UMcpAutomationBridgeSubsystem::HandleAssetAction(
     return HandleGetSourceControlState(RequestId, Lower, Payload, RequestingSocket);
   if (Lower == TEXT("source_control_enable"))
     return HandleSourceControlEnable(RequestId, Lower, Payload, RequestingSocket);
+  if (Lower == TEXT("source_control_init") ||
+      Lower == TEXT("source_control_commit_all"))
+    return HandleSourceControlRepo(RequestId, Lower, Payload, RequestingSocket);
 
   // Graph & Analysis
   if (Lower == TEXT("analyze_graph"))
@@ -200,9 +203,13 @@ bool UMcpAutomationBridgeSubsystem::HandleAssetAction(
       const bool bOk = !(Result.IsValid() &&
                          Result->TryGetStringField(TEXT("error"), Err) &&
                          !Err.IsEmpty());
+      // The handler already says exactly what went wrong in Result.error and
+      // carries a machine code in Result.errorCode; both were dropped in favour
+      // of a contentless "DataTable action failed".
+      FString ErrCode;
+      if (!bOk) { Result->TryGetStringField(TEXT("errorCode"), ErrCode); }
       SendAutomationResponse(RequestingSocket, RequestId, bOk,
-          bOk ? TEXT("DataTable action completed") : TEXT("DataTable action failed"),
-          Result);
+          bOk ? TEXT("DataTable action completed") : Err, Result, ErrCode);
       return true;
     }
     return false;

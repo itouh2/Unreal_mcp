@@ -18,11 +18,10 @@ import {
   unreviewedBreaches,
 } from './known-breaches.js';
 import { buildTask48Report, type Task48Report } from './report.js';
-import { GATEWAY_DEFAULT_SEARCH_LIMIT, retrievalCases } from './fixtures.js';
+import { GATEWAY_DEFAULT_SEARCH_LIMIT, retrievalCases, finalRegistryRecords } from './fixtures.js';
 import { measurePayload, unionBaselineBytes, jsonBytes } from './measure-payload.js';
 import { measureDestructiveAutoSelection, measureRetrieval } from './measure-retrieval.js';
 import { describeGatewayCapability } from '../../src/server/gateway/gateway-describe.js';
-import { finalRegistryRecords } from './fixtures.js';
 
 const BUILD_TIMEOUT_MS = 600_000;
 
@@ -45,7 +44,7 @@ describe('task 48 report provenance', () => {
     expect(report.corpusScorer.corpusHash).toMatch(/^[0-9a-f]{64}$/u);
     expect(report.treeHashInputCount).toBeGreaterThan(0);
     expect(report.environment.nodeVersion.length).toBeGreaterThan(0);
-    expect(report.registryRecordCount).toBeGreaterThan(1000);
+    expect(report.registryRecordCount).toBeGreaterThan(300);
   });
 
   it('Given the reviewed Task-4 corpus, When Task 48 rescores it, Then the corpus hash still matches the recorded baseline', () => {

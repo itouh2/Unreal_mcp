@@ -86,6 +86,7 @@ const testCases = [
   { scenario: 'CONFIG: set_quality', toolName: 'system_control', arguments: { action: 'set_quality', category: 'ViewDistance', level: 1 }, expected: 'success' },
   // === ACTION ===
   { scenario: 'ACTION: screenshot', toolName: 'system_control', arguments: { action: 'screenshot', filename: 'SystemControl_NullRHI', resolution: '640x360', mode: 'editor_viewport', returnBase64: false, includeMetadata: true, metadata: { source: 'system-control-suite' } }, expected: 'success' },
+  { scenario: 'OPTIONAL: screenshot of a named editor window', toolName: 'system_control', arguments: { action: 'screenshot', filename: 'SystemControl_Window', mode: 'full_editor_window', window: '0', resolution: '640x360' }, expected: 'success' },
   // === CONFIG ===
   { scenario: 'CONFIG: set_resolution', toolName: 'system_control', arguments: { action: 'set_resolution', width: 1280, height: 720, windowed: true }, expected: 'success' },
   { scenario: 'CONFIG: set_fullscreen', toolName: 'system_control', arguments: { action: 'set_fullscreen', enabled: false }, expected: 'success' },
@@ -93,6 +94,8 @@ const testCases = [
   { scenario: 'ACTION: execute_command', toolName: 'system_control', arguments: { action: 'execute_command', command: 'stat unit' }, expected: 'success' },
   { scenario: 'ACTION: console_command', toolName: 'system_control', arguments: { action: 'console_command', command: 'stat fps' }, expected: 'success' },
   { scenario: 'ACTION: run_ubt', toolName: 'system_control', arguments: { action: 'run_ubt', target: 'MCPtestEditor', platform: 'Linux', configuration: 'Development', arguments: '-NoHotReload' }, expected: 'success' },
+  { scenario: 'ACTION: package_project', toolName: 'system_control', arguments: { action: 'package_project', platform: 'Win64', configuration: 'Development', archiveDirectory: 'D:/Tmp/Packaged', maps: ['/Game/Maps/L_Hub'], pak: true, build: false }, expected: 'success' },
+  { scenario: 'READ: package_status', toolName: 'system_control', arguments: { action: 'package_status', jobId: '00000000-0000-0000-0000-000000000000' }, expected: 'error|JOB_NOT_FOUND' },
   { scenario: 'ACTION: subscribe', toolName: 'system_control', arguments: { action: 'subscribe' }, expected: 'success' },
   { scenario: 'ACTION: unsubscribe', toolName: 'system_control', arguments: { action: 'unsubscribe' }, expected: 'success' },
   // === CREATE ===

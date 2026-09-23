@@ -1,7 +1,9 @@
+#include "MCP/Execute/McpNativeGatewaySchemaValidation.h"
+#include "Foundation/HandlerUtils/McpHandlerUtilsJson.h"
 // McpNativeGatewaySchemaValidation.cpp — see header for the fail-closed contract.
 
-#include "MCP/Execute/McpNativeGatewaySchemaValidation.h"
 #include "MCP/Execute/McpNativeGatewaySchemaKeywords.h"
+
 
 namespace
 {
@@ -96,8 +98,10 @@ bool McpValidateAgainstCanonicalSchema(
 		}
 		if (!bAllowed)
 		{
-			OutViolation = McpSchemaKeywords::MakeViolation(EMcpSchemaViolation::Enum, McpSchemaKeywords::PointerOrRoot(Pointer),
-				FString::Printf(TEXT("%s is not an allowed value"), *McpSchemaKeywords::PointerOrRoot(Pointer)));
+				const FString AllowedText = McpSchemaKeywords::DescribeAllowedValues(*Allowed, 12);
+				OutViolation = McpSchemaKeywords::MakeViolation(EMcpSchemaViolation::Enum, McpSchemaKeywords::PointerOrRoot(Pointer),
+				FString::Printf(TEXT("%s is not an allowed value (received '%s'; allowed: %s)"), *McpSchemaKeywords::PointerOrRoot(Pointer),
+					*McpHandlerUtils::JsonValueToString(Value), *AllowedText));
 			return false;
 		}
 	}
@@ -158,17 +162,28 @@ bool ValidateObjectBody(
 	const TArray<TSharedPtr<FJsonValue>>* Required = nullptr;
 	if (Schema->TryGetArrayField(TEXT("required"), Required) && Required)
 	{
+		TArray<FString> Missing;
 		for (const TSharedPtr<FJsonValue>& RequiredValue : *Required)
 		{
 			FString Name;
-			if (RequiredValue.IsValid() && RequiredValue->TryGetString(Name) &&
+			if (RequiredValue.IsValid() && McpHandlerUtils::TryGetJsonValueString(RequiredValue, Name) &&
 				!Object->HasField(Name))
 			{
-				OutViolation = McpSchemaKeywords::MakeViolation(EMcpSchemaViolation::MissingRequired,
-					McpSchemaKeywords::JoinPointer(Pointer, Name),
-					FString::Printf(TEXT("Missing required parameter '%s'"), *Name));
-				return false;
+				Missing.Add(Name);
 			}
+		}
+		// Refusing on the first missing field alone turned a two-field call into
+		// one round trip per field. Name the whole set so a single reply is
+		// enough to build a valid request.
+		if (Missing.Num() > 0)
+		{
+			OutViolation = McpSchemaKeywords::MakeViolation(EMcpSchemaViolation::MissingRequired,
+				McpSchemaKeywords::JoinPointer(Pointer, Missing[0]),
+				Missing.Num() == 1
+					? McpSchemaKeywords::DescribeMissingParameter(
+						  Missing[0], bHasProperties ? *Properties : nullptr)
+					: FString::Printf(TEXT("Missing required parameters: %s"), *FString::Join(Missing, TEXT(", "))));
+			return false;
 		}
 	}
 
@@ -189,7 +204,7 @@ bool ValidateObjectBody(
 			{
 				OutViolation = McpSchemaKeywords::MakeViolation(EMcpSchemaViolation::Undeclared,
 					McpSchemaKeywords::JoinPointer(Pointer, Entry.Key),
-					FString::Printf(TEXT("Undeclared parameter '%s'"), *Entry.Key));
+					McpSchemaKeywords::DescribeUndeclaredParameter(Entry.Key, *Properties));
 				return false;
 			}
 		}

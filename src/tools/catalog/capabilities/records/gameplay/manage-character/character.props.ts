@@ -36,7 +36,7 @@ export const CHARACTER_P: PropertyMap = {
   springArmLength: num('Spring-arm target arm length.'),
   springArmLagEnabled: bool('Whether spring-arm camera lag is enabled.'),
   springArmLagSpeed: num('Spring-arm camera lag speed.'),
-  cameraUsePawnControlRotation: bool('Whether the camera uses pawn control rotation.'),
+  cameraUsePawnControlRotation: bool('Whether the spring arm follows the controller look rotation. The camera under it is always arm-relative.'),
 
   walkSpeed: num('Maximum walk speed.'),
   runSpeed: num('Run speed; ignored when walkSpeed is also supplied.'),
@@ -94,4 +94,44 @@ export const CHARACTER_P: PropertyMap = {
   footstepTraceDistance: num('Footstep ground-trace distance.'),
   volumeMultiplier: num('Footstep audio volume multiplier.'),
   particleScale: num('Footstep particle scale multiplier.'),
+
+  // --- MetaHuman Creator (UE 5.6+) -------------------------------------------
+  // Names are the fields the reflective handlers under
+  // plugins/.../Private/Domains/MetaHuman/ actually read; the struct-side
+  // UPROPERTY names they map onto are an implementation detail of that layer.
+  characterPath: str('Canonical /Game path of a MetaHuman Character asset.'),
+  rigType: {
+    type: 'string',
+    description: 'Face rig detail to request. JointsAndBlendShapes is required for facial animation.',
+    enum: ['JointsOnly', 'JointsAndBlendShapes'],
+  },
+  blocking: bool('Wait for auto-rigging to finish before answering. Default false: the request is queued on the Epic cloud service and metahuman_status reports canBuild once it lands. True parks the editor until the service answers.'),
+  reportProgress: bool('Emit editor progress notifications during auto-rigging. Default false.'),
+  pipelineType: {
+    type: 'string',
+    description: 'Assembly pipeline. Cinematic is the film-quality path; Optimized and UEFN trade fidelity for runtime cost.',
+    enum: ['Cinematic', 'Optimized', 'UEFN'],
+  },
+  pipelineQuality: {
+    type: 'string',
+    description: 'Quality level. Only meaningful when pipelineType is Optimized or UEFN.',
+    enum: ['Low', 'Medium', 'High', 'Cinematic'],
+  },
+  buildPath: str('Content folder for the assembled assets. Defaults to the palette setting.'),
+  commonFolderPath: str('Content folder for shared MetaHuman assets.'),
+  nameOverride: str('Folder name for the assembled character instead of the asset name.'),
+  exportType: {
+    type: 'string',
+    description: 'Which artifact to export: skeletal meshes, material instances, or DNA.',
+    enum: ['geometry', 'materials', 'dna'],
+  },
+  projectPath: str('Content folder receiving the exported assets.'),
+  externalPath: str('Folder on disk for exported .dna files. DNA export only.'),
+  headMesh: bool('Export the head skeletal mesh. Default true.'),
+  bodyMesh: bool('Export the body skeletal mesh. Default true.'),
+  fullBodyMesh: bool('Export a combined full-body skeletal mesh. Default false.'),
+  dnaHead: bool('Export head DNA. Default true.'),
+  dnaBody: bool('Export body DNA. Default true.'),
+  applyAsOverrides: bool('Apply exported materials back onto the character as overrides. Default true.'),
+  overwrite: bool('Overwrite existing assets instead of creating uniquely-named ones. Default true.'),
 };

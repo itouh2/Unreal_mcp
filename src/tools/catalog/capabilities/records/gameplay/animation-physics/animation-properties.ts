@@ -28,9 +28,23 @@ export const A: PropertyMap = {
   scale: { description: 'Uniform scale factor, or non-uniform scale as [x, y, z].' },
   removeChildren: bool('Whether child bones are removed with the target bone.'),
   stateMachineName: str('Target state machine name inside the Animation Blueprint.'),
+  conditionVariable: str('Animation Blueprint variable the transition rule tests, e.g. Speed or bFalling. Without it the rule graph is left unconnected, which reads as false forever and the state machine never leaves its entry state.'),
+  conditionComparison: str('How conditionVariable is tested: greater (default), less, greater_equal, less_equal for a numeric variable; true or false for a bool.'),
+  conditionValue: num('Right-hand value for a numeric conditionComparison (default 0). Ignored for true/false.'),
+  crossfadeDuration: num('Transition blend duration in seconds. blendTime is accepted as an alias.'),
+  priorityOrder: num('Evaluation order when several transitions out of one state can fire on the same frame; the lowest wins.'),
+  automaticRule: bool('Fire the transition when the source state\'s sequence player reaches the end of its animation instead of testing a condition. Left alone when omitted.'),
+  bidirectional: bool('Whether the transition also applies from toState back to fromState. Left alone when omitted.'),
   blendType: str('Blend node type (TwoWayBlend, BlendListByBool, BlendListByInt).'),
   layerSetup: objectList('Layered blend-per-bone branch filter descriptors.'),
-  boneTracks: objectList('Procedural bone track descriptors with keyframes.'),
+  boneTracks: objectList(
+    'Bone tracks to key: [{ boneName, frames: [{ frame, rotationDelta?: {pitch,yaw,roll}, '
+    + 'rotation?: {pitch,yaw,roll}|{x,y,z,w}, location?: {x,y,z}, scale?: {x,y,z} }] }]. '
+    + 'Channels left out keep the reference pose of that bone, so a rotation-only track poses '
+    + 'without collapsing the skeleton. Prefer rotationDelta, which bends the bone relative '
+    + 'to its rest orientation; plain rotation replaces the local rotation outright and needs '
+    + 'the rest orientation to already be known.',
+  ),
   weights: objectList('Per-vertex skin weight descriptors with bone influences.'),
   deltas: objectList('Per-vertex morph target position deltas.'),
   pitch: num('Aim offset pitch in degrees.'),

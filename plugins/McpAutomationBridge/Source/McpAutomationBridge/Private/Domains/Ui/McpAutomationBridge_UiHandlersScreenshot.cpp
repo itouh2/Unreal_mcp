@@ -12,6 +12,7 @@
 #include "IImageWrapperModule.h"
 #include "Foundation/BridgeHelpers/McpAutomationBridgeHelpers.h"
 #include "Foundation/McpScreenshotResample.h"
+#include "Domains/Ui/McpAutomationBridge_UiHandlersScreenshotSlate.h"
 #include "Domains/Ui/McpAutomationBridge_UiHandlersScreenshotSupport.h"
 #include "Misc/Base64.h"
 #include "Misc/FileHelper.h"
@@ -163,9 +164,14 @@ bool HandleScreenshotAction(
     }
   }
 
-  if (bUsingPieViewport) {
+  // Forcing a draw and then flushing blocks the game thread until the render
+  // thread drains. Once a UMG widget was live in the PIE viewport that pairing
+  // could sit for minutes and never return, so the capture appeared to hang.
+  // FViewport::ReadPixels already flushes on its own, making the explicit flush
+  // redundant, and the draw is only safe when the render thread is actually
+  // running and we are not re-entering it from inside rendering.
+  if (bUsingPieViewport && IsInGameThread() && !IsInRenderingThread()) {
     Viewport->Draw(false);
-    FlushRenderingCommands();
     bForcedViewportDraw = true;
   }
 
@@ -178,6 +184,13 @@ bool HandleScreenshotAction(
     Resp->SetStringField(TEXT("error"), Message);
     return true;
   }
+  // These pixels never contain the widget layer; say so rather than let an
+  // absent HUD read as a broken HUD. See the header for why compositing here
+  // is not an option.
+  Resp->SetStringField(TEXT("captureSource"), TEXT("scene_render_target"));
+  TArray<TSharedPtr<FJsonValue>> CaptureWarnings;
+  CaptureWarnings.Add(MakeShared<FJsonValueString>(McpSceneOnlyCaptureWarning()));
+  Resp->SetArrayField(TEXT("warnings"), CaptureWarnings);
 
   // The game-viewport capture declares the same `resolution` parameter as the
   // editor-viewport one and used to ignore it, so a PIE screenshot on a 4K

@@ -13,7 +13,11 @@ void FMcpNativeTransport::StreamToolCall(
 {
 	ISocketSubsystem* SocketSub = ISocketSubsystem::Get(PLATFORM_SOCKETSUBSYSTEM);
 
-	const FString RequestId = FGuid::NewGuid().ToString();
+	// Minted by the caller before the pre-queue gate ran, so the consent burn it
+	// recorded is keyed to the same id the response funnel will settle on.
+	const FString RequestId = Context.QueueRequestId.IsEmpty()
+		? FGuid::NewGuid().ToString()
+		: Context.QueueRequestId;
 	TSharedPtr<FSSEConnection> Conn = MakeShared<FSSEConnection>();
 	Conn->Socket = ClientSocket;
 	Conn->JsonRpcId = Id;
@@ -80,10 +84,8 @@ void FMcpNativeTransport::StreamToolCall(
 		const FString Body = FMcpJsonRpc::BuildError(
 			Id, FMcpJsonRpc::ErrorInvalidRequest,
 			TEXT("Invalid or expired session ID"));
-		SendHttpResponse(
+		SendAndClose(
 			ClientSocket, 404, TEXT("application/json"), Body, {}, CorsOrigin);
-		ClientSocket->Close();
-		if (SocketSub) SocketSub->DestroySocket(ClientSocket);
 		return;
 	}
 	if (bPendingLimitReached)
@@ -98,10 +100,8 @@ void FMcpNativeTransport::StreamToolCall(
 				false, TEXT("Native MCP pending tool-call limit reached"),
 				nullptr, TEXT("TOO_MANY_PENDING_TOOL_CALLS"));
 		const FString Body = FMcpJsonRpc::BuildResponse(Id, ToolResult);
-		SendHttpResponse(
+		SendAndClose(
 			ClientSocket, 429, TEXT("application/json"), Body, {}, CorsOrigin);
-		ClientSocket->Close();
-		if (SocketSub) SocketSub->DestroySocket(ClientSocket);
 		return;
 	}
 
@@ -135,9 +135,36 @@ void FMcpNativeTransport::StreamToolCall(
 		return;
 	}
 
+	// Log the capability being dispatched, not just the parent tool. A silent
+	// editor death leaves only this line behind, and "tool=control_editor" is
+	// twenty different actions — useless for attributing a crash. Operation,
+	// tool and action are the three fields that identify the leaf.
+	FString CallDetail = DispatchAction;
+	if (Arguments.IsValid())
+	{
+		FString Op, InnerTool, InnerAction;
+		Arguments->TryGetStringField(TEXT("operation"), Op);
+		Arguments->TryGetStringField(TEXT("tool"), InnerTool);
+		Arguments->TryGetStringField(TEXT("action"), InnerAction);
+		// The native surface does not always carry operation/tool (ToolName is
+		// already logged separately), so build the tightest label the payload
+		// supports rather than padding absent fields with '?'.
+		if (!InnerTool.IsEmpty() && !InnerAction.IsEmpty())
+		{
+			CallDetail = InnerTool + TEXT(".") + InnerAction;
+		}
+		else if (!InnerAction.IsEmpty())
+		{
+			CallDetail = InnerAction;
+		}
+		if (!Op.IsEmpty())
+		{
+			CallDetail = Op + TEXT(" ") + CallDetail;
+		}
+	}
 	UE_LOG(LogMcpNativeTransport, Log,
-		TEXT("tools/call: %s (RequestId=%s)"),
-		*ToolName, *RequestId);
+		TEXT("tools/call: %s [%s] (RequestId=%s)"),
+		*ToolName, *CallDetail, *RequestId);
 
 	TWeakObjectPtr<UMcpAutomationBridgeSubsystem> WeakSubsystem(Subsystem);
 	FString CapturedRequestId = RequestId;

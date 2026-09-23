@@ -68,7 +68,12 @@ export const P = {
   nodeName: S('Human-readable node name.'),
   memberName: S('Member (function/variable/event) name the node represents.'),
   memberClass: S('Member class (function, variable, event, etc.).'),
-  targetClass: S('Target class for a class-member node.'),
+  targetClass: S(
+    'Target class for a node that carries one: a Cast target, a CreateWidget or '
+      + 'SpawnActor class, or the subsystem a Get Subsystem node returns. Required '
+      + 'for cast and subsystem nodes, whose type is stored on the node itself and '
+      + 'cannot be set afterwards.',
+  ),
   pinName: S('Pin name on a graph node.'),
   linkedTo: S('Target pin descriptor for a pin link.'),
   nodeGuid: S('Node GUID accepted in place of nodeId.'),
@@ -155,6 +160,10 @@ export const P = {
   text: S('Text content for a text block or button.'),
   fontSize: N('Font size.'),
   colorAndOpacity: { type: 'object', additionalProperties: true, 'x-unreal-reflection-boundary': true, description: 'Color and opacity (0-1 values).' },
+  cornerRadius: { type: 'number', description: 'Corner radius in pixels for a widget that draws a brush (Image, Button, Border). Switches the brush to a RoundedBox; 0 restores square corners.' },
+  outlineColor: { type: 'object', additionalProperties: true, 'x-unreal-reflection-boundary': true, description: 'Outline color (0-1 values) drawn around a rounded brush. Ignored unless cornerRadius is set.' },
+  outlineWidth: { type: 'number', description: 'Outline thickness in pixels around a rounded brush. Ignored unless cornerRadius is set.' },
+  renderOpacity: { type: 'number', description: 'Render opacity (0-1) applied to the widget and everything under it.' },
   autoWrap: B('Enable text auto-wrap.'),
   texturePath: S('Texture asset path for an image or brush.'),
   brushSize: { type: 'object', additionalProperties: true, 'x-unreal-reflection-boundary': true, description: 'Brush/image size.' },

@@ -1,10 +1,13 @@
 /**
- * System operations records (10): run_ubt, run_tests, subscribe, unsubscribe,
- * spawn_category, execute_python, set_project_setting, get_project_settings,
- * validate_assets, lumen_update_scene.
+ * System operations records (12): run_ubt, package_project, package_status,
+ * run_tests, subscribe, unsubscribe, spawn_category, execute_python,
+ * set_project_setting, get_project_settings, validate_assets,
+ * lumen_update_scene.
  *
  * Routing is mixed and grounded in consolidated-handler-registration.ts:
  * - run_ubt: local TS spawn with manage_pipeline bridge fallback (long-running).
+ * - package_project/package_status: fallback tool dispatch to system_control ->
+ *   native HandlePackageProject / HandlePackageStatus (async UAT job + poll).
  * - run_tests: local dispatch to manage_tests (long-running).
  * - subscribe/unsubscribe: local dispatch to manage_logs.
  * - spawn_category: local dispatch to manage_debug (categoryName validated).
@@ -46,6 +49,86 @@ export const SYSTEM_OPS_RECORDS: readonly CapabilityRecordSource[] = [
     exampleOutput: { success: true, message: 'UnrealBuildTool finished successfully' },
     normalizationClass: NC,
     normalizationRationale: 'Distinct long-running build capability. TS spawns UBT directly via child_process and falls back to the manage_pipeline bridge action when no local UBT executable is found; target/platform/configuration are validated before dispatch.',
+  }),
+  // Packaging was the one build step with no capability at all, so a caller who
+  // wanted a shippable build had to leave the tool and run RunUAT from a shell.
+  // The native handler drives the same IUATHelperModule::CreateUatTask the
+  // editor's Package Project menu uses. It cannot answer with the result the way
+  // run_ubt does — a cook alone outlives any request timeout — so it hands back
+  // a jobId and package_status reports on it.
+  buildCoreRecord({
+    parentTool: PT,
+    action: 'package_project',
+    domain: 'build',
+    family: 'build',
+    topics: ['package project', 'build game', 'cook and package', 'shipping build', 'archive build'],
+    summary: 'Start a project package (cook, stage, pak, archive) and return a jobId to poll; the build runs asynchronously in the editor.',
+    whenToUse: ['A cooked, staged, archived build of the project is needed.'],
+    whenNotToUse: ['Only a code target must be compiled (use run_ubt).', 'The result of an already-started package is wanted (use package_status).'],
+    inputProps: {
+      platform: { type: 'string', description: 'Target platform (default Win64): Win64, Mac, Linux, LinuxArm64, Android, IOS.' },
+      configuration: { type: 'string', description: 'Client configuration (default Development): Debug, DebugGame, Development, Test, Shipping.' },
+      archiveDirectory: { type: 'string', description: 'Where the archived build lands (default <Project>/Packaged).' },
+      maps: { type: 'array', items: { type: 'string', description: 'A /Game map package path.' }, description: 'Maps to cook. Pass these when a map is reached by NAME at runtime (OpenLevel) rather than by reference, or the cooker will not find it.' },
+      pak: { type: 'boolean', description: 'Pak the staged content (default true).' },
+      build: { type: 'boolean', description: 'Compile the game target first (default true).' },
+    },
+    outputProps: {
+      jobId: { type: 'string', description: 'Pass to package_status. Jobs live in the editor session and do not survive a restart.' },
+      status: { type: 'string', description: 'Always "running" here: the call returns as soon as UAT is launched.' },
+      archiveDirectory: { type: 'string', description: 'Resolved absolute archive directory.' },
+      commandLine: { type: 'string', description: 'The exact UAT command line that was launched.' },
+      platform: { type: 'string', description: 'Resolved target platform.' },
+      configuration: { type: 'string', description: 'Resolved client configuration.' },
+    },
+    required: [],
+    effect: 'write',
+    behavior: { longRunning: true },
+    costLatency: 'long-running',
+    costResources: 'high',
+    dispatchAction: 'system_control',
+    dispatchMode: 'tool',
+    exampleInput: { action: 'package_project', platform: 'Win64', configuration: 'Development', maps: ['/Game/Maps/L_Hub'] },
+    exampleOutput: { success: true, jobId: '0F1E2D3C-4B5A-6978-8796-A5B4C3D2E1F0', status: 'running', archiveDirectory: 'D:/Proj/Packaged', commandLine: '-ScriptsForProject=... BuildCookRun ...', platform: 'Win64', configuration: 'Development' },
+    normalizationClass: NC,
+    normalizationRationale: 'Distinct long-running packaging capability with no prior coverage. Routes via the system_control fallback dispatch to the native HandlePackageProject, which validates platform/configuration against allow-lists and refuses map paths outside /Game.',
+    normalizationProvenance: 'post-migration',
+  }),
+  buildCoreRecord({
+    parentTool: PT,
+    action: 'package_status',
+    domain: 'build',
+    family: 'build',
+    topics: ['package status', 'packaging progress', 'build progress', 'is the package done'],
+    summary: 'Report a packaging job started by package_project: running, succeeded or failed, with elapsed time and the log directory.',
+    whenToUse: ['A package started by package_project must be checked for completion.'],
+    whenNotToUse: ['A new package should be started (use package_project).'],
+    inputProps: {
+      jobId: { type: 'string', description: 'The jobId package_project returned. Omit to list the jobIds this editor session knows.' },
+    },
+    outputProps: {
+      jobId: { type: 'string', description: 'Echoed job identifier.' },
+      jobIds: { type: 'array', items: { type: 'string', description: 'A known jobId.' }, description: 'Every job this editor session started; returned when jobId is omitted.' },
+      status: { type: 'string', description: 'running, succeeded or failed.' },
+      uatResult: { type: 'string', description: "UAT's own result word once the task finished." },
+      elapsedSeconds: { type: 'number', description: 'Seconds so far while running, total runtime once finished.' },
+      archiveDirectory: { type: 'string', description: 'Where the archived build lands.' },
+      commandLine: { type: 'string', description: 'The UAT command line this job launched.' },
+      logDirectory: { type: 'string', description: 'Where to read the failure: a failed pack leaves nothing in the archive directory.' },
+      platform: { type: 'string', description: 'Target platform of the job.' },
+      configuration: { type: 'string', description: 'Client configuration of the job.' },
+    },
+    required: [],
+    effect: 'read',
+    costLatency: 'instant',
+    costResources: 'low',
+    dispatchAction: 'system_control',
+    dispatchMode: 'tool',
+    exampleInput: { action: 'package_status', jobId: '0F1E2D3C-4B5A-6978-8796-A5B4C3D2E1F0' },
+    exampleOutput: { success: true, jobId: '0F1E2D3C-4B5A-6978-8796-A5B4C3D2E1F0', status: 'succeeded', uatResult: 'Completed', elapsedSeconds: 401.2, archiveDirectory: 'D:/Proj/Packaged', commandLine: '-ScriptsForProject=... BuildCookRun ...', logDirectory: 'D:/Proj/Saved/Logs', platform: 'Win64', configuration: 'Development' },
+    normalizationClass: NC,
+    normalizationRationale: 'Read-side companion to package_project with no prior coverage. Routes via the system_control fallback dispatch to the native HandlePackageStatus, which reads an in-session job registry.',
+    normalizationProvenance: 'post-migration',
   }),
   buildCoreRecord({
     parentTool: PT,
@@ -164,6 +247,11 @@ export const SYSTEM_OPS_RECORDS: readonly CapabilityRecordSource[] = [
     required: [],
     requiredOneOf: ['code', 'file'],
     effect: 'write',
+    // The one capability that can do anything at all was also the least gated:
+    // creating a material needed a single-use explicit grant while running
+    // arbitrary editor-side Python needed none. Requiring a grant here puts the
+    // gate back where the blast radius actually is.
+    policyOverride: { consent: 'explicit' },
     behavior: { longRunning: true },
     costLatency: 'long-running',
     costResources: 'medium',

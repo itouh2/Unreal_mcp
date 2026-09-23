@@ -11,104 +11,33 @@ export const gatewayManifest = {
       "description": "Author animation and physics assets: Animation Blueprints, blend spaces, montages, Control Rig/IK, skeletons, sockets, physics assets, cloth, ragdolls, and vehicles.",
       "actions": [
         "create_animation_blueprint",
-        "create_animation_bp",
-        "create_anim_blueprint",
-        "create_blend_space",
-        "create_blend_space_1d",
-        "create_blend_space_2d",
-        "create_blend_tree",
-        "create_procedural_anim",
-        "create_aim_offset",
-        "add_aim_offset_sample",
-        "create_state_machine",
-        "add_state_machine",
-        "add_state",
-        "add_transition",
-        "set_transition_rules",
-        "add_blend_node",
-        "add_cached_pose",
-        "add_slot_node",
-        "create_control_rig",
-        "create_ik_rig",
-        "create_ik_retargeter",
-        "setup_ik",
-        "create_pose_library",
         "create_animation_asset",
-        "create_animation_sequence",
-        "set_sequence_length",
-        "add_bone_track",
-        "set_bone_key",
-        "set_curve_key",
-        "add_notify_state",
-        "add_sync_marker",
-        "set_root_motion_settings",
-        "set_additive_settings",
-        "create_montage",
-        "add_montage_section",
-        "add_montage_slot",
-        "set_section_timing",
-        "add_montage_notify",
-        "set_blend_in",
-        "set_blend_out",
-        "link_sections",
-        "add_notify",
+        "edit_anim_graph",
+        "edit_animation",
+        "create_control_rig",
+        "setup_ik",
+        "edit_montage",
         "play_montage",
-        "play_anim_montage",
         "setup_ragdoll",
-        "activate_ragdoll",
         "configure_vehicle",
         "setup_physics_simulation",
-        "add_blend_sample",
-        "force_rebuild_blend_space",
-        "set_axis_settings",
-        "set_interpolation_settings",
+        "edit_blend_space",
         "setup_retargeting",
-        "add_layered_blend_per_bone",
-        "set_anim_graph_node_value",
+        "skin_mesh_to_skeleton",
+        "configure_anim_graph_node",
         "set_retarget_chain_mapping",
         "get_animation_info",
         "cleanup",
         "create_skeleton",
-        "add_bone",
-        "remove_bone",
-        "rename_bone",
-        "set_bone_transform",
-        "set_bone_parent",
-        "create_virtual_bone",
-        "create_socket",
+        "edit_skeleton",
+        "remove_skeleton_element",
         "configure_socket",
-        "auto_skin_weights",
-        "set_vertex_weights",
-        "normalize_weights",
-        "prune_weights",
-        "copy_weights",
-        "mirror_weights",
-        "create_physics_asset",
-        "add_physics_body",
-        "configure_physics_body",
-        "add_physics_constraint",
-        "configure_constraint_limits",
+        "edit_skin_weights",
+        "edit_physics_asset",
         "bind_cloth_to_skeletal_mesh",
-        "assign_cloth_asset_to_mesh",
-        "create_morph_target",
-        "set_morph_target_deltas",
+        "edit_morph_target",
         "import_morph_targets",
-        "get_skeleton_info",
-        "list_bones",
-        "list_sockets",
-        "list_physics_bodies",
-        "set_physics_asset",
-        "remove_physics_body",
-        "get_physics_asset_info",
-        "list_morph_targets",
-        "set_morph_target_value",
-        "get_bone_transform",
-        "list_virtual_bones",
-        "add_socket",
-        "modify_socket",
-        "modify_physics_body",
-        "set_physics_constraint",
-        "remove_socket"
+        "get_skeleton_info"
       ],
       "parameterNames": [
         "activate",
@@ -124,10 +53,12 @@ export const gatewayManifest = {
         "assets",
         "assignToMesh",
         "attachBoneName",
+        "automaticRule",
         "axis",
         "axisName",
         "basePoseFrame",
         "basePoseType",
+        "bidirectional",
         "blendTime",
         "blendType",
         "blueprintPath",
@@ -141,14 +72,21 @@ export const gatewayManifest = {
         "center",
         "clothAssetName",
         "clothAssetPath",
+        "clothOp",
         "collisionEnabled",
         "compileReferencers",
+        "conditionComparison",
+        "conditionValue",
+        "conditionVariable",
         "connectToOutput",
         "constraintName",
         "createConstraints",
+        "crossfadeDuration",
         "curveName",
         "deltas",
         "dragCoefficient",
+        "edit",
+        "element",
         "enableRootMotion",
         "endFrame",
         "forceRootLock",
@@ -157,7 +95,9 @@ export const gatewayManifest = {
         "fromSection",
         "fromState",
         "geomType",
+        "info",
         "interpolationType",
+        "kind",
         "layerSetup",
         "length",
         "limits",
@@ -190,14 +130,17 @@ export const gatewayManifest = {
         "physicsAssetPath",
         "pitch",
         "playRate",
+        "priorityOrder",
         "profileName",
         "propertyName",
         "radius",
+        "ragdoll",
         "rebuildBlendParameters",
         "relativeLocation",
         "relativeRotation",
         "relativeScale",
         "removeChildren",
+        "retargeterPath",
         "rootBoneName",
         "rootMotionRootLock",
         "rotation",
@@ -212,19 +155,24 @@ export const gatewayManifest = {
         "skeletonPath",
         "slotName",
         "socketName",
+        "socketOp",
         "sourceBoneName",
         "sourceChain",
         "sourceIKRigPath",
+        "sourceMesh",
         "sourceMeshPath",
+        "sourceSkeletalMesh",
         "sourceSkeleton",
         "startFrame",
         "startTime",
         "stateMachineName",
         "stateName",
+        "staticMeshPath",
         "suffix",
         "targetBoneName",
         "targetChain",
         "targetIKRigPath",
+        "targetMesh",
         "targetMeshPath",
         "targetSkeleton",
         "threshold",
@@ -267,10 +215,10 @@ export const gatewayManifest = {
           },
           "animations": {
             "type": "array",
+            "description": "Animation asset paths to play in this state; one Sequence Player is created per entry and the first drives the state Result pose. Without it the state is created empty and the character holds its reference pose.",
             "items": {
               "type": "string"
-            },
-            "description": "Animation asset paths; one Sequence Player is created and connected per entry."
+            }
           },
           "artifacts": {
             "type": "array",
@@ -302,6 +250,10 @@ export const gatewayManifest = {
             "type": "string",
             "description": "Bone the socket attaches to."
           },
+          "automaticRule": {
+            "type": "boolean",
+            "description": "Fire the transition when the source state's sequence player reaches the end of its animation instead of testing a condition. Left alone when omitted."
+          },
           "axis": {
             "type": "string",
             "description": "Mirror or blend axis (X, Y, Z)."
@@ -317,6 +269,10 @@ export const gatewayManifest = {
           "basePoseType": {
             "type": "string",
             "description": "Additive base pose type (RefPose, AnimScaled, AnimFrame)."
+          },
+          "bidirectional": {
+            "type": "boolean",
+            "description": "Whether the transition also applies from toState back to fromState. Left alone when omitted."
           },
           "blendTime": {
             "type": "number",
@@ -357,7 +313,7 @@ export const gatewayManifest = {
               "additionalProperties": true,
               "x-unreal-reflection-boundary": true
             },
-            "description": "Procedural bone track descriptors with keyframes."
+            "description": "Bone tracks to key: [{ boneName, frames: [{ frame, rotationDelta?: {pitch,yaw,roll}, rotation?: {pitch,yaw,roll}|{x,y,z,w}, location?: {x,y,z}, scale?: {x,y,z} }] }]. Channels left out keep the reference pose of that bone, so a rotation-only track poses without collapsing the skeleton. Prefer rotationDelta, which bends the bone relative to its rest orientation; plain rotation replaces the local rotation outright and needs the rest orientation to already be known."
           },
           "cacheName": {
             "type": "string",
@@ -380,6 +336,15 @@ export const gatewayManifest = {
             "type": "string",
             "description": "Clothing asset to load and register before binding."
           },
+          "clothOp": {
+            "type": "string",
+            "enum": [
+              "bind",
+              "assign"
+            ],
+            "description": "Which bind cloth to skeletal mesh variant to run; omit for 'bind'.",
+            "default": "bind"
+          },
           "collisionEnabled": {
             "type": "boolean",
             "description": "Whether collision is enabled."
@@ -387,6 +352,18 @@ export const gatewayManifest = {
           "compileReferencers": {
             "type": "boolean",
             "description": "Whether referring assets are compiled."
+          },
+          "conditionComparison": {
+            "type": "string",
+            "description": "How conditionVariable is tested: greater (default), less, greater_equal, less_equal for a numeric variable; true or false for a bool."
+          },
+          "conditionValue": {
+            "type": "number",
+            "description": "Right-hand value for a numeric conditionComparison (default 0). Ignored for true/false."
+          },
+          "conditionVariable": {
+            "type": "string",
+            "description": "Animation Blueprint variable the transition rule tests, e.g. Speed or bFalling. Without it the rule graph is left unconnected, which reads as false forever and the state machine never leaves its entry state."
           },
           "connectToOutput": {
             "type": "boolean",
@@ -399,6 +376,10 @@ export const gatewayManifest = {
           "createConstraints": {
             "type": "boolean",
             "description": "Create joint constraints between bodies."
+          },
+          "crossfadeDuration": {
+            "type": "number",
+            "description": "Transition blend duration in seconds. blendTime is accepted as an alias."
           },
           "curveName": {
             "type": "string",
@@ -416,6 +397,74 @@ export const gatewayManifest = {
           "dragCoefficient": {
             "type": "number",
             "description": "Drag coefficient."
+          },
+          "edit": {
+            "type": "string",
+            "enum": [
+              "add_blend_node",
+              "add_cached_pose",
+              "add_slot_node",
+              "create_state_machine",
+              "add_state_machine",
+              "add_state",
+              "add_transition",
+              "set_transition_rules",
+              "delete_transition",
+              "create_blend_tree",
+              "add_bone",
+              "rename_bone",
+              "set_bone_parent",
+              "set_bone_transform",
+              "create_virtual_bone",
+              "add_bone_track",
+              "set_bone_key",
+              "set_curve_key",
+              "add_notify",
+              "add_notify_state",
+              "add_sync_marker",
+              "set_additive_settings",
+              "set_root_motion_settings",
+              "set_sequence_length",
+              "add_aim_offset_sample",
+              "add_layered_blend_per_bone",
+              "set_value",
+              "add_montage_notify",
+              "add_montage_section",
+              "add_montage_slot",
+              "link_sections",
+              "set_blend_in",
+              "set_blend_out",
+              "set_section_timing",
+              "add_sample",
+              "set_axis_settings",
+              "set_interpolation_settings",
+              "rebuild",
+              "auto",
+              "copy",
+              "mirror",
+              "normalize",
+              "prune",
+              "set",
+              "create",
+              "add_body",
+              "configure_body",
+              "modify_body",
+              "add_constraint",
+              "set_constraint",
+              "configure_constraint_limits",
+              "assign",
+              "set_deltas"
+            ],
+            "description": "Which configure anim graph node variant to run."
+          },
+          "element": {
+            "type": "string",
+            "enum": [
+              "bone",
+              "socket",
+              "physics_body"
+            ],
+            "description": "Which remove skeleton element variant to run."
           },
           "enableRootMotion": {
             "type": "boolean",
@@ -449,9 +498,42 @@ export const gatewayManifest = {
             "type": "string",
             "description": "Body primitive: Sphyl, Box, Sphere, TaperedCapsule, MultiConvexHull or SingleConvexHull."
           },
+          "info": {
+            "type": "string",
+            "enum": [
+              "skeleton",
+              "bones",
+              "sockets",
+              "virtual_bones",
+              "bone_transform",
+              "morph_targets",
+              "physics_asset",
+              "physics_bodies"
+            ],
+            "description": "Which get skeleton info variant to run; omit for 'skeleton'.",
+            "default": "skeleton"
+          },
           "interpolationType": {
             "type": "string",
             "description": "Interpolation mode."
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "asset",
+              "sequence",
+              "montage",
+              "blend_space",
+              "blend_space_1d",
+              "blend_space_2d",
+              "aim_offset",
+              "pose_library",
+              "procedural",
+              "setup",
+              "rig",
+              "retargeter"
+            ],
+            "description": "Which create animation asset variant to run; omit for 'asset'."
           },
           "layerSetup": {
             "type": "array",
@@ -559,7 +641,7 @@ export const gatewayManifest = {
           },
           "outputPath": {
             "type": "string",
-            "description": "Canonical /Game path for the generated Physics Asset."
+            "description": "Canonical /Game path for the SkeletalMesh this writes."
           },
           "overwrite": {
             "type": "boolean",
@@ -593,6 +675,10 @@ export const gatewayManifest = {
             "type": "number",
             "description": "Playback rate."
           },
+          "priorityOrder": {
+            "type": "number",
+            "description": "Evaluation order when several transitions out of one state can fire on the same frame; the lowest wins."
+          },
           "profileName": {
             "type": "string",
             "description": "Skin weight profile name."
@@ -604,6 +690,15 @@ export const gatewayManifest = {
           "radius": {
             "type": "number",
             "description": "Radius in world units."
+          },
+          "ragdoll": {
+            "type": "string",
+            "enum": [
+              "setup",
+              "activate"
+            ],
+            "description": "Which setup ragdoll variant to run; omit for 'setup'.",
+            "default": "setup"
           },
           "rebuildBlendParameters": {
             "type": "boolean",
@@ -639,6 +734,10 @@ export const gatewayManifest = {
           "removeChildren": {
             "type": "boolean",
             "description": "Whether child bones are removed with the target bone."
+          },
+          "retargeterPath": {
+            "type": "string",
+            "description": "An existing IK Retargeter to bake through. Omit to auto-build one by characterizing both skeletons and mapping their chains."
           },
           "rootBoneName": {
             "type": "string",
@@ -700,6 +799,17 @@ export const gatewayManifest = {
             "type": "string",
             "description": "Target socket name."
           },
+          "socketOp": {
+            "type": "string",
+            "enum": [
+              "configure",
+              "add",
+              "create",
+              "modify"
+            ],
+            "description": "Which configure socket variant to run; omit for 'configure'.",
+            "default": "configure"
+          },
           "sourceBoneName": {
             "type": "string",
             "description": "Source bone name."
@@ -712,9 +822,17 @@ export const gatewayManifest = {
             "type": "string",
             "description": "Canonical /Game asset path."
           },
+          "sourceMesh": {
+            "type": "string",
+            "description": "SkeletalMesh giving the source proportions. Defaults to the skeleton preview mesh, then any mesh in the project built on it."
+          },
           "sourceMeshPath": {
             "type": "string",
             "description": "Canonical /Game mesh asset path."
+          },
+          "sourceSkeletalMesh": {
+            "type": "string",
+            "description": "An already-skinned mesh on the same skeleton to copy weights from, such as the body the garment is worn over. Beats computing weights fresh wherever the garment hugs the body. Falls back to smooth binding when omitted."
           },
           "sourceSkeleton": {
             "type": "string",
@@ -736,6 +854,10 @@ export const gatewayManifest = {
             "type": "string",
             "description": "State name."
           },
+          "staticMeshPath": {
+            "type": "string",
+            "description": "StaticMesh to skin, e.g. a coat downloaded as a rigid mesh."
+          },
           "suffix": {
             "type": "string",
             "description": "Suffix appended to each retargeted asset name."
@@ -751,6 +873,10 @@ export const gatewayManifest = {
           "targetIKRigPath": {
             "type": "string",
             "description": "Canonical /Game asset path."
+          },
+          "targetMesh": {
+            "type": "string",
+            "description": "SkeletalMesh to retarget onto. Defaults the same way as sourceMesh."
           },
           "targetMeshPath": {
             "type": "string",
@@ -808,104 +934,33 @@ export const gatewayManifest = {
             "type": "string",
             "enum": [
               "create_animation_blueprint",
-              "create_animation_bp",
-              "create_anim_blueprint",
-              "create_blend_space",
-              "create_blend_space_1d",
-              "create_blend_space_2d",
-              "create_blend_tree",
-              "create_procedural_anim",
-              "create_aim_offset",
-              "add_aim_offset_sample",
-              "create_state_machine",
-              "add_state_machine",
-              "add_state",
-              "add_transition",
-              "set_transition_rules",
-              "add_blend_node",
-              "add_cached_pose",
-              "add_slot_node",
-              "create_control_rig",
-              "create_ik_rig",
-              "create_ik_retargeter",
-              "setup_ik",
-              "create_pose_library",
               "create_animation_asset",
-              "create_animation_sequence",
-              "set_sequence_length",
-              "add_bone_track",
-              "set_bone_key",
-              "set_curve_key",
-              "add_notify_state",
-              "add_sync_marker",
-              "set_root_motion_settings",
-              "set_additive_settings",
-              "create_montage",
-              "add_montage_section",
-              "add_montage_slot",
-              "set_section_timing",
-              "add_montage_notify",
-              "set_blend_in",
-              "set_blend_out",
-              "link_sections",
-              "add_notify",
+              "edit_anim_graph",
+              "edit_animation",
+              "create_control_rig",
+              "setup_ik",
+              "edit_montage",
               "play_montage",
-              "play_anim_montage",
               "setup_ragdoll",
-              "activate_ragdoll",
               "configure_vehicle",
               "setup_physics_simulation",
-              "add_blend_sample",
-              "force_rebuild_blend_space",
-              "set_axis_settings",
-              "set_interpolation_settings",
+              "edit_blend_space",
               "setup_retargeting",
-              "add_layered_blend_per_bone",
-              "set_anim_graph_node_value",
+              "skin_mesh_to_skeleton",
+              "configure_anim_graph_node",
               "set_retarget_chain_mapping",
               "get_animation_info",
               "cleanup",
               "create_skeleton",
-              "add_bone",
-              "remove_bone",
-              "rename_bone",
-              "set_bone_transform",
-              "set_bone_parent",
-              "create_virtual_bone",
-              "create_socket",
+              "edit_skeleton",
+              "remove_skeleton_element",
               "configure_socket",
-              "auto_skin_weights",
-              "set_vertex_weights",
-              "normalize_weights",
-              "prune_weights",
-              "copy_weights",
-              "mirror_weights",
-              "create_physics_asset",
-              "add_physics_body",
-              "configure_physics_body",
-              "add_physics_constraint",
-              "configure_constraint_limits",
+              "edit_skin_weights",
+              "edit_physics_asset",
               "bind_cloth_to_skeletal_mesh",
-              "assign_cloth_asset_to_mesh",
-              "create_morph_target",
-              "set_morph_target_deltas",
+              "edit_morph_target",
               "import_morph_targets",
-              "get_skeleton_info",
-              "list_bones",
-              "list_sockets",
-              "list_physics_bodies",
-              "set_physics_asset",
-              "remove_physics_body",
-              "get_physics_asset_info",
-              "list_morph_targets",
-              "set_morph_target_value",
-              "get_bone_transform",
-              "list_virtual_bones",
-              "add_socket",
-              "modify_socket",
-              "modify_physics_body",
-              "set_physics_constraint",
-              "remove_socket"
+              "get_skeleton_info"
             ],
             "description": "Action to invoke on animation_physics."
           },
@@ -929,153 +984,43 @@ export const gatewayManifest = {
       "actions": [
         "create_landscape",
         "sculpt",
-        "sculpt_landscape",
-        "modify_heightmap",
-        "set_landscape_material",
-        "paint_landscape",
-        "paint_landscape_layer",
-        "import_heightmap",
+        "edit_landscape",
         "export_heightmap",
-        "create_landscape_layer_info",
-        "configure_landscape_material",
-        "configure_landscape_splines",
-        "configure_landscape_lod",
-        "create_landscape_streaming_proxy",
-        "create_landscape_grass_type",
-        "generate_lods",
+        "create_landscape_asset",
         "add_foliage",
-        "add_foliage_instances",
         "get_foliage_instances",
         "remove_foliage",
-        "remove_foliage_instances",
-        "paint_foliage",
         "paint_foliage_instances",
         "create_foliage_type",
-        "configure_foliage_mesh",
-        "configure_foliage_placement",
-        "configure_foliage_lod",
-        "configure_foliage_collision",
-        "configure_foliage_culling",
-        "create_procedural_foliage",
+        "configure_foliage",
         "create_procedural_terrain",
         "bake_lightmap",
         "export_snapshot",
         "import_snapshot",
         "delete",
-        "spawn_light",
         "create_light",
-        "spawn_sky_light",
         "create_sky_light",
-        "ensure_single_sky_light",
-        "create_lightmass_volume",
-        "create_lighting_enabled_level",
-        "create_dynamic_light",
-        "setup_global_illumination",
-        "configure_shadows",
-        "set_exposure",
-        "set_ambient_occlusion",
-        "setup_volumetric_fog",
+        "create_lighting_setup",
+        "configure_lighting",
         "build_lighting",
         "list_light_types",
-        "configure_ray_traced_shadows",
-        "configure_ray_traced_gi",
-        "configure_ray_traced_reflections",
-        "configure_ray_traced_ao",
-        "configure_path_tracing",
+        "configure_ray_tracing",
         "set_light_channel",
-        "set_actor_light_channel",
-        "configure_lightmass_settings",
-        "build_lighting_quality",
-        "configure_indirect_lighting_cache",
-        "create_sphere_reflection_capture",
-        "create_box_reflection_capture",
-        "configure_reflection_capture_resolution",
-        "configure_capture_resolution",
-        "configure_capture_offset",
-        "recapture_scene",
-        "create_planar_reflection",
-        "configure_planar_reflection",
-        "configure_ssr_settings",
-        "configure_lumen_reflection_settings",
-        "configure_pp_blend",
-        "set_pp_white_balance",
-        "set_pp_color_grading",
-        "set_pp_lut",
-        "configure_tonemapper",
-        "set_tonemapper_type",
-        "configure_bloom",
-        "set_bloom_intensity",
-        "set_bloom_threshold",
-        "configure_lens_flare",
-        "configure_dof",
-        "set_dof_method",
-        "set_focal_distance",
-        "set_aperture",
-        "configure_bokeh",
-        "configure_motion_blur",
-        "set_motion_blur_amount",
-        "set_motion_blur_max",
-        "configure_exposure",
-        "set_exposure_method",
-        "set_exposure_compensation",
-        "set_exposure_min_max",
-        "configure_ssao",
-        "configure_gtao",
-        "configure_vignette",
-        "configure_chromatic_aberration",
-        "configure_grain",
-        "configure_screen_percentage",
-        "create_scene_capture_2d",
-        "create_scene_capture_cube",
-        "configure_capture_source",
-        "assign_render_target",
-        "capture_scene",
-        "create_spline_actor",
-        "add_spline_point",
+        "configure_lightmass",
+        "create_capture_actor",
+        "configure_scene_capture",
+        "configure_post_process",
+        "create_spline",
+        "edit_spline",
         "remove_spline_point",
-        "set_spline_point_position",
-        "set_spline_point_tangents",
-        "set_spline_point_rotation",
-        "set_spline_point_scale",
-        "set_spline_type",
-        "create_spline_mesh_component",
-        "set_spline_mesh_asset",
-        "configure_spline_mesh_axis",
-        "set_spline_mesh_material",
-        "scatter_meshes_along_spline",
-        "configure_mesh_spacing",
-        "configure_mesh_randomization",
-        "create_road_spline",
-        "create_river_spline",
-        "create_fence_spline",
-        "create_wall_spline",
-        "create_cable_spline",
-        "create_pipe_spline",
+        "configure_spline_meshes",
         "get_splines_info",
-        "create_sky_sphere",
-        "set_time_of_day",
-        "create_time_of_day_system",
-        "create_fog_volume",
-        "configure_sky_atmosphere",
-        "configure_sky_light",
-        "configure_directional_light_atmosphere",
-        "configure_exponential_height_fog",
-        "configure_volumetric_cloud",
-        "configure_sun_position",
-        "configure_light_color_curve",
-        "configure_sky_color_curve",
+        "create_atmosphere_actor",
+        "configure_atmosphere",
         "create_weather_system",
-        "configure_rain_particles",
-        "configure_snow_particles",
-        "configure_wind",
-        "configure_lightning",
-        "create_water_body_ocean",
-        "create_water_body_lake",
-        "create_water_body_river",
-        "create_water_body_custom",
-        "configure_water_waves",
-        "configure_water_material",
-        "configure_water_collision",
+        "configure_weather",
+        "create_water_body",
+        "configure_water",
         "create_buoyancy_component"
       ],
       "parameterNames": [
@@ -1093,16 +1038,20 @@ export const gatewayManifest = {
         "bClosedLoop",
         "blendWeight",
         "blueprintPath",
+        "bounces",
         "bounds",
         "captureOffset",
         "captureSource",
+        "cascadedShadows",
         "channel",
+        "channelTarget",
         "channels",
         "closedLoop",
         "collisionEnabled",
         "compensationValue",
         "componentCount",
         "componentName",
+        "contactShadows",
         "count",
         "cubemapPath",
         "cullDistance",
@@ -1111,10 +1060,13 @@ export const gatewayManifest = {
         "direction",
         "directionalLightActorPath",
         "distance",
+        "edit",
         "elevation",
         "enabled",
         "falloff",
+        "feature",
         "filename",
+        "foliageOp",
         "foliageType",
         "foliageTypePath",
         "foliageTypes",
@@ -1124,9 +1076,11 @@ export const gatewayManifest = {
         "heightScale",
         "heightmapPath",
         "hour",
+        "indirectLightingIntensity",
         "infiniteUnbound",
         "initialPoints",
         "intensity",
+        "kind",
         "landscapeActorPath",
         "landscapeName",
         "landscapePath",
@@ -1175,6 +1129,7 @@ export const gatewayManifest = {
         "randomYaw",
         "randomizeRotation",
         "randomizeScale",
+        "rayTracedShadows",
         "region",
         "removeAll",
         "renderTargetPath",
@@ -1183,15 +1138,20 @@ export const gatewayManifest = {
         "rotationRange",
         "save",
         "screenPercentage",
+        "sculptOp",
         "sectionSize",
         "sectionsPerComponent",
         "seed",
+        "setting",
         "settings",
+        "shadowDistance",
+        "shadowQuality",
         "sizeX",
         "sizeY",
         "skipFlush",
         "skyLightActorPath",
         "skyLightIntensity",
+        "skyLightOp",
         "spacing",
         "speed",
         "splineType",
@@ -1207,6 +1167,8 @@ export const gatewayManifest = {
         "transforms",
         "updateNormals",
         "useRandomOffset",
+        "viewDistance",
+        "virtualShadowMaps",
         "volumeName",
         "waterBodyName",
         "waveHeight",
@@ -1295,6 +1257,10 @@ export const gatewayManifest = {
             "type": "string",
             "description": "Canonical /Game blueprint path."
           },
+          "bounces": {
+            "type": "integer",
+            "description": "Maximum indirect lighting bounces."
+          },
           "bounds": {
             "type": "object",
             "description": "Procedural foliage bounds {location, size}.",
@@ -1363,9 +1329,22 @@ export const gatewayManifest = {
             "type": "string",
             "description": "Capture source string."
           },
+          "cascadedShadows": {
+            "type": "boolean",
+            "description": "Whether cascaded shadow maps are used."
+          },
           "channel": {
             "type": "integer",
             "description": "Light channel index."
+          },
+          "channelTarget": {
+            "type": "string",
+            "enum": [
+              "light",
+              "actor"
+            ],
+            "description": "Which set light channel variant to run; omit for 'light'.",
+            "default": "light"
           },
           "channels": {
             "type": "array",
@@ -1409,6 +1388,10 @@ export const gatewayManifest = {
           "componentName": {
             "type": "string",
             "description": "Component name."
+          },
+          "contactShadows": {
+            "type": "boolean",
+            "description": "Whether contact shadows are enabled."
           },
           "count": {
             "type": "integer",
@@ -1457,6 +1440,25 @@ export const gatewayManifest = {
             "type": "number",
             "description": "Focus distance."
           },
+          "edit": {
+            "type": "string",
+            "enum": [
+              "add_point",
+              "set_point_position",
+              "set_point_rotation",
+              "set_point_scale",
+              "set_point_tangents",
+              "set_type",
+              "paint_landscape",
+              "paint_landscape_layer",
+              "import_heightmap",
+              "configure_landscape_lod",
+              "configure_landscape_material",
+              "configure_landscape_splines",
+              "generate_lods"
+            ],
+            "description": "Which edit landscape variant to run."
+          },
           "elevation": {
             "type": "number",
             "description": "Sun elevation in degrees."
@@ -1469,9 +1471,30 @@ export const gatewayManifest = {
             "type": "number",
             "description": "Brush falloff (0-1)."
           },
+          "feature": {
+            "type": "string",
+            "enum": [
+              "ao",
+              "gi",
+              "reflections",
+              "shadows",
+              "path_tracing"
+            ],
+            "description": "Which configure ray tracing variant to run."
+          },
           "filename": {
             "type": "string",
             "description": "File name for snapshot export/import."
+          },
+          "foliageOp": {
+            "type": "string",
+            "enum": [
+              "scatter",
+              "instances",
+              "paint"
+            ],
+            "description": "Which add foliage variant to run; omit for 'scatter'.",
+            "default": "scatter"
           },
           "foliageType": {
             "type": "string",
@@ -1528,6 +1551,10 @@ export const gatewayManifest = {
             "type": "number",
             "description": "Hour of day (0-23)."
           },
+          "indirectLightingIntensity": {
+            "type": "number",
+            "description": "Indirect lighting intensity multiplier."
+          },
           "infiniteUnbound": {
             "type": "boolean",
             "description": "Whether the volume is infinite and unbound."
@@ -1564,7 +1591,40 @@ export const gatewayManifest = {
           },
           "intensity": {
             "type": "number",
-            "description": "Light intensity."
+            "description": "Ambient occlusion intensity."
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "actor",
+              "mesh_component",
+              "road",
+              "wall",
+              "fence",
+              "pipe",
+              "cable",
+              "river",
+              "landscape",
+              "grass_type",
+              "layer_info",
+              "streaming_proxy",
+              "level",
+              "lightmass_volume",
+              "ocean",
+              "lake",
+              "custom",
+              "scene_capture_2d",
+              "scene_capture_cube",
+              "sphere_reflection",
+              "box_reflection",
+              "planar_reflection",
+              "sky_sphere",
+              "fog_volume",
+              "time_of_day_system",
+              "type",
+              "procedural"
+            ],
+            "description": "Which create atmosphere actor variant to run."
           },
           "landscapeActorPath": {
             "type": "string",
@@ -1696,24 +1756,8 @@ export const gatewayManifest = {
             "description": "Canonical /Game static mesh asset path."
           },
           "method": {
-            "oneOf": [
-              {
-                "type": "string",
-                "description": "Method string."
-              },
-              {
-                "type": "string",
-                "enum": [
-                  "LumenGI",
-                  "ScreenSpace",
-                  "None",
-                  "RayTraced",
-                  "Lightmass"
-                ],
-                "description": "Global illumination method. Matches the handler-enforced value set."
-              }
-            ],
-            "description": "Global illumination method. Matches the handler-enforced value set."
+            "type": "string",
+            "description": "Exposure method, applied when the handler falls back to console variables."
           },
           "minBrightness": {
             "type": "number",
@@ -1952,11 +1996,11 @@ export const gatewayManifest = {
           },
           "quality": {
             "type": "string",
-            "description": "Lightmap bake quality (Preview, Medium, High, Production)."
+            "description": "Ambient occlusion quality, applied when the handler falls back to console variables."
           },
           "radius": {
             "type": "number",
-            "description": "Brush radius in world units."
+            "description": "Ambient occlusion radius in world units."
           },
           "randomOffsetRange": {
             "type": "number",
@@ -1973,6 +2017,10 @@ export const gatewayManifest = {
           "randomizeScale": {
             "type": "boolean",
             "description": "Randomize mesh scale."
+          },
+          "rayTracedShadows": {
+            "type": "boolean",
+            "description": "Whether ray-traced shadows are enabled. Distinct from virtualShadowMaps."
           },
           "region": {
             "type": "object",
@@ -2040,6 +2088,16 @@ export const gatewayManifest = {
             "type": "number",
             "description": "Screen percentage (0-100)."
           },
+          "sculptOp": {
+            "type": "string",
+            "enum": [
+              "sculpt",
+              "heightmap",
+              "material"
+            ],
+            "description": "Which sculpt variant to run; omit for 'sculpt'.",
+            "default": "sculpt"
+          },
           "sectionSize": {
             "type": "number",
             "description": "Section size in quads."
@@ -2052,11 +2110,96 @@ export const gatewayManifest = {
             "type": "integer",
             "description": "Random seed for procedural generation."
           },
+          "setting": {
+            "type": "string",
+            "enum": [
+              "configure_bloom",
+              "set_bloom_intensity",
+              "set_bloom_threshold",
+              "configure_exposure",
+              "set_exposure_compensation",
+              "set_exposure_method",
+              "set_exposure_min_max",
+              "configure_dof",
+              "set_dof_method",
+              "set_focal_distance",
+              "set_aperture",
+              "configure_bokeh",
+              "configure_motion_blur",
+              "set_motion_blur_amount",
+              "set_motion_blur_max",
+              "configure_tonemapper",
+              "set_tonemapper_type",
+              "set_pp_color_grading",
+              "set_pp_lut",
+              "set_pp_white_balance",
+              "configure_vignette",
+              "configure_grain",
+              "configure_chromatic_aberration",
+              "configure_lens_flare",
+              "configure_ssao",
+              "configure_gtao",
+              "configure_ssr_settings",
+              "configure_lumen_reflection_settings",
+              "configure_screen_percentage",
+              "configure_pp_blend",
+              "mesh",
+              "placement",
+              "collision",
+              "culling",
+              "lod",
+              "mesh_asset",
+              "material",
+              "axis",
+              "spacing",
+              "randomization",
+              "scatter",
+              "rain",
+              "snow",
+              "lightning",
+              "wind",
+              "render_target",
+              "source",
+              "resolution",
+              "offset",
+              "planar_reflection",
+              "reflection_resolution",
+              "capture",
+              "recapture",
+              "settings",
+              "build_quality",
+              "indirect_lighting_cache",
+              "shadows",
+              "ambient_occlusion",
+              "exposure",
+              "global_illumination",
+              "volumetric_fog",
+              "sky_atmosphere",
+              "sky_light",
+              "sun_position",
+              "directional_light",
+              "height_fog",
+              "volumetric_cloud",
+              "time_of_day",
+              "sky_color_curve",
+              "light_color_curve",
+              "waves"
+            ],
+            "description": "Which configure atmosphere variant to run."
+          },
           "settings": {
             "type": "object",
             "description": "Action-specific settings key-value pairs.",
             "additionalProperties": true,
             "x-unreal-reflection-boundary": true
+          },
+          "shadowDistance": {
+            "type": "number",
+            "description": "Shadow draw distance scale."
+          },
+          "shadowQuality": {
+            "type": "string",
+            "description": "Shadow quality (Low, Medium, High, Epic)."
           },
           "sizeX": {
             "type": "number",
@@ -2077,6 +2220,15 @@ export const gatewayManifest = {
           "skyLightIntensity": {
             "type": "number",
             "description": "Sky light intensity."
+          },
+          "skyLightOp": {
+            "type": "string",
+            "enum": [
+              "create",
+              "ensure_single"
+            ],
+            "description": "Which create sky light variant to run; omit for 'create'.",
+            "default": "create"
           },
           "spacing": {
             "type": "number",
@@ -2202,6 +2354,14 @@ export const gatewayManifest = {
             "type": "boolean",
             "description": "Apply a random offset to scattered meshes."
           },
+          "viewDistance": {
+            "type": "number",
+            "description": "Volumetric fog view distance in world units."
+          },
+          "virtualShadowMaps": {
+            "type": "boolean",
+            "description": "Whether virtual shadow maps are enabled. Distinct from rayTracedShadows."
+          },
           "volumeName": {
             "type": "string",
             "description": "Volume actor name."
@@ -2227,153 +2387,43 @@ export const gatewayManifest = {
             "enum": [
               "create_landscape",
               "sculpt",
-              "sculpt_landscape",
-              "modify_heightmap",
-              "set_landscape_material",
-              "paint_landscape",
-              "paint_landscape_layer",
-              "import_heightmap",
+              "edit_landscape",
               "export_heightmap",
-              "create_landscape_layer_info",
-              "configure_landscape_material",
-              "configure_landscape_splines",
-              "configure_landscape_lod",
-              "create_landscape_streaming_proxy",
-              "create_landscape_grass_type",
-              "generate_lods",
+              "create_landscape_asset",
               "add_foliage",
-              "add_foliage_instances",
               "get_foliage_instances",
               "remove_foliage",
-              "remove_foliage_instances",
-              "paint_foliage",
               "paint_foliage_instances",
               "create_foliage_type",
-              "configure_foliage_mesh",
-              "configure_foliage_placement",
-              "configure_foliage_lod",
-              "configure_foliage_collision",
-              "configure_foliage_culling",
-              "create_procedural_foliage",
+              "configure_foliage",
               "create_procedural_terrain",
               "bake_lightmap",
               "export_snapshot",
               "import_snapshot",
               "delete",
-              "spawn_light",
               "create_light",
-              "spawn_sky_light",
               "create_sky_light",
-              "ensure_single_sky_light",
-              "create_lightmass_volume",
-              "create_lighting_enabled_level",
-              "create_dynamic_light",
-              "setup_global_illumination",
-              "configure_shadows",
-              "set_exposure",
-              "set_ambient_occlusion",
-              "setup_volumetric_fog",
+              "create_lighting_setup",
+              "configure_lighting",
               "build_lighting",
               "list_light_types",
-              "configure_ray_traced_shadows",
-              "configure_ray_traced_gi",
-              "configure_ray_traced_reflections",
-              "configure_ray_traced_ao",
-              "configure_path_tracing",
+              "configure_ray_tracing",
               "set_light_channel",
-              "set_actor_light_channel",
-              "configure_lightmass_settings",
-              "build_lighting_quality",
-              "configure_indirect_lighting_cache",
-              "create_sphere_reflection_capture",
-              "create_box_reflection_capture",
-              "configure_reflection_capture_resolution",
-              "configure_capture_resolution",
-              "configure_capture_offset",
-              "recapture_scene",
-              "create_planar_reflection",
-              "configure_planar_reflection",
-              "configure_ssr_settings",
-              "configure_lumen_reflection_settings",
-              "configure_pp_blend",
-              "set_pp_white_balance",
-              "set_pp_color_grading",
-              "set_pp_lut",
-              "configure_tonemapper",
-              "set_tonemapper_type",
-              "configure_bloom",
-              "set_bloom_intensity",
-              "set_bloom_threshold",
-              "configure_lens_flare",
-              "configure_dof",
-              "set_dof_method",
-              "set_focal_distance",
-              "set_aperture",
-              "configure_bokeh",
-              "configure_motion_blur",
-              "set_motion_blur_amount",
-              "set_motion_blur_max",
-              "configure_exposure",
-              "set_exposure_method",
-              "set_exposure_compensation",
-              "set_exposure_min_max",
-              "configure_ssao",
-              "configure_gtao",
-              "configure_vignette",
-              "configure_chromatic_aberration",
-              "configure_grain",
-              "configure_screen_percentage",
-              "create_scene_capture_2d",
-              "create_scene_capture_cube",
-              "configure_capture_source",
-              "assign_render_target",
-              "capture_scene",
-              "create_spline_actor",
-              "add_spline_point",
+              "configure_lightmass",
+              "create_capture_actor",
+              "configure_scene_capture",
+              "configure_post_process",
+              "create_spline",
+              "edit_spline",
               "remove_spline_point",
-              "set_spline_point_position",
-              "set_spline_point_tangents",
-              "set_spline_point_rotation",
-              "set_spline_point_scale",
-              "set_spline_type",
-              "create_spline_mesh_component",
-              "set_spline_mesh_asset",
-              "configure_spline_mesh_axis",
-              "set_spline_mesh_material",
-              "scatter_meshes_along_spline",
-              "configure_mesh_spacing",
-              "configure_mesh_randomization",
-              "create_road_spline",
-              "create_river_spline",
-              "create_fence_spline",
-              "create_wall_spline",
-              "create_cable_spline",
-              "create_pipe_spline",
+              "configure_spline_meshes",
               "get_splines_info",
-              "create_sky_sphere",
-              "set_time_of_day",
-              "create_time_of_day_system",
-              "create_fog_volume",
-              "configure_sky_atmosphere",
-              "configure_sky_light",
-              "configure_directional_light_atmosphere",
-              "configure_exponential_height_fog",
-              "configure_volumetric_cloud",
-              "configure_sun_position",
-              "configure_light_color_curve",
-              "configure_sky_color_curve",
+              "create_atmosphere_actor",
+              "configure_atmosphere",
               "create_weather_system",
-              "configure_rain_particles",
-              "configure_snow_particles",
-              "configure_wind",
-              "configure_lightning",
-              "create_water_body_ocean",
-              "create_water_body_lake",
-              "create_water_body_river",
-              "create_water_body_custom",
-              "configure_water_waves",
-              "configure_water_material",
-              "configure_water_collision",
+              "configure_weather",
+              "create_water_body",
+              "configure_water",
               "create_buoyancy_component"
             ],
             "description": "Action to invoke on build_environment."
@@ -2397,47 +2447,23 @@ export const gatewayManifest = {
       "description": "Spawn actors, set transforms, enable physics, add components, manage tags, and attach actors.",
       "actions": [
         "spawn",
-        "spawn_actor",
-        "spawn_blueprint",
         "duplicate",
         "delete",
-        "destroy_actor",
-        "delete_by_tag",
         "set_transform",
-        "teleport_actor",
-        "set_actor_location",
-        "set_actor_rotation",
-        "set_actor_scale",
-        "set_actor_transform",
         "get_transform",
-        "get_actor_transform",
         "apply_force",
-        "add_component",
-        "remove_component",
-        "set_component_property",
-        "set_component_properties",
+        "edit_component",
         "get_component_property",
         "set_material",
-        "set_actor_material",
-        "apply_material",
         "set_visibility",
-        "set_actor_visible",
         "get_components",
-        "get_actor_components",
-        "get_actor_bounds",
         "list",
         "add_tag",
-        "remove_tag",
         "find_by_tag",
-        "find_actors_by_tag",
-        "find_by_name",
-        "find_actors_by_name",
-        "find_by_class",
-        "find_actors_by_class",
+        "find",
+        "audit_placement",
         "attach",
-        "attach_actor",
         "detach",
-        "detach_actor",
         "set_blueprint_variables",
         "create_snapshot",
         "set_actor_collision",
@@ -2457,25 +2483,36 @@ export const gatewayManifest = {
         "collisionEnabled",
         "componentName",
         "componentType",
+        "deleteScope",
+        "edit",
         "filter",
+        "findBy",
         "force",
         "functionName",
+        "info",
         "limit",
         "location",
         "materialIndex",
         "materialPath",
         "materialSlot",
+        "maxTilt",
         "meshPath",
+        "minSeverity",
         "name",
+        "nameFilter",
         "newName",
         "offset",
         "parentActor",
         "properties",
         "propertyName",
+        "propertyPath",
         "rotation",
         "scale",
         "snapshotName",
+        "spawnKind",
         "tag",
+        "tagOp",
+        "transformMode",
         "value",
         "variables",
         "visible"
@@ -2538,9 +2575,36 @@ export const gatewayManifest = {
             "type": "string",
             "description": "Component class to add."
           },
+          "deleteScope": {
+            "type": "string",
+            "enum": [
+              "actors",
+              "by_tag"
+            ],
+            "description": "Which delete variant to run; omit for 'actors'.",
+            "default": "actors"
+          },
+          "edit": {
+            "type": "string",
+            "enum": [
+              "add",
+              "remove",
+              "set_property",
+              "set_properties"
+            ],
+            "description": "Which edit component variant to run."
+          },
           "filter": {
             "type": "string",
             "description": "Optional name substring filter for list."
+          },
+          "findBy": {
+            "type": "string",
+            "enum": [
+              "class",
+              "name"
+            ],
+            "description": "Which find variant to run."
           },
           "force": {
             "type": "array",
@@ -2554,6 +2618,15 @@ export const gatewayManifest = {
           "functionName": {
             "type": "string",
             "description": "Actor function name to call."
+          },
+          "info": {
+            "type": "string",
+            "enum": [
+              "components",
+              "bounds"
+            ],
+            "description": "Which get components variant to run; omit for 'components'.",
+            "default": "components"
           },
           "limit": {
             "type": "number",
@@ -2580,13 +2653,25 @@ export const gatewayManifest = {
             "type": "number",
             "description": "Material slot/index to override (0-based)."
           },
+          "maxTilt": {
+            "type": "number",
+            "description": "Degrees off vertical an actor may lean before it is reported as tilted (1-90, default 30). Lean is the angle between the up vector of the actor and world up, so yaw never counts and a fully inverted actor reads 180. Raise it for a level whose props are deliberately strewn about; lower it to catch subtler leans."
+          },
           "meshPath": {
             "type": "string",
             "description": "Canonical /Game mesh asset path to assign on spawn."
           },
+          "minSeverity": {
+            "type": "number",
+            "description": "Drop findings whose severity (worst penetration, ground error or tilt displacement, in world units) is below this. Use it to skip cosmetic grazes on a large level."
+          },
           "name": {
             "type": "string",
             "description": "Actor name or search query."
+          },
+          "nameFilter": {
+            "type": "string",
+            "description": "Only examine actors whose label contains this text. Omit to sweep the whole level."
           },
           "newName": {
             "type": "string",
@@ -2615,6 +2700,10 @@ export const gatewayManifest = {
             "type": "string",
             "description": "Component property name to read or write."
           },
+          "propertyPath": {
+            "type": "string",
+            "description": "Dotted nested property path (e.g. BodyInstance.CollisionEnabled), accepted by the read handler in place of propertyName."
+          },
           "rotation": {
             "type": "array",
             "items": {
@@ -2637,9 +2726,39 @@ export const gatewayManifest = {
             "type": "string",
             "description": "Name for the actor snapshot."
           },
+          "spawnKind": {
+            "type": "string",
+            "enum": [
+              "class",
+              "blueprint"
+            ],
+            "description": "Which spawn variant to run; omit for 'class'.",
+            "default": "class"
+          },
           "tag": {
             "type": "string",
             "description": "Gameplay tag string to add, remove, or find."
+          },
+          "tagOp": {
+            "type": "string",
+            "enum": [
+              "add",
+              "remove"
+            ],
+            "description": "Which add tag variant to run; omit for 'add'.",
+            "default": "add"
+          },
+          "transformMode": {
+            "type": "string",
+            "enum": [
+              "transform",
+              "location",
+              "rotation",
+              "scale",
+              "teleport"
+            ],
+            "description": "Which set transform variant to run; omit for 'transform'.",
+            "default": "transform"
           },
           "value": {
             "description": "Property value (any type)."
@@ -2658,47 +2777,23 @@ export const gatewayManifest = {
             "type": "string",
             "enum": [
               "spawn",
-              "spawn_actor",
-              "spawn_blueprint",
               "duplicate",
               "delete",
-              "destroy_actor",
-              "delete_by_tag",
               "set_transform",
-              "teleport_actor",
-              "set_actor_location",
-              "set_actor_rotation",
-              "set_actor_scale",
-              "set_actor_transform",
               "get_transform",
-              "get_actor_transform",
               "apply_force",
-              "add_component",
-              "remove_component",
-              "set_component_property",
-              "set_component_properties",
+              "edit_component",
               "get_component_property",
               "set_material",
-              "set_actor_material",
-              "apply_material",
               "set_visibility",
-              "set_actor_visible",
               "get_components",
-              "get_actor_components",
-              "get_actor_bounds",
               "list",
               "add_tag",
-              "remove_tag",
               "find_by_tag",
-              "find_actors_by_tag",
-              "find_by_name",
-              "find_actors_by_name",
-              "find_by_class",
-              "find_actors_by_class",
+              "find",
+              "audit_placement",
               "attach",
-              "attach_actor",
               "detach",
-              "detach_actor",
               "set_blueprint_variables",
               "create_snapshot",
               "set_actor_collision",
@@ -2725,40 +2820,17 @@ export const gatewayManifest = {
       "description": "Start/stop PIE, control viewport camera, run console commands, take screenshots, simulate input.",
       "actions": [
         "play",
-        "stop",
-        "stop_pie",
-        "pause",
-        "resume",
-        "eject",
-        "possess",
+        "restart_editor",
         "set_game_speed",
-        "set_fixed_delta_time",
-        "step_frame",
-        "single_frame_step",
         "start_recording",
-        "stop_recording",
-        "set_view_target",
-        "set_game_view_target",
         "set_camera",
-        "set_camera_position",
-        "set_viewport_camera",
-        "set_camera_fov",
-        "set_view_mode",
+        "configure_viewport",
         "set_viewport_resolution",
-        "set_viewport_realtime",
-        "set_editor_mode",
-        "set_immersive_mode",
-        "set_game_view",
-        "show_stats",
-        "hide_stats",
         "invoke_reflected_function",
         "describe_reflected_api",
-        "open_editor_tab",
+        "configure_editor",
         "console_command",
-        "execute_command",
-        "set_preferences",
         "screenshot",
-        "take_screenshot",
         "create_bookmark",
         "jump_to_bookmark",
         "open_asset",
@@ -2767,8 +2839,7 @@ export const gatewayManifest = {
         "focus_actor",
         "save_all",
         "simulate_input",
-        "undo",
-        "redo"
+        "undo"
       ],
       "parameterNames": [
         "actorName",
@@ -2777,11 +2848,16 @@ export const gatewayManifest = {
         "blendTime",
         "bookmarkName",
         "button",
+        "cameraOp",
         "category",
         "className",
+        "classPath",
         "command",
+        "control",
+        "delaySeconds",
         "deltaTime",
         "description",
+        "discardUnsaved",
         "durationSeconds",
         "enabled",
         "filename",
@@ -2790,6 +2866,8 @@ export const gatewayManifest = {
         "frameRate",
         "functionName",
         "height",
+        "history",
+        "holdSeconds",
         "id",
         "includeMetadata",
         "inputAction",
@@ -2807,13 +2885,17 @@ export const gatewayManifest = {
         "resolution",
         "returnBase64",
         "rotation",
+        "setting",
         "speed",
         "stat",
         "steps",
         "tabId",
         "type",
+        "validateOnly",
+        "value",
         "viewMode",
         "width",
+        "window",
         "x",
         "y"
       ],
@@ -2845,17 +2927,51 @@ export const gatewayManifest = {
             "type": "string",
             "description": "Mouse button for simulate_input."
           },
+          "cameraOp": {
+            "type": "string",
+            "enum": [
+              "transform",
+              "fov",
+              "view_target"
+            ],
+            "description": "Which set camera variant to run; omit for 'transform'.",
+            "default": "transform"
+          },
           "category": {
             "type": "string",
             "description": "Preferences category."
           },
           "className": {
             "type": "string",
-            "description": "Reflected class name without prefix, for example \"FabBrowserApi\". The live instance is preferred; the class default object is the fallback when no instance exists yet."
+            "description": "Reflected class name, for example \"FabBrowserApi\"."
+          },
+          "classPath": {
+            "type": "string",
+            "description": "Alias for className, the spelling the rest of the catalog uses."
           },
           "command": {
             "type": "string",
             "description": "Console command string."
+          },
+          "control": {
+            "type": "string",
+            "enum": [
+              "play",
+              "pause",
+              "resume",
+              "stop",
+              "eject",
+              "possess",
+              "speed",
+              "fixed_delta_time",
+              "step_frame",
+              "start"
+            ],
+            "description": "Which play variant to run; omit for 'play'."
+          },
+          "delaySeconds": {
+            "type": "number",
+            "description": "Seconds to wait before restarting, so the response reaches the caller first. Clamped to 0.1-30."
           },
           "deltaTime": {
             "type": "number",
@@ -2864,6 +2980,10 @@ export const gatewayManifest = {
           "description": {
             "type": "string",
             "description": "Bookmark description."
+          },
+          "discardUnsaved": {
+            "type": "boolean",
+            "description": "Restart even though packages have unsaved changes, discarding them. Omitted, a restart with unsaved work is refused."
           },
           "durationSeconds": {
             "type": "number",
@@ -2897,6 +3017,19 @@ export const gatewayManifest = {
             "type": "number",
             "description": "Viewport height in pixels."
           },
+          "history": {
+            "type": "string",
+            "enum": [
+              "undo",
+              "redo"
+            ],
+            "description": "Which undo variant to run; omit for 'undo'.",
+            "default": "undo"
+          },
+          "holdSeconds": {
+            "type": "number",
+            "description": "Keep injecting inputAction for this many seconds of GAME time so the pawn actually travels (default 0, a single frame). Game time, not wall time: under set_game_speed 0.05 a 2s hold still delivers 2s of in-game input, which takes 40s of real time. A key_up for the same action stops the hold early."
+          },
           "id": {
             "type": "string",
             "description": "Bookmark identifier."
@@ -2907,7 +3040,7 @@ export const gatewayManifest = {
           },
           "inputAction": {
             "type": "string",
-            "description": "Input action descriptor for simulate_input."
+            "description": "Enhanced Input action to inject, as an asset path such as /Game/Input/IA_Move. Required for an Enhanced Input game: a raw key never reaches an InputAction, so plain key_down does nothing there."
           },
           "inputType": {
             "type": "string",
@@ -2999,6 +3132,21 @@ export const gatewayManifest = {
             "description": "3D rotation (pitch, yaw, roll).",
             "additionalProperties": false
           },
+          "setting": {
+            "type": "string",
+            "enum": [
+              "open_tab",
+              "preferences",
+              "view_mode",
+              "editor_mode",
+              "game_view",
+              "immersive_mode",
+              "realtime",
+              "show_stats",
+              "hide_stats"
+            ],
+            "description": "Which configure editor variant to run."
+          },
           "speed": {
             "type": "number",
             "description": "Game speed multiplier."
@@ -3019,6 +3167,14 @@ export const gatewayManifest = {
             "type": "string",
             "description": "Input event type (key_down, key_up, mouse_click, mouse_move)."
           },
+          "validateOnly": {
+            "type": "boolean",
+            "description": "Report whether a restart would proceed, and what it would discard, without restarting."
+          },
+          "value": {
+            "type": "number",
+            "description": "Scalar value to inject for inputAction (default 1; use a negative value for the opposite direction). Ignored for a raw key."
+          },
           "viewMode": {
             "type": "string",
             "description": "Viewport view mode (e.g. Lit, Unlit, Wireframe)."
@@ -3026,6 +3182,10 @@ export const gatewayManifest = {
           "width": {
             "type": "number",
             "description": "Viewport width in pixels."
+          },
+          "window": {
+            "type": "string",
+            "description": "With mode full_editor_window, which window to capture: a list index (\"2\") or a case-insensitive substring of its title (\"WBP_HubUI\"). Omit for the main editor frame. Every response lists the open windows under windows[], so read that to pick one."
           },
           "x": {
             "type": "number",
@@ -3039,40 +3199,17 @@ export const gatewayManifest = {
             "type": "string",
             "enum": [
               "play",
-              "stop",
-              "stop_pie",
-              "pause",
-              "resume",
-              "eject",
-              "possess",
+              "restart_editor",
               "set_game_speed",
-              "set_fixed_delta_time",
-              "step_frame",
-              "single_frame_step",
               "start_recording",
-              "stop_recording",
-              "set_view_target",
-              "set_game_view_target",
               "set_camera",
-              "set_camera_position",
-              "set_viewport_camera",
-              "set_camera_fov",
-              "set_view_mode",
+              "configure_viewport",
               "set_viewport_resolution",
-              "set_viewport_realtime",
-              "set_editor_mode",
-              "set_immersive_mode",
-              "set_game_view",
-              "show_stats",
-              "hide_stats",
               "invoke_reflected_function",
               "describe_reflected_api",
-              "open_editor_tab",
+              "configure_editor",
               "console_command",
-              "execute_command",
-              "set_preferences",
               "screenshot",
-              "take_screenshot",
               "create_bookmark",
               "jump_to_bookmark",
               "open_asset",
@@ -3081,8 +3218,7 @@ export const gatewayManifest = {
               "focus_actor",
               "save_all",
               "simulate_input",
-              "undo",
-              "redo"
+              "undo"
             ],
             "description": "Action to invoke on control_editor."
           },
@@ -3105,41 +3241,21 @@ export const gatewayManifest = {
       "description": "Inspect any UObject: read/write properties, list components, export snapshots, and query class info. Actions: inspect_cdo (Blueprint CDO properties + all components without spawning an actor; use blueprintPath, optional detailed/componentName/propertyNames), inspect_class (class metadata), inspect_object (world actor), get_property/set_property, get_components, get_component_details (WORLD actors: actorName+componentName; a blueprintPath is routed to inspect_cdo), list_objects, find_by_class, find_by_tag, runtime_report.",
       "actions": [
         "inspect_object",
-        "get_actor_details",
         "get_blueprint_details",
-        "get_mesh_details",
-        "get_texture_details",
-        "get_material_details",
-        "get_level_details",
         "get_property",
         "set_property",
         "inspect_class",
-        "inspect_cdo",
-        "inspect_struct",
         "get_components",
-        "get_component_property",
-        "set_component_property",
         "get_component_details",
-        "get_metadata",
+        "set_component_property",
+        "query_object",
         "add_tag",
-        "find_by_tag",
         "create_snapshot",
-        "restore_snapshot",
-        "export",
         "delete_object",
-        "list_objects",
         "find_by_class",
-        "get_bounding_box",
         "runtime_report",
-        "pie_report",
-        "get_project_settings",
-        "get_world_settings",
-        "get_viewport_info",
-        "get_selected_actors",
-        "get_scene_stats",
-        "get_performance_stats",
-        "get_memory_stats",
-        "get_editor_settings"
+        "get_editor_state",
+        "get_stats"
       ],
       "parameterNames": [
         "actorName",
@@ -3149,13 +3265,20 @@ export const gatewayManifest = {
         "componentName",
         "componentNames",
         "detailed",
+        "editorState",
         "filter",
+        "info",
+        "kind",
+        "lookup",
         "name",
+        "objectKind",
         "objectPath",
         "propertyName",
         "propertyNames",
         "propertyPath",
         "snapshotName",
+        "snapshotOp",
+        "statsKind",
         "structPath",
         "tag",
         "value"
@@ -3194,13 +3317,67 @@ export const gatewayManifest = {
             "type": "boolean",
             "description": "Return detailed property/component information."
           },
+          "editorState": {
+            "type": "string",
+            "enum": [
+              "selected_actors",
+              "viewport",
+              "world_settings",
+              "project_settings",
+              "editor_settings"
+            ],
+            "description": "Which get editor state variant to run."
+          },
           "filter": {
             "type": "string",
             "description": "Runtime report filter expression."
           },
+          "info": {
+            "type": "string",
+            "enum": [
+              "details",
+              "property"
+            ],
+            "description": "Which get component details variant to run; omit for 'details'.",
+            "default": "details"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "class",
+              "struct",
+              "cdo"
+            ],
+            "description": "Which inspect class variant to run; omit for 'class'.",
+            "default": "class"
+          },
+          "lookup": {
+            "type": "string",
+            "enum": [
+              "list",
+              "by_tag",
+              "metadata",
+              "bounding_box",
+              "export"
+            ],
+            "description": "Which query object variant to run."
+          },
           "name": {
             "type": "string",
             "description": "Actor name identifier (alias of actorName)."
+          },
+          "objectKind": {
+            "type": "string",
+            "enum": [
+              "object",
+              "actor",
+              "level",
+              "material",
+              "mesh",
+              "texture"
+            ],
+            "description": "Which inspect object variant to run; omit for 'object'.",
+            "default": "object"
           },
           "objectPath": {
             "type": "string",
@@ -3225,6 +3402,24 @@ export const gatewayManifest = {
             "type": "string",
             "description": "Snapshot name for create/restore."
           },
+          "snapshotOp": {
+            "type": "string",
+            "enum": [
+              "create",
+              "restore"
+            ],
+            "description": "Which create snapshot variant to run; omit for 'create'.",
+            "default": "create"
+          },
+          "statsKind": {
+            "type": "string",
+            "enum": [
+              "performance",
+              "memory",
+              "scene"
+            ],
+            "description": "Which get stats variant to run."
+          },
           "structPath": {
             "type": "string",
             "description": "UserDefinedStruct asset /Game path to introspect."
@@ -3240,41 +3435,21 @@ export const gatewayManifest = {
             "type": "string",
             "enum": [
               "inspect_object",
-              "get_actor_details",
               "get_blueprint_details",
-              "get_mesh_details",
-              "get_texture_details",
-              "get_material_details",
-              "get_level_details",
               "get_property",
               "set_property",
               "inspect_class",
-              "inspect_cdo",
-              "inspect_struct",
               "get_components",
-              "get_component_property",
-              "set_component_property",
               "get_component_details",
-              "get_metadata",
+              "set_component_property",
+              "query_object",
               "add_tag",
-              "find_by_tag",
               "create_snapshot",
-              "restore_snapshot",
-              "export",
               "delete_object",
-              "list_objects",
               "find_by_class",
-              "get_bounding_box",
               "runtime_report",
-              "pie_report",
-              "get_project_settings",
-              "get_world_settings",
-              "get_viewport_info",
-              "get_selected_actors",
-              "get_scene_stats",
-              "get_performance_stats",
-              "get_memory_stats",
-              "get_editor_settings"
+              "get_editor_state",
+              "get_stats"
             ],
             "description": "Action to invoke on inspect."
           },
@@ -3296,70 +3471,21 @@ export const gatewayManifest = {
       "category": "gameplay",
       "description": "Build AI systems: AI controllers, Behavior Trees, Blackboards, EQS, perception, State Trees, Smart Objects, NavMesh settings, nav modifiers, links, and pathfinding.",
       "actions": [
-        "add_ai_perception_component",
-        "add_blackboard_key",
-        "add_composite_node",
-        "add_decorator",
-        "add_eqs_context",
-        "add_eqs_generator",
-        "add_eqs_test",
-        "add_mass_spawner",
-        "add_node",
-        "add_service",
-        "add_smart_object_component",
-        "add_smart_object_slot",
-        "add_state_tree_state",
-        "add_state_tree_transition",
-        "add_subnode",
-        "add_task_node",
-        "assign_behavior_tree",
-        "assign_blackboard",
-        "break_connections",
-        "clear_focus",
-        "configure_bt_node",
-        "configure_damage_sense_config",
-        "configure_hearing_config",
-        "configure_mass_entity",
-        "configure_nav_area_cost",
-        "configure_nav_link",
-        "configure_nav_mesh_settings",
-        "configure_sight_config",
-        "configure_slot_behavior",
-        "configure_smart_link_behavior",
-        "configure_state_tree_task",
-        "configure_test_scoring",
-        "connect_nodes",
-        "create",
-        "create_ai_controller",
-        "create_behavior_tree",
-        "create_blackboard",
-        "create_blackboard_asset",
-        "create_eqs_query",
-        "create_mass_entity_config",
-        "create_nav_link_proxy",
-        "create_nav_modifier_component",
-        "create_smart_link",
-        "create_smart_object_definition",
-        "create_state_tree",
-        "get_ai_info",
-        "get_blackboard_value",
-        "get_navigation_info",
-        "get_tree",
-        "create_nav_modifier",
-        "rebuild_navigation",
-        "remove_node",
-        "run_behavior_tree",
-        "set_blackboard_value",
-        "set_focus",
-        "set_key_instance_synced",
-        "set_nav_agent_properties",
-        "set_nav_area_class",
-        "set_nav_link_type",
-        "set_node_properties",
-        "set_perception_team",
         "setup_perception",
-        "stop_behavior_tree",
-        "set_ai_perception",
+        "edit_blackboard",
+        "edit_behavior_tree",
+        "edit_eqs_query",
+        "edit_mass_entity",
+        "edit_smart_object",
+        "edit_state_tree",
+        "run_behavior_tree",
+        "set_focus",
+        "configure_navigation",
+        "create_behavior_tree",
+        "create_ai_controller",
+        "create_nav_actor",
+        "get_ai_info",
+        "get_tree",
         "set_ai_movement"
       ],
       "parameterNames": [
@@ -3387,6 +3513,7 @@ export const gatewayManifest = {
         "compositeType",
         "configPath",
         "contextType",
+        "control",
         "controllerPath",
         "damageConfig",
         "decoratorType",
@@ -3394,6 +3521,7 @@ export const gatewayManifest = {
         "direction",
         "disabledAreaClass",
         "dominantSense",
+        "edit",
         "enableDamage",
         "enableHearing",
         "enableSight",
@@ -3403,14 +3531,17 @@ export const gatewayManifest = {
         "failsafeExtent",
         "failsafeToDefaultNavmesh",
         "focusActorName",
+        "focusOp",
         "fromState",
         "generatorSettings",
         "generatorType",
         "hearingConfig",
         "hearingRange",
+        "info",
         "isInstanceSynced",
         "keyName",
         "keyType",
+        "kind",
         "linkEnabled",
         "linkType",
         "location",
@@ -3442,6 +3573,7 @@ export const gatewayManifest = {
         "savePath",
         "selectionBehavior",
         "serviceType",
+        "setting",
         "sightConfig",
         "sightRadius",
         "slotIndex",
@@ -3579,6 +3711,17 @@ export const gatewayManifest = {
             ],
             "description": "EQS context type."
           },
+          "control": {
+            "type": "string",
+            "enum": [
+              "run",
+              "stop",
+              "assign_tree",
+              "assign_blackboard"
+            ],
+            "description": "Which run behavior tree variant to run; omit for 'run'.",
+            "default": "run"
+          },
           "controllerPath": {
             "type": "string",
             "description": "Canonical /Game AI controller asset path."
@@ -3643,6 +3786,41 @@ export const gatewayManifest = {
             ],
             "description": "Dominant sense for perception prioritization."
           },
+          "edit": {
+            "type": "string",
+            "enum": [
+              "add_composite",
+              "add_task",
+              "add_decorator",
+              "add_service",
+              "add_node",
+              "add_subnode",
+              "connect",
+              "break_connections",
+              "configure_node",
+              "set_node_properties",
+              "remove_node",
+              "add_key",
+              "set_value",
+              "set_key_instance_synced",
+              "create",
+              "add_generator",
+              "add_test",
+              "add_context",
+              "configure_test_scoring",
+              "add_state",
+              "add_transition",
+              "configure_task",
+              "create_config",
+              "configure",
+              "add_spawner",
+              "create_definition",
+              "add_slot",
+              "configure_slot",
+              "add_component"
+            ],
+            "description": "Which edit behavior tree variant to run."
+          },
           "enableDamage": {
             "type": "boolean",
             "description": "Enable the damage sense."
@@ -3702,6 +3880,15 @@ export const gatewayManifest = {
           "focusActorName": {
             "type": "string",
             "description": "Actor the controller should focus on."
+          },
+          "focusOp": {
+            "type": "string",
+            "enum": [
+              "set",
+              "clear"
+            ],
+            "description": "Which set focus variant to run; omit for 'set'.",
+            "default": "set"
           },
           "fromState": {
             "type": "string",
@@ -3772,6 +3959,16 @@ export const gatewayManifest = {
             "type": "number",
             "description": "Hearing range in world units."
           },
+          "info": {
+            "type": "string",
+            "enum": [
+              "ai",
+              "navigation",
+              "tree",
+              "blackboard_value"
+            ],
+            "description": "Which get ai info variant to run; omit for 'ai'."
+          },
           "isInstanceSynced": {
             "type": "boolean",
             "description": "Sync key across instances."
@@ -3795,6 +3992,19 @@ export const gatewayManifest = {
               "String"
             ],
             "description": "Blackboard key data type."
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "behavior_tree",
+              "graph_route",
+              "blackboard",
+              "link_proxy",
+              "smart_link",
+              "modifier",
+              "modifier_component"
+            ],
+            "description": "Which create behavior tree variant to run; omit for 'behavior_tree'."
           },
           "linkEnabled": {
             "type": "boolean",
@@ -3926,7 +4136,7 @@ export const gatewayManifest = {
           },
           "parentNodeId": {
             "type": "string",
-            "description": "ID of the parent node."
+            "description": "ID of the parent node: 'root', a node GUID, or a node id as returned by add_composite/add_task (for example BTComposite_Selector_0)."
           },
           "parentStateName": {
             "type": "string",
@@ -4005,6 +4215,27 @@ export const gatewayManifest = {
               "Custom"
             ],
             "description": "Service node type."
+          },
+          "setting": {
+            "type": "string",
+            "enum": [
+              "mesh_settings",
+              "agent_properties",
+              "area_cost",
+              "area_class",
+              "nav_link",
+              "link_type",
+              "smart_link_behavior",
+              "rebuild",
+              "setup",
+              "add_component",
+              "sight",
+              "hearing",
+              "damage",
+              "team",
+              "controller"
+            ],
+            "description": "Which configure navigation variant to run."
           },
           "sightConfig": {
             "type": "object",
@@ -4225,70 +4456,21 @@ export const gatewayManifest = {
           "action": {
             "type": "string",
             "enum": [
-              "add_ai_perception_component",
-              "add_blackboard_key",
-              "add_composite_node",
-              "add_decorator",
-              "add_eqs_context",
-              "add_eqs_generator",
-              "add_eqs_test",
-              "add_mass_spawner",
-              "add_node",
-              "add_service",
-              "add_smart_object_component",
-              "add_smart_object_slot",
-              "add_state_tree_state",
-              "add_state_tree_transition",
-              "add_subnode",
-              "add_task_node",
-              "assign_behavior_tree",
-              "assign_blackboard",
-              "break_connections",
-              "clear_focus",
-              "configure_bt_node",
-              "configure_damage_sense_config",
-              "configure_hearing_config",
-              "configure_mass_entity",
-              "configure_nav_area_cost",
-              "configure_nav_link",
-              "configure_nav_mesh_settings",
-              "configure_sight_config",
-              "configure_slot_behavior",
-              "configure_smart_link_behavior",
-              "configure_state_tree_task",
-              "configure_test_scoring",
-              "connect_nodes",
-              "create",
-              "create_ai_controller",
-              "create_behavior_tree",
-              "create_blackboard",
-              "create_blackboard_asset",
-              "create_eqs_query",
-              "create_mass_entity_config",
-              "create_nav_link_proxy",
-              "create_nav_modifier_component",
-              "create_smart_link",
-              "create_smart_object_definition",
-              "create_state_tree",
-              "get_ai_info",
-              "get_blackboard_value",
-              "get_navigation_info",
-              "get_tree",
-              "create_nav_modifier",
-              "rebuild_navigation",
-              "remove_node",
-              "run_behavior_tree",
-              "set_blackboard_value",
-              "set_focus",
-              "set_key_instance_synced",
-              "set_nav_agent_properties",
-              "set_nav_area_class",
-              "set_nav_link_type",
-              "set_node_properties",
-              "set_perception_team",
               "setup_perception",
-              "stop_behavior_tree",
-              "set_ai_perception",
+              "edit_blackboard",
+              "edit_behavior_tree",
+              "edit_eqs_query",
+              "edit_mass_entity",
+              "edit_smart_object",
+              "edit_state_tree",
+              "run_behavior_tree",
+              "set_focus",
+              "configure_navigation",
+              "create_behavior_tree",
+              "create_ai_controller",
+              "create_nav_actor",
+              "get_ai_info",
+              "get_tree",
               "set_ai_movement"
             ],
             "description": "Action to invoke on manage_ai."
@@ -4314,175 +4496,53 @@ export const gatewayManifest = {
         "list",
         "import",
         "duplicate",
-        "duplicate_asset",
         "rename",
-        "rename_asset",
         "move",
-        "move_asset",
         "delete",
-        "delete_asset",
-        "delete_assets",
         "create_folder",
-        "search_assets",
-        "list_content_sources",
-        "list_fab_downloads",
-        "list_fab_library",
-        "download_fab_asset",
-        "get_fab_listing_details",
-        "search_fab_listings",
-        "add_fab_asset_to_project",
-        "list_megascans_library",
-        "import_megascans_asset",
-        "migrate_assets",
-        "get_dependencies",
-        "get_source_control_state",
-        "analyze_graph",
-        "get_asset_graph",
-        "create_thumbnail",
-        "set_tags",
-        "get_metadata",
+        "query_asset",
+        "query_marketplace",
+        "import_marketplace_asset",
+        "maintain_content",
+        "inspect_asset",
+        "process_asset",
         "set_metadata",
-        "validate",
-        "fixup_redirectors",
-        "find_by_tag",
-        "generate_report",
         "create_render_target",
-        "generate_lods",
-        "add_material_parameter",
-        "list_instances",
-        "reset_instance_parameters",
-        "exists",
-        "get_material_stats",
+        "edit_material_instance",
         "nanite_rebuild_mesh",
-        "bulk_rename",
         "bulk_delete",
-        "source_control_checkout",
-        "source_control_submit",
+        "source_control",
         "create_material",
         "create_material_instance",
-        "create_material_function",
-        "create_landscape_material",
-        "create_decal_material",
-        "create_post_process_material",
-        "add_texture_sample",
-        "add_texture_coordinate",
-        "add_scalar_parameter",
-        "add_vector_parameter",
-        "add_static_switch_parameter",
-        "add_math_node",
-        "add_world_position",
-        "add_vertex_normal",
-        "add_pixel_depth",
-        "add_fresnel",
-        "add_reflection_vector",
-        "add_panner",
-        "add_rotator",
-        "add_noise",
-        "add_voronoi",
-        "add_if",
-        "add_switch",
-        "add_custom_expression",
+        "add_material_node",
         "connect_nodes",
-        "connect_material_pins",
         "disconnect_nodes",
-        "break_material_connections",
-        "find_node",
-        "get_node_connections",
-        "get_node_properties",
-        "set_static_switch_parameter_value",
+        "get_material_info",
+        "set_material_parameter",
         "delete_node",
         "update_custom_expression",
-        "get_node_chain",
-        "get_connected_subgraph",
-        "add_material_node",
-        "rebuild_material",
-        "set_material_parameter",
-        "get_material_node_details",
-        "remove_material_node",
-        "set_node_position",
-        "set_blend_mode",
-        "set_shading_model",
-        "set_material_domain",
         "compile_material",
-        "get_material_info",
-        "set_two_sided",
-        "add_function_input",
-        "add_function_output",
-        "use_material_function",
-        "get_material_function_info",
-        "set_scalar_parameter_value",
-        "set_vector_parameter_value",
-        "set_texture_parameter_value",
-        "add_landscape_layer",
+        "set_node_position",
+        "set_material_property",
+        "add_function_io",
         "configure_layer_blend",
-        "create_noise_texture",
-        "create_gradient_texture",
-        "create_pattern_texture",
-        "create_normal_from_height",
-        "create_ao_from_mesh",
-        "resize_texture",
-        "adjust_levels",
-        "adjust_curves",
-        "blur",
-        "sharpen",
-        "invert",
-        "desaturate",
-        "channel_pack",
-        "channel_extract",
-        "combine_textures",
-        "set_compression_settings",
-        "set_texture_group",
-        "set_lod_bias",
-        "configure_virtual_texture",
-        "set_streaming_priority",
+        "create_texture",
+        "adjust_texture",
+        "configure_texture",
         "get_texture_info",
-        "create_struct",
+        "edit_struct",
         "get_struct",
-        "read_struct",
-        "list_struct_members",
-        "add_struct_member",
-        "remove_struct_member",
-        "rename_struct_member",
-        "set_struct_member_type",
-        "reorder_struct_members",
-        "set_struct_member_default",
-        "set_struct_member_metadata",
-        "compare_structs",
-        "search_struct_usage",
-        "recompile_struct",
-        "rename_struct",
-        "duplicate_struct",
         "delete_struct",
-        "refresh_struct_dependencies",
-        "list_structs",
-        "export_struct",
-        "import_struct",
-        "get_instanced_struct_property",
-        "set_instanced_struct_property",
-        "create_data_table",
-        "set_data_table_row_struct",
-        "create_row_struct",
-        "get_row_struct",
-        "set_struct_as_row_struct",
-        "add_data_table_row",
-        "get_data_table_row",
-        "update_data_table_row",
+        "edit_data_table",
+        "inspect_data_table",
         "delete_data_table_row",
-        "list_data_table_rows",
-        "import_data_table_rows",
-        "clear_data_table_rows",
-        "create_enum",
+        "edit_enum",
         "delete_enum",
-        "get_enum",
-        "add_enum_value",
-        "remove_enum_value",
-        "rename_enum_value",
-        "reorder_enum_values",
-        "set_enum_value_metadata",
-        "split_enum"
+        "get_enum"
       ],
       "parameterNames": [
         "additionalOutputs",
+        "adjust",
         "alphaTexture",
         "amount",
         "assetId",
@@ -4500,6 +4560,7 @@ export const gatewayManifest = {
         "clearExisting",
         "code",
         "columnTypes",
+        "compileOp",
         "compressionSettings",
         "constA",
         "constB",
@@ -4508,6 +4569,7 @@ export const gatewayManifest = {
         "curvePoints",
         "dataTablePath",
         "defaultValue",
+        "deleteScope",
         "depth",
         "description",
         "destinationDirectory",
@@ -4520,6 +4582,7 @@ export const gatewayManifest = {
         "downloadUrl",
         "downstream",
         "dryRun",
+        "edit",
         "endPin",
         "enumPath",
         "exportMode",
@@ -4539,15 +4602,19 @@ export const gatewayManifest = {
         "greenTexture",
         "group",
         "height",
+        "importAnimations",
         "inBlack",
         "inWhite",
         "includePackageCounts",
         "includeTags",
         "index",
+        "info",
         "inputName",
         "inputType",
         "inputs",
+        "io",
         "key",
+        "kind",
         "layerName",
         "layers",
         "levels",
@@ -4555,8 +4622,12 @@ export const gatewayManifest = {
         "listingId",
         "lodBias",
         "lodCount",
+        "lookup",
+        "maintenance",
+        "marketplace",
         "materialDomain",
         "materialPath",
+        "materialProperty",
         "maxDepth",
         "maxPackages",
         "memberName",
@@ -4574,6 +4645,7 @@ export const gatewayManifest = {
         "newWidth",
         "nodeId",
         "nodeIds",
+        "nodeKind",
         "nodeName",
         "nodeType",
         "noiseType",
@@ -4590,6 +4662,7 @@ export const gatewayManifest = {
         "packagePath",
         "packagePaths",
         "pagination",
+        "parameterKind",
         "parameterName",
         "parameterType",
         "parentMaterial",
@@ -4603,7 +4676,9 @@ export const gatewayManifest = {
         "posY",
         "position",
         "prefix",
+        "process",
         "propertyName",
+        "provider",
         "query",
         "radius",
         "recursive",
@@ -4625,8 +4700,11 @@ export const gatewayManifest = {
         "searchScope",
         "searchText",
         "seed",
+        "setting",
         "shadingModel",
         "showConfirmation",
+        "skeletonPath",
+        "sourceControlOp",
         "sourceId",
         "sourceNodeId",
         "sourcePath",
@@ -4655,6 +4733,8 @@ export const gatewayManifest = {
         "type",
         "uTiling",
         "upstream",
+        "userEmail",
+        "userName",
         "vTiling",
         "value",
         "valueName",
@@ -4675,6 +4755,18 @@ export const gatewayManifest = {
               "x-unreal-reflection-boundary": true
             },
             "description": "Additional named output definitions."
+          },
+          "adjust": {
+            "type": "string",
+            "enum": [
+              "curves",
+              "levels",
+              "blur",
+              "sharpen",
+              "desaturate",
+              "invert"
+            ],
+            "description": "Which adjust texture variant to run."
           },
           "alphaTexture": {
             "type": "string",
@@ -4771,7 +4863,16 @@ export const gatewayManifest = {
             "items": {
               "type": "string"
             },
-            "description": "Column struct paths to read, for example \"/Script/Fab.FabObjectNameColumn\". Defaults to the columns Fab currently writes. Override this when a Fab update renames or adds columns; unresolved paths are reported rather than failing the call."
+            "description": "Column struct paths to read, for example \"/Script/Fab.FabObjectNameColumn\". Defaults to the name column plus \"/Script/Fab.FabObjectColumn\", which carries AssetId, ListingType, Seller and Source. Selecting a column is also the row filter, so naming one Fab does not write for every row will hide rows. Override this when a Fab update renames or adds columns; unresolved paths are reported rather than failing the call."
+          },
+          "compileOp": {
+            "type": "string",
+            "enum": [
+              "compile",
+              "rebuild"
+            ],
+            "description": "Which compile material variant to run; omit for 'compile'.",
+            "default": "compile"
           },
           "compressionSettings": {
             "type": "string",
@@ -4811,15 +4912,23 @@ export const gatewayManifest = {
                 "description": "Default RGBA value."
               },
               {
-                "type": "number",
-                "description": "Default scalar value."
-              },
-              {
                 "type": "string",
                 "description": "Default value as string."
               }
             ],
             "description": "Default RGBA value."
+          },
+          "deleteScope": {
+            "type": "string",
+            "enum": [
+              "enum",
+              "value",
+              "row",
+              "all",
+              "struct",
+              "member"
+            ],
+            "description": "Which delete data table row variant to run; omit for 'row'."
           },
           "depth": {
             "type": "number",
@@ -4888,6 +4997,39 @@ export const gatewayManifest = {
             "type": "boolean",
             "description": "Report what would be copied without writing anything. Returns the same counts and packagePaths sample."
           },
+          "edit": {
+            "type": "string",
+            "enum": [
+              "add_parameter",
+              "reset_parameters",
+              "create",
+              "add_value",
+              "rename_value",
+              "reorder_values",
+              "set_value_metadata",
+              "split",
+              "create_row_struct",
+              "add_row",
+              "update_row",
+              "import_rows",
+              "set_row_struct",
+              "set_struct_as_row_struct",
+              "create_struct",
+              "add_struct_member",
+              "rename_struct_member",
+              "reorder_struct_members",
+              "set_struct_member_default",
+              "set_struct_member_metadata",
+              "set_struct_member_type",
+              "rename_struct",
+              "duplicate_struct",
+              "import_struct",
+              "recompile_struct",
+              "refresh_struct_dependencies",
+              "set_instanced_struct_property"
+            ],
+            "description": "Which edit data table variant to run."
+          },
           "endPin": {
             "type": "string",
             "description": "Terminal pin name to stop the chain walk at."
@@ -4911,7 +5053,7 @@ export const gatewayManifest = {
           },
           "filter": {
             "type": "string",
-            "description": "Case-sensitive substring matched against each serialized index entry."
+            "description": "Case-sensitive substring matched against each serialized row. Use \"fab\" to drop the legacy \"uem\" engine and plugin entries that otherwise fill the row limit."
           },
           "filterMethod": {
             "type": "string",
@@ -4966,6 +5108,10 @@ export const gatewayManifest = {
             "type": "number",
             "description": "Height in pixels."
           },
+          "importAnimations": {
+            "type": "boolean",
+            "description": "Import animation takes from an FBX. Off by default, which imports mesh only."
+          },
           "inBlack": {
             "type": "number",
             "description": "Input black point."
@@ -4986,6 +5132,31 @@ export const gatewayManifest = {
             "type": "number",
             "description": "Split index."
           },
+          "info": {
+            "type": "string",
+            "enum": [
+              "material",
+              "function",
+              "find_node",
+              "node_details",
+              "node_properties",
+              "node_connections",
+              "node_chain",
+              "subgraph",
+              "row",
+              "rows",
+              "row_struct",
+              "struct",
+              "read",
+              "members",
+              "list",
+              "usage",
+              "compare",
+              "export",
+              "instanced_property"
+            ],
+            "description": "Which get material info variant to run; omit for 'material'."
+          },
           "inputName": {
             "type": "string",
             "description": "Input name."
@@ -5002,9 +5173,42 @@ export const gatewayManifest = {
             },
             "description": "Input definitions."
           },
+          "io": {
+            "type": "string",
+            "enum": [
+              "input",
+              "output"
+            ],
+            "description": "Which add function io variant to run."
+          },
           "key": {
             "type": "string",
             "description": "Metadata key."
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "assets",
+              "content_sources",
+              "material_instances",
+              "gradient",
+              "noise",
+              "pattern",
+              "ao_from_mesh",
+              "normal_from_height",
+              "resized",
+              "channel_pack",
+              "channel_extract",
+              "combined",
+              "material",
+              "decal",
+              "landscape",
+              "post_process",
+              "function",
+              "metadata",
+              "tags"
+            ],
+            "description": "Which create material variant to run; omit for 'material'."
           },
           "layerName": {
             "type": "string",
@@ -5026,17 +5230,9 @@ export const gatewayManifest = {
             "oneOf": [
               {
                 "type": "number",
-                "default": 200,
                 "minimum": 1,
-                "maximum": 1000,
-                "description": "Maximum rows to return, clamped plugin-side."
-              },
-              {
-                "type": "number",
-                "minimum": 1,
-                "maximum": 50,
-                "default": 12,
-                "description": "Maximum listings to return (1-50)."
+                "description": "Maximum rows to return, clamped plugin-side.",
+                "maximum": 1000
               },
               {
                 "type": "number",
@@ -5046,7 +5242,7 @@ export const gatewayManifest = {
                 "description": "Page size (1-500, default 50)."
               }
             ],
-            "description": "Maximum listings to return (1-50)."
+            "description": "Maximum rows to return, clamped plugin-side."
           },
           "listingId": {
             "type": "string",
@@ -5060,6 +5256,45 @@ export const gatewayManifest = {
             "type": "number",
             "description": "Number of LOD levels to generate."
           },
+          "lookup": {
+            "type": "string",
+            "enum": [
+              "exists",
+              "search",
+              "by_tag",
+              "graph",
+              "material_stats",
+              "source_control_state",
+              "fab_listing_details",
+              "fab_downloads",
+              "fab_library",
+              "fab_search",
+              "megascans_library",
+              "metadata",
+              "dependencies",
+              "validate",
+              "report"
+            ],
+            "description": "Which inspect asset variant to run."
+          },
+          "maintenance": {
+            "type": "string",
+            "enum": [
+              "bulk_rename",
+              "fixup_redirectors",
+              "migrate"
+            ],
+            "description": "Which maintain content variant to run."
+          },
+          "marketplace": {
+            "type": "string",
+            "enum": [
+              "fab_listing",
+              "fab_download",
+              "megascans"
+            ],
+            "description": "Which import marketplace asset variant to run."
+          },
           "materialDomain": {
             "type": "string",
             "description": "Material domain."
@@ -5067,6 +5302,16 @@ export const gatewayManifest = {
           "materialPath": {
             "type": "string",
             "description": "Material /Game asset path."
+          },
+          "materialProperty": {
+            "type": "string",
+            "enum": [
+              "blend_mode",
+              "domain",
+              "shading_model",
+              "two_sided"
+            ],
+            "description": "Which set material property variant to run."
           },
           "maxDepth": {
             "type": "number",
@@ -5155,6 +5400,34 @@ export const gatewayManifest = {
             },
             "description": "Node IDs to delete in one batch, in place of nodeId."
           },
+          "nodeKind": {
+            "type": "string",
+            "enum": [
+              "node",
+              "custom_expression",
+              "fresnel",
+              "if",
+              "math",
+              "noise",
+              "panner",
+              "pixel_depth",
+              "reflection_vector",
+              "rotator",
+              "scalar_parameter",
+              "static_switch_parameter",
+              "switch",
+              "texture_coordinate",
+              "texture_sample",
+              "vector_parameter",
+              "vertex_normal",
+              "voronoi",
+              "world_position",
+              "material_function",
+              "landscape_layer"
+            ],
+            "description": "Which add material node variant to run; omit for 'node'.",
+            "default": "node"
+          },
           "nodeName": {
             "type": "string",
             "description": "Node name to find."
@@ -5208,7 +5481,7 @@ export const gatewayManifest = {
           },
           "overwrite": {
             "type": "boolean",
-            "description": "Overwrite existing asset at destination."
+            "description": "Overwrite packages that already exist at the destination. Default false, which skips them and reports skippedCount."
           },
           "packagePath": {
             "type": "string",
@@ -5240,6 +5513,18 @@ export const gatewayManifest = {
             "additionalProperties": false,
             "description": "Nested pagination envelope. Top-level limit/offset take precedence when both are supplied."
           },
+          "parameterKind": {
+            "type": "string",
+            "enum": [
+              "parameter",
+              "scalar",
+              "vector",
+              "texture",
+              "static_switch"
+            ],
+            "description": "Which set material parameter variant to run; omit for 'parameter'.",
+            "default": "parameter"
+          },
           "parameterName": {
             "type": "string",
             "description": "Parameter name."
@@ -5269,10 +5554,6 @@ export const gatewayManifest = {
               },
               {
                 "type": "string",
-                "description": "Package path for the new enum."
-              },
-              {
-                "type": "string",
                 "description": "Package path to search."
               },
               {
@@ -5282,10 +5563,6 @@ export const gatewayManifest = {
               {
                 "type": "string",
                 "description": "Single asset path (alternative to paths)."
-              },
-              {
-                "type": "string",
-                "description": "Single asset path."
               }
             ],
             "description": "Alternative directory path."
@@ -5294,10 +5571,10 @@ export const gatewayManifest = {
             "oneOf": [
               {
                 "type": "array",
+                "description": "Asset paths to check out.",
                 "items": {
                   "type": "string"
-                },
-                "description": "Asset paths to check out."
+                }
               },
               {
                 "type": "array",
@@ -5305,13 +5582,6 @@ export const gatewayManifest = {
                   "type": "string"
                 },
                 "description": "Asset paths to delete."
-              },
-              {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                },
-                "description": "Asset paths to submit."
               }
             ],
             "description": "Asset paths to check out."
@@ -5355,9 +5625,21 @@ export const gatewayManifest = {
             "type": "string",
             "description": "Name prefix."
           },
+          "process": {
+            "type": "string",
+            "enum": [
+              "thumbnail",
+              "lods"
+            ],
+            "description": "Which process asset variant to run."
+          },
           "propertyName": {
             "type": "string",
             "description": "Property name."
+          },
+          "provider": {
+            "type": "string",
+            "description": "Provider name as the editor registers it, e.g. Git or Perforce. Omit to report the current provider without changing it."
           },
           "query": {
             "type": "string",
@@ -5400,18 +5682,8 @@ export const gatewayManifest = {
             "description": "Report type."
           },
           "rowData": {
-            "oneOf": [
-              {
-                "type": "object",
-                "x-unreal-reflection-boundary": true,
-                "description": "Row data key/value map."
-              },
-              {
-                "type": "object",
-                "x-unreal-reflection-boundary": true,
-                "description": "Updated row data."
-              }
-            ],
+            "type": "object",
+            "x-unreal-reflection-boundary": true,
             "description": "Row data key/value map."
           },
           "rowName": {
@@ -5428,7 +5700,7 @@ export const gatewayManifest = {
               "type": "object",
               "x-unreal-reflection-boundary": true
             },
-            "description": "Row data objects."
+            "description": "Rows to import, each { rowName: <name>, rowData: { <field>: <value>, ... } }. The field names inside rowData are the row struct own property names, e.g. { rowName: ArcRifle, rowData: { DisplayName: Arc Rifle, Damage: 42 } }. A flat entry such as { rowName, Damage } is rejected as missing rowData."
           },
           "samples": {
             "type": "number",
@@ -5436,7 +5708,7 @@ export const gatewayManifest = {
           },
           "save": {
             "type": "boolean",
-            "description": "Save after adjustment."
+            "description": "Persist the asset to disk. Defaults to false, which leaves it in memory only."
           },
           "savePath": {
             "type": "string",
@@ -5458,6 +5730,17 @@ export const gatewayManifest = {
             "type": "number",
             "description": "Random seed."
           },
+          "setting": {
+            "type": "string",
+            "enum": [
+              "compression",
+              "lod_bias",
+              "streaming_priority",
+              "texture_group",
+              "virtual_texture"
+            ],
+            "description": "Which configure texture variant to run."
+          },
           "shadingModel": {
             "type": "string",
             "description": "Shading model."
@@ -5465,6 +5748,21 @@ export const gatewayManifest = {
           "showConfirmation": {
             "type": "boolean",
             "description": "Show confirmation prompt."
+          },
+          "skeletonPath": {
+            "type": "string",
+            "description": "Existing skeleton to import the take against, e.g. /Game/Chars/SK_Hero_Skeleton. Set it to import the animation ALONE; omit it to import mesh and animation together. Implies importAnimations."
+          },
+          "sourceControlOp": {
+            "type": "string",
+            "enum": [
+              "checkout",
+              "submit",
+              "enable",
+              "init",
+              "commit_all"
+            ],
+            "description": "Which source control variant to run."
           },
           "sourceId": {
             "type": "string",
@@ -5582,6 +5880,14 @@ export const gatewayManifest = {
             "type": "boolean",
             "description": "Walk every upstream producer, overriding direction and depth."
           },
+          "userEmail": {
+            "type": "string",
+            "description": "Commit author email, written to the repository config only."
+          },
+          "userName": {
+            "type": "string",
+            "description": "Commit author name, written to the repository config only."
+          },
           "vTiling": {
             "type": "number",
             "description": "V tiling factor (default 1)."
@@ -5595,23 +5901,12 @@ export const gatewayManifest = {
                 "description": "Parameter value."
               },
               {
-                "description": "Vector value."
-              },
-              {
                 "type": "boolean",
                 "description": "Default switch value."
               },
               {
                 "type": "boolean",
-                "description": "Switch value."
-              },
-              {
-                "type": "boolean",
                 "description": "Two-sided value."
-              },
-              {
-                "type": "number",
-                "description": "Scalar value."
               },
               {
                 "type": "string",
@@ -5625,27 +5920,15 @@ export const gatewayManifest = {
             "description": "Enum value (entry) name."
           },
           "values": {
-            "oneOf": [
-              {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                },
-                "description": "Initial enum value names."
-              },
-              {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                },
-                "description": "Value names to move to the new enum."
-              }
-            ],
-            "description": "Initial enum value names."
+            "type": "array",
+            "description": "Initial enum value names.",
+            "items": {
+              "type": "string"
+            }
           },
           "varGuid": {
             "type": "string",
-            "description": "Member GUID to move."
+            "description": "Stable member GUID."
           },
           "virtualTextureStreaming": {
             "type": "boolean",
@@ -5669,172 +5952,49 @@ export const gatewayManifest = {
               "list",
               "import",
               "duplicate",
-              "duplicate_asset",
               "rename",
-              "rename_asset",
               "move",
-              "move_asset",
               "delete",
-              "delete_asset",
-              "delete_assets",
               "create_folder",
-              "search_assets",
-              "list_content_sources",
-              "list_fab_downloads",
-              "list_fab_library",
-              "download_fab_asset",
-              "get_fab_listing_details",
-              "search_fab_listings",
-              "add_fab_asset_to_project",
-              "list_megascans_library",
-              "import_megascans_asset",
-              "migrate_assets",
-              "get_dependencies",
-              "get_source_control_state",
-              "analyze_graph",
-              "get_asset_graph",
-              "create_thumbnail",
-              "set_tags",
-              "get_metadata",
+              "query_asset",
+              "query_marketplace",
+              "import_marketplace_asset",
+              "maintain_content",
+              "inspect_asset",
+              "process_asset",
               "set_metadata",
-              "validate",
-              "fixup_redirectors",
-              "find_by_tag",
-              "generate_report",
               "create_render_target",
-              "generate_lods",
-              "add_material_parameter",
-              "list_instances",
-              "reset_instance_parameters",
-              "exists",
-              "get_material_stats",
+              "edit_material_instance",
               "nanite_rebuild_mesh",
-              "bulk_rename",
               "bulk_delete",
-              "source_control_checkout",
-              "source_control_submit",
+              "source_control",
               "create_material",
               "create_material_instance",
-              "create_material_function",
-              "create_landscape_material",
-              "create_decal_material",
-              "create_post_process_material",
-              "add_texture_sample",
-              "add_texture_coordinate",
-              "add_scalar_parameter",
-              "add_vector_parameter",
-              "add_static_switch_parameter",
-              "add_math_node",
-              "add_world_position",
-              "add_vertex_normal",
-              "add_pixel_depth",
-              "add_fresnel",
-              "add_reflection_vector",
-              "add_panner",
-              "add_rotator",
-              "add_noise",
-              "add_voronoi",
-              "add_if",
-              "add_switch",
-              "add_custom_expression",
+              "add_material_node",
               "connect_nodes",
-              "connect_material_pins",
               "disconnect_nodes",
-              "break_material_connections",
-              "find_node",
-              "get_node_connections",
-              "get_node_properties",
-              "set_static_switch_parameter_value",
+              "get_material_info",
+              "set_material_parameter",
               "delete_node",
               "update_custom_expression",
-              "get_node_chain",
-              "get_connected_subgraph",
-              "add_material_node",
-              "rebuild_material",
-              "set_material_parameter",
-              "get_material_node_details",
-              "remove_material_node",
-              "set_node_position",
-              "set_blend_mode",
-              "set_shading_model",
-              "set_material_domain",
               "compile_material",
-              "get_material_info",
-              "set_two_sided",
-              "add_function_input",
-              "add_function_output",
-              "use_material_function",
-              "get_material_function_info",
-              "set_scalar_parameter_value",
-              "set_vector_parameter_value",
-              "set_texture_parameter_value",
-              "add_landscape_layer",
+              "set_node_position",
+              "set_material_property",
+              "add_function_io",
               "configure_layer_blend",
-              "create_noise_texture",
-              "create_gradient_texture",
-              "create_pattern_texture",
-              "create_normal_from_height",
-              "create_ao_from_mesh",
-              "resize_texture",
-              "adjust_levels",
-              "adjust_curves",
-              "blur",
-              "sharpen",
-              "invert",
-              "desaturate",
-              "channel_pack",
-              "channel_extract",
-              "combine_textures",
-              "set_compression_settings",
-              "set_texture_group",
-              "set_lod_bias",
-              "configure_virtual_texture",
-              "set_streaming_priority",
+              "create_texture",
+              "adjust_texture",
+              "configure_texture",
               "get_texture_info",
-              "create_struct",
+              "edit_struct",
               "get_struct",
-              "read_struct",
-              "list_struct_members",
-              "add_struct_member",
-              "remove_struct_member",
-              "rename_struct_member",
-              "set_struct_member_type",
-              "reorder_struct_members",
-              "set_struct_member_default",
-              "set_struct_member_metadata",
-              "compare_structs",
-              "search_struct_usage",
-              "recompile_struct",
-              "rename_struct",
-              "duplicate_struct",
               "delete_struct",
-              "refresh_struct_dependencies",
-              "list_structs",
-              "export_struct",
-              "import_struct",
-              "get_instanced_struct_property",
-              "set_instanced_struct_property",
-              "create_data_table",
-              "set_data_table_row_struct",
-              "create_row_struct",
-              "get_row_struct",
-              "set_struct_as_row_struct",
-              "add_data_table_row",
-              "get_data_table_row",
-              "update_data_table_row",
+              "edit_data_table",
+              "inspect_data_table",
               "delete_data_table_row",
-              "list_data_table_rows",
-              "import_data_table_rows",
-              "clear_data_table_rows",
-              "create_enum",
+              "edit_enum",
               "delete_enum",
-              "get_enum",
-              "add_enum_value",
-              "remove_enum_value",
-              "rename_enum_value",
-              "reorder_enum_values",
-              "set_enum_value_metadata",
-              "split_enum"
+              "get_enum"
             ],
             "description": "Action to invoke on manage_asset."
           },
@@ -5856,56 +6016,18 @@ export const gatewayManifest = {
       "category": "utility",
       "description": "Play/stop sounds, add audio components, configure mixes, attenuation, spatial audio, and author Sound Cues/MetaSounds.",
       "actions": [
-        "add_cue_node",
-        "add_metasound_input",
-        "add_metasound_node",
-        "add_metasound_output",
-        "add_mix_modifier",
-        "add_source_effect",
-        "clear_sound_mix_class_override",
-        "configure_distance_attenuation",
-        "configure_mix_eq",
-        "configure_occlusion",
-        "configure_reverb_send",
-        "configure_spatialization",
-        "connect_cue_nodes",
-        "connect_metasound_nodes",
-        "create_ambient_sound",
-        "create_attenuation_settings",
-        "create_audio_component",
-        "create_dialogue_voice",
-        "create_dialogue_wave",
-        "create_metasound",
-        "create_reverb_effect",
-        "create_reverb_zone",
-        "create_sound_class",
-        "create_sound_cue",
-        "create_sound_mix",
-        "create_source_effect_chain",
-        "create_submix_effect",
+        "configure_sound_attenuation",
+        "configure_sound_class",
+        "control_sound_mix",
+        "create_audio_actor",
+        "create_audio_asset",
+        "edit_metasound",
+        "edit_sound_cue",
         "enable_audio_analysis",
         "fade_sound",
-        "fade_sound_in",
-        "fade_sound_out",
         "get_audio_info",
-        "play_sound_2d",
-        "play_sound_at_location",
-        "play_sound_attached",
-        "pop_sound_mix",
-        "prime_sound",
-        "push_sound_mix",
-        "set_audio_occlusion",
-        "set_base_sound_mix",
-        "set_class_parent",
-        "set_class_properties",
-        "set_cue_attenuation",
-        "set_cue_concurrency",
-        "set_dialogue_context",
-        "set_doppler_effect",
-        "set_metasound_default",
-        "set_sound_attenuation",
-        "set_sound_mix_class_override",
-        "spawn_sound_at_location"
+        "play_sound",
+        "set_dialogue_context"
       ],
       "parameterNames": [
         "actorName",
@@ -5917,12 +6039,15 @@ export const gatewayManifest = {
         "autoPlay",
         "componentName",
         "concurrencyPath",
+        "control",
         "defaultValue",
         "dopplerIntensity",
+        "edit",
         "effectType",
         "enable",
         "enableReverbSend",
         "enabled",
+        "fade",
         "fadeInTime",
         "fadeOutTime",
         "fadeTime",
@@ -5932,6 +6057,7 @@ export const gatewayManifest = {
         "innerRadius",
         "inputName",
         "inputType",
+        "kind",
         "location",
         "looping",
         "lowPassFilterFrequency",
@@ -5947,6 +6073,7 @@ export const gatewayManifest = {
         "parentClass",
         "path",
         "pitch",
+        "playback",
         "properties",
         "reverbDistanceMax",
         "reverbDistanceMin",
@@ -5955,6 +6082,7 @@ export const gatewayManifest = {
         "reverbWetLevelMin",
         "rotation",
         "save",
+        "setting",
         "size",
         "soundClassName",
         "soundClassPath",
@@ -6017,6 +6145,17 @@ export const gatewayManifest = {
             "type": "string",
             "description": "Canonical /Game SoundConcurrency asset path."
           },
+          "control": {
+            "type": "string",
+            "enum": [
+              "push",
+              "pop",
+              "set_base",
+              "set_class_override",
+              "clear_class_override"
+            ],
+            "description": "Which control sound mix variant to run."
+          },
           "defaultValue": {
             "type": "string",
             "description": "Default value for the input."
@@ -6024,6 +6163,21 @@ export const gatewayManifest = {
           "dopplerIntensity": {
             "type": "number",
             "description": "Doppler effect intensity multiplier."
+          },
+          "edit": {
+            "type": "string",
+            "enum": [
+              "add_node",
+              "connect_nodes",
+              "set_attenuation",
+              "set_concurrency",
+              "add_source_effect",
+              "create",
+              "add_input",
+              "add_output",
+              "set_default"
+            ],
+            "description": "Which edit metasound variant to run."
           },
           "effectType": {
             "type": "string",
@@ -6040,6 +6194,16 @@ export const gatewayManifest = {
           "enabled": {
             "type": "boolean",
             "description": "Whether the feature is enabled."
+          },
+          "fade": {
+            "type": "string",
+            "enum": [
+              "to_volume",
+              "in",
+              "out"
+            ],
+            "description": "Which fade sound variant to run; omit for 'to_volume'.",
+            "default": "to_volume"
           },
           "fadeInTime": {
             "type": "number",
@@ -6076,6 +6240,24 @@ export const gatewayManifest = {
           "inputType": {
             "type": "string",
             "description": "Graph input data type (Float, Int32, Bool, String, Trigger, Audio)."
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "ambient_sound",
+              "audio_component",
+              "reverb_zone",
+              "sound_cue",
+              "sound_class",
+              "sound_mix",
+              "attenuation_settings",
+              "reverb_effect",
+              "dialogue_voice",
+              "dialogue_wave",
+              "source_effect_chain",
+              "submix_effect"
+            ],
+            "description": "Which create audio actor variant to run."
           },
           "location": {
             "type": "object",
@@ -6139,6 +6321,17 @@ export const gatewayManifest = {
             "type": "number",
             "description": "Pitch multiplier."
           },
+          "playback": {
+            "type": "string",
+            "enum": [
+              "2d",
+              "at_location",
+              "spawn_at_location",
+              "attached",
+              "prime"
+            ],
+            "description": "Which play sound variant to run."
+          },
           "properties": {
             "type": "object",
             "description": "Key-value property map applied by reflection.",
@@ -6174,6 +6367,23 @@ export const gatewayManifest = {
           "save": {
             "type": "boolean",
             "description": "Persist the created or modified asset to disk."
+          },
+          "setting": {
+            "type": "string",
+            "enum": [
+              "distance",
+              "spatialization",
+              "occlusion",
+              "reverb_send",
+              "audio_occlusion",
+              "doppler",
+              "preset",
+              "parent",
+              "properties",
+              "mix_modifier",
+              "mix_eq"
+            ],
+            "description": "Which configure sound attenuation variant to run."
           },
           "size": {
             "type": "object",
@@ -6268,56 +6478,18 @@ export const gatewayManifest = {
           "action": {
             "type": "string",
             "enum": [
-              "add_cue_node",
-              "add_metasound_input",
-              "add_metasound_node",
-              "add_metasound_output",
-              "add_mix_modifier",
-              "add_source_effect",
-              "clear_sound_mix_class_override",
-              "configure_distance_attenuation",
-              "configure_mix_eq",
-              "configure_occlusion",
-              "configure_reverb_send",
-              "configure_spatialization",
-              "connect_cue_nodes",
-              "connect_metasound_nodes",
-              "create_ambient_sound",
-              "create_attenuation_settings",
-              "create_audio_component",
-              "create_dialogue_voice",
-              "create_dialogue_wave",
-              "create_metasound",
-              "create_reverb_effect",
-              "create_reverb_zone",
-              "create_sound_class",
-              "create_sound_cue",
-              "create_sound_mix",
-              "create_source_effect_chain",
-              "create_submix_effect",
+              "configure_sound_attenuation",
+              "configure_sound_class",
+              "control_sound_mix",
+              "create_audio_actor",
+              "create_audio_asset",
+              "edit_metasound",
+              "edit_sound_cue",
               "enable_audio_analysis",
               "fade_sound",
-              "fade_sound_in",
-              "fade_sound_out",
               "get_audio_info",
-              "play_sound_2d",
-              "play_sound_at_location",
-              "play_sound_attached",
-              "pop_sound_mix",
-              "prime_sound",
-              "push_sound_mix",
-              "set_audio_occlusion",
-              "set_base_sound_mix",
-              "set_class_parent",
-              "set_class_properties",
-              "set_cue_attenuation",
-              "set_cue_concurrency",
-              "set_dialogue_context",
-              "set_doppler_effect",
-              "set_metasound_default",
-              "set_sound_attenuation",
-              "set_sound_mix_class_override",
-              "spawn_sound_at_location"
+              "play_sound",
+              "set_dialogue_context"
             ],
             "description": "Action to invoke on manage_audio."
           },
@@ -6340,126 +6512,32 @@ export const gatewayManifest = {
       "description": "Create Blueprints and UMG widgets, add SCS/UI components, set defaults, and manipulate Blueprint graphs, bindings, and widget layouts.",
       "actions": [
         "create",
-        "create_blueprint",
         "get_blueprint",
-        "get",
-        "ensure_exists",
         "compile",
-        "add_component",
-        "add_scs_component",
-        "modify_scs",
+        "edit_scs",
         "get_scs",
         "remove_scs_component",
-        "reparent_scs_component",
-        "set_scs_transform",
-        "set_scs_property",
-        "add_variable",
+        "edit_variable",
         "remove_variable",
-        "rename_variable",
-        "set_variable_metadata",
-        "set_metadata",
-        "set_default",
-        "create_node",
-        "add_node",
+        "edit_graph",
         "delete_node",
-        "create_reroute_node",
-        "get_node_details",
-        "get_graph_details",
-        "get_pin_details",
-        "list_node_types",
-        "create_struct_make_break_nodes",
-        "connect_pins",
-        "break_pin_links",
-        "set_node_property",
-        "set_pin_default_value",
-        "add_construction_script",
+        "inspect_graph",
         "add_function",
         "remove_function",
-        "add_event",
-        "remove_event",
         "probe_handle",
-        "create_widget_blueprint",
-        "set_widget_parent_class",
-        "preview_widget",
+        "edit_widget_blueprint",
         "remove_widget",
-        "rename_widget",
-        "reparent_widget",
-        "add_canvas_panel",
-        "add_horizontal_box",
-        "add_vertical_box",
-        "add_overlay",
-        "add_grid_panel",
-        "add_uniform_grid",
-        "add_wrap_box",
-        "add_scroll_box",
-        "add_size_box",
-        "add_scale_box",
-        "add_border",
-        "add_spacer",
-        "add_safe_zone",
-        "add_widget_switcher",
-        "add_text_block",
-        "add_rich_text_block",
-        "add_image",
-        "add_button",
-        "add_check_box",
-        "add_slider",
-        "add_progress_bar",
-        "add_text_input",
-        "add_combo_box",
-        "add_spin_box",
-        "add_list_view",
-        "add_tree_view",
-        "add_widget_component",
+        "add_panel_widget",
+        "add_content_widget",
         "set_font",
-        "set_margin",
-        "add_health_bar",
-        "add_ammo_counter",
-        "add_minimap",
-        "add_crosshair",
-        "add_compass",
-        "add_interaction_prompt",
-        "add_objective_tracker",
-        "add_damage_indicator",
-        "add_quest_tracker",
-        "create_credits_screen",
-        "create_shop_ui",
-        "create_main_menu",
-        "create_pause_menu",
-        "create_settings_menu",
-        "create_loading_screen",
-        "create_hud_widget",
-        "create_inventory_ui",
-        "create_dialog_widget",
-        "create_radial_menu",
-        "set_anchor",
-        "set_alignment",
-        "set_position",
-        "set_size",
-        "set_padding",
-        "set_z_order",
-        "set_render_transform",
-        "set_visibility",
-        "set_style",
-        "set_clipping",
-        "create_property_binding",
-        "bind_text",
-        "bind_visibility",
-        "bind_color",
-        "bind_enabled",
-        "bind_on_clicked",
-        "bind_on_hovered",
-        "bind_on_value_changed",
-        "bind_localized_text",
-        "set_localization_key",
-        "set_widget_binding",
-        "create_widget_animation",
-        "add_animation_track",
-        "add_animation_keyframe",
-        "set_animation_loop",
+        "add_game_widget",
+        "create_game_screen",
+        "create_widget_template",
+        "set_widget_layout",
+        "bind_widget",
+        "edit_widget_animation",
         "delete_animation",
-        "get_widget_info",
-        "get_widget_slot_info"
+        "get_widget_info"
       ],
       "parameterNames": [
         "actionPath",
@@ -6473,6 +6551,7 @@ export const gatewayManifest = {
         "applyAndSave",
         "attachTo",
         "autoWrap",
+        "bindingKind",
         "bindingSource",
         "blueprintPath",
         "blueprintType",
@@ -6487,10 +6566,14 @@ export const gatewayManifest = {
         "componentClass",
         "componentName",
         "componentType",
+        "cornerRadius",
+        "createMode",
         "customEventName",
         "defaultValue",
+        "deleteScope",
         "delta",
         "duration",
+        "edit",
         "eventName",
         "eventType",
         "explicitWrapWidth",
@@ -6509,6 +6592,7 @@ export const gatewayManifest = {
         "hintText",
         "includePins",
         "includeProgressBar",
+        "info",
         "innerSlotPadding",
         "inputActionAssetPath",
         "inputActionPath",
@@ -6522,6 +6606,8 @@ export const gatewayManifest = {
         "isPublic",
         "isReplicated",
         "key",
+        "kind",
+        "layoutProperty",
         "left",
         "linkedTo",
         "location",
@@ -6552,6 +6638,8 @@ export const gatewayManifest = {
         "operations",
         "options",
         "orientation",
+        "outlineColor",
+        "outlineWidth",
         "outputs",
         "padding",
         "parameters",
@@ -6575,12 +6663,14 @@ export const gatewayManifest = {
         "property",
         "propertyName",
         "propertyValue",
+        "renderOpacity",
         "right",
         "rotation",
         "rowCount",
         "saveAfterCompile",
         "savePath",
         "scale",
+        "screen",
         "scrollBarVisibility",
         "segmentCount",
         "selectedOption",
@@ -6605,6 +6695,7 @@ export const gatewayManifest = {
         "targetPin",
         "targetWidget",
         "text",
+        "textStyle",
         "texturePath",
         "time",
         "title",
@@ -6618,6 +6709,7 @@ export const gatewayManifest = {
         "variableName",
         "variableType",
         "visibility",
+        "widgetKind",
         "widgetPath",
         "width",
         "widthOverride",
@@ -6678,6 +6770,23 @@ export const gatewayManifest = {
           "autoWrap": {
             "type": "boolean",
             "description": "Enable text auto-wrap."
+          },
+          "bindingKind": {
+            "type": "string",
+            "enum": [
+              "text",
+              "color",
+              "enabled",
+              "visibility",
+              "on_clicked",
+              "on_hovered",
+              "on_value_changed",
+              "localized_text",
+              "property",
+              "localization_key",
+              "widget"
+            ],
+            "description": "Which bind widget variant to run."
           },
           "bindingSource": {
             "type": "string",
@@ -6748,12 +6857,35 @@ export const gatewayManifest = {
             "type": "string",
             "description": "Component class name to add."
           },
+          "cornerRadius": {
+            "type": "number",
+            "description": "Corner radius in pixels for a widget that draws a brush (Image, Button, Border). Switches the brush to a RoundedBox; 0 restores square corners."
+          },
+          "createMode": {
+            "type": "string",
+            "enum": [
+              "create",
+              "blueprint",
+              "ensure"
+            ],
+            "description": "Which create variant to run; omit for 'create'.",
+            "default": "create"
+          },
           "customEventName": {
             "type": "string",
             "description": "Custom event name to create."
           },
           "defaultValue": {
             "description": "Default value for the variable or property."
+          },
+          "deleteScope": {
+            "type": "string",
+            "enum": [
+              "node",
+              "pin_links"
+            ],
+            "description": "Which delete node variant to run; omit for 'node'.",
+            "default": "node"
           },
           "delta": {
             "type": "number",
@@ -6762,6 +6894,39 @@ export const gatewayManifest = {
           "duration": {
             "type": "number",
             "description": "Duration in seconds."
+          },
+          "edit": {
+            "type": "string",
+            "enum": [
+              "add_node",
+              "create_node",
+              "create_reroute_node",
+              "create_struct_make_break_nodes",
+              "connect_pins",
+              "set_node_property",
+              "set_pin_default_value",
+              "add_construction_script",
+              "add_scs_component",
+              "add_component",
+              "modify",
+              "reparent",
+              "set_property",
+              "set_transform",
+              "add_variable",
+              "rename_variable",
+              "set_variable_metadata",
+              "set_metadata",
+              "set_default",
+              "create",
+              "add_track",
+              "add_keyframe",
+              "set_loop",
+              "set_parent_class",
+              "preview",
+              "rename_widget",
+              "reparent_widget"
+            ],
+            "description": "Which edit graph variant to run."
           },
           "eventName": {
             "type": "string",
@@ -6839,6 +7004,20 @@ export const gatewayManifest = {
             "type": "boolean",
             "description": "Include progress bar."
           },
+          "info": {
+            "type": "string",
+            "enum": [
+              "blueprint",
+              "property",
+              "graph",
+              "node",
+              "pins",
+              "node_types",
+              "widget",
+              "slot"
+            ],
+            "description": "Which get blueprint variant to run; omit for 'blueprint'."
+          },
           "innerSlotPadding": {
             "type": "object",
             "additionalProperties": true,
@@ -6907,6 +7086,30 @@ export const gatewayManifest = {
           "key": {
             "type": "string",
             "description": "Localization key assigned to the text widget."
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "function",
+              "event"
+            ],
+            "description": "Which add function variant to run; omit for 'function'."
+          },
+          "layoutProperty": {
+            "type": "string",
+            "enum": [
+              "anchor",
+              "position",
+              "size",
+              "alignment",
+              "padding",
+              "z_order",
+              "visibility",
+              "clipping",
+              "render_transform",
+              "style"
+            ],
+            "description": "Which set widget layout variant to run."
           },
           "left": {
             "type": "number",
@@ -7005,20 +7208,7 @@ export const gatewayManifest = {
             "description": "Human-readable node name."
           },
           "nodeType": {
-            "oneOf": [
-              {
-                "type": "string",
-                "description": "Blueprint node type string for creation."
-              },
-              {
-                "type": "string",
-                "enum": [
-                  "make",
-                  "break"
-                ],
-                "description": "Struct node kind: make (UK2Node_MakeStruct) or break (UK2Node_BreakStruct)."
-              }
-            ],
+            "type": "string",
             "description": "Blueprint node type string for creation."
           },
           "oldName": {
@@ -7047,7 +7237,7 @@ export const gatewayManifest = {
               },
               {
                 "type": "array",
-                "description": "SCS operations applied in order. Each entry is an object with `type` plus that operation's own fields; `type: \"add_component\"` also takes componentName, componentClass, attachTo, transform and a nested properties bag.",
+                "description": "SCS operations applied in order. Each entry is an object with `type` plus that operation's own fields; `type: \"add_component\"` also takes componentName, componentClass, attachTo, transform, meshPath, materialPath and a nested properties bag; `type: \"modify_component\"` takes the same transform, meshPath, materialPath and properties for a component that already exists.",
                 "items": {
                   "type": "object",
                   "additionalProperties": true,
@@ -7073,6 +7263,16 @@ export const gatewayManifest = {
               "Vertical"
             ],
             "description": "Widget orientation."
+          },
+          "outlineColor": {
+            "type": "object",
+            "additionalProperties": true,
+            "x-unreal-reflection-boundary": true,
+            "description": "Outline color (0-1 values) drawn around a rounded brush. Ignored unless cornerRadius is set."
+          },
+          "outlineWidth": {
+            "type": "number",
+            "description": "Outline thickness in pixels around a rounded brush. Ignored unless cornerRadius is set."
           },
           "outputs": {
             "type": "array",
@@ -7194,6 +7394,10 @@ export const gatewayManifest = {
           "propertyValue": {
             "description": "Value to assign to the property."
           },
+          "renderOpacity": {
+            "type": "number",
+            "description": "Render opacity (0-1) applied to the widget and everything under it."
+          },
           "right": {
             "type": "number",
             "description": "Right margin in slate units."
@@ -7221,6 +7425,22 @@ export const gatewayManifest = {
             "description": "Relative scale {x, y, z} for an SCS component template, or {x, y} for a widget render transform.",
             "additionalProperties": true,
             "x-unreal-reflection-boundary": true
+          },
+          "screen": {
+            "type": "string",
+            "enum": [
+              "credits",
+              "shop",
+              "main_menu",
+              "pause_menu",
+              "settings_menu",
+              "hud",
+              "dialog",
+              "inventory_ui",
+              "loading_screen",
+              "radial_menu"
+            ],
+            "description": "Which create game screen variant to run."
           },
           "scrollBarVisibility": {
             "type": "string",
@@ -7332,7 +7552,7 @@ export const gatewayManifest = {
           },
           "targetClass": {
             "type": "string",
-            "description": "Target class for a class-member node."
+            "description": "Target class for a node that carries one: a Cast target, a CreateWidget or SpawnActor class, or the subsystem a Get Subsystem node returns. Required for cast and subsystem nodes, whose type is stored on the node itself and cannot be set afterwards."
           },
           "targetNode": {
             "type": "string",
@@ -7349,6 +7569,15 @@ export const gatewayManifest = {
           "text": {
             "type": "string",
             "description": "Text content for a text block or button."
+          },
+          "textStyle": {
+            "type": "string",
+            "enum": [
+              "font",
+              "margin"
+            ],
+            "description": "Which set font variant to run; omit for 'font'.",
+            "default": "font"
           },
           "texturePath": {
             "type": "string",
@@ -7422,6 +7651,48 @@ export const gatewayManifest = {
             ],
             "description": "Widget visibility state."
           },
+          "widgetKind": {
+            "type": "string",
+            "enum": [
+              "canvas_panel",
+              "overlay",
+              "vertical_box",
+              "horizontal_box",
+              "grid_panel",
+              "uniform_grid",
+              "wrap_box",
+              "border",
+              "scroll_box",
+              "size_box",
+              "scale_box",
+              "spacer",
+              "safe_zone",
+              "widget_switcher",
+              "health_bar",
+              "ammo_counter",
+              "crosshair",
+              "minimap",
+              "compass",
+              "damage_indicator",
+              "interaction_prompt",
+              "objective_tracker",
+              "quest_tracker",
+              "text_block",
+              "rich_text_block",
+              "image",
+              "button",
+              "check_box",
+              "combo_box",
+              "slider",
+              "spin_box",
+              "progress_bar",
+              "text_input",
+              "list_view",
+              "tree_view",
+              "component"
+            ],
+            "description": "Which add content widget variant to run."
+          },
           "widgetPath": {
             "type": "string",
             "description": "Canonical /Game Widget Blueprint asset path."
@@ -7454,126 +7725,32 @@ export const gatewayManifest = {
             "type": "string",
             "enum": [
               "create",
-              "create_blueprint",
               "get_blueprint",
-              "get",
-              "ensure_exists",
               "compile",
-              "add_component",
-              "add_scs_component",
-              "modify_scs",
+              "edit_scs",
               "get_scs",
               "remove_scs_component",
-              "reparent_scs_component",
-              "set_scs_transform",
-              "set_scs_property",
-              "add_variable",
+              "edit_variable",
               "remove_variable",
-              "rename_variable",
-              "set_variable_metadata",
-              "set_metadata",
-              "set_default",
-              "create_node",
-              "add_node",
+              "edit_graph",
               "delete_node",
-              "create_reroute_node",
-              "get_node_details",
-              "get_graph_details",
-              "get_pin_details",
-              "list_node_types",
-              "create_struct_make_break_nodes",
-              "connect_pins",
-              "break_pin_links",
-              "set_node_property",
-              "set_pin_default_value",
-              "add_construction_script",
+              "inspect_graph",
               "add_function",
               "remove_function",
-              "add_event",
-              "remove_event",
               "probe_handle",
-              "create_widget_blueprint",
-              "set_widget_parent_class",
-              "preview_widget",
+              "edit_widget_blueprint",
               "remove_widget",
-              "rename_widget",
-              "reparent_widget",
-              "add_canvas_panel",
-              "add_horizontal_box",
-              "add_vertical_box",
-              "add_overlay",
-              "add_grid_panel",
-              "add_uniform_grid",
-              "add_wrap_box",
-              "add_scroll_box",
-              "add_size_box",
-              "add_scale_box",
-              "add_border",
-              "add_spacer",
-              "add_safe_zone",
-              "add_widget_switcher",
-              "add_text_block",
-              "add_rich_text_block",
-              "add_image",
-              "add_button",
-              "add_check_box",
-              "add_slider",
-              "add_progress_bar",
-              "add_text_input",
-              "add_combo_box",
-              "add_spin_box",
-              "add_list_view",
-              "add_tree_view",
-              "add_widget_component",
+              "add_panel_widget",
+              "add_content_widget",
               "set_font",
-              "set_margin",
-              "add_health_bar",
-              "add_ammo_counter",
-              "add_minimap",
-              "add_crosshair",
-              "add_compass",
-              "add_interaction_prompt",
-              "add_objective_tracker",
-              "add_damage_indicator",
-              "add_quest_tracker",
-              "create_credits_screen",
-              "create_shop_ui",
-              "create_main_menu",
-              "create_pause_menu",
-              "create_settings_menu",
-              "create_loading_screen",
-              "create_hud_widget",
-              "create_inventory_ui",
-              "create_dialog_widget",
-              "create_radial_menu",
-              "set_anchor",
-              "set_alignment",
-              "set_position",
-              "set_size",
-              "set_padding",
-              "set_z_order",
-              "set_render_transform",
-              "set_visibility",
-              "set_style",
-              "set_clipping",
-              "create_property_binding",
-              "bind_text",
-              "bind_visibility",
-              "bind_color",
-              "bind_enabled",
-              "bind_on_clicked",
-              "bind_on_hovered",
-              "bind_on_value_changed",
-              "bind_localized_text",
-              "set_localization_key",
-              "set_widget_binding",
-              "create_widget_animation",
-              "add_animation_track",
-              "add_animation_keyframe",
-              "set_animation_loop",
+              "add_game_widget",
+              "create_game_screen",
+              "create_widget_template",
+              "set_widget_layout",
+              "bind_widget",
+              "edit_widget_animation",
               "delete_animation",
-              "get_widget_info",
-              "get_widget_slot_info"
+              "get_widget_info"
             ],
             "description": "Action to invoke on manage_blueprint."
           },
@@ -7596,61 +7773,57 @@ export const gatewayManifest = {
       "description": "Create Character Blueprints with movement, locomotion, and animation state machines.",
       "actions": [
         "create_character_blueprint",
-        "configure_capsule_component",
-        "configure_mesh_component",
-        "configure_camera_component",
-        "configure_movement_speeds",
-        "configure_jump",
-        "configure_rotation",
-        "add_custom_movement_mode",
-        "configure_nav_movement",
-        "setup_movement",
-        "set_walk_speed",
-        "set_jump_height",
-        "set_gravity_scale",
-        "set_ground_friction",
-        "set_braking_deceleration",
-        "setup_mantling",
-        "setup_vaulting",
-        "setup_climbing",
-        "setup_sliding",
-        "setup_wall_running",
-        "setup_grappling",
-        "setup_footstep_system",
-        "map_surface_to_sound",
-        "configure_footstep_fx",
+        "configure_character",
+        "setup_character_ability",
+        "set_movement_property",
         "get_character_info",
-        "configure_crouch",
-        "configure_sprint"
+        "metahuman_status",
+        "create_metahuman",
+        "rig_metahuman",
+        "build_metahuman",
+        "export_metahuman"
       ],
       "parameterNames": [
+        "ability",
         "acceleration",
         "airControl",
         "animBlueprintPath",
+        "applyAsOverrides",
         "avoidanceEnabled",
+        "blocking",
         "blueprintPath",
+        "bodyMesh",
         "brakingDeceleration",
+        "buildPath",
         "cameraUsePawnControlRotation",
         "canCrouch",
         "capsuleHalfHeight",
         "capsuleRadius",
+        "characterPath",
         "climbSpeed",
         "climbableTag",
+        "commonFolderPath",
         "crouchSpeed",
         "crouchedHalfHeight",
         "customSpeed",
         "deceleration",
+        "dnaBody",
+        "dnaHead",
+        "exportType",
+        "externalPath",
         "fallingLateralFriction",
         "flySpeed",
         "footstepEnabled",
         "footstepSocketLeft",
         "footstepSocketRight",
         "footstepTraceDistance",
+        "fullBodyMesh",
         "grappleRange",
         "grappleSpeed",
         "grappleTargetTag",
         "gravityScale",
         "groundFriction",
+        "headMesh",
         "jumpHeight",
         "jumpHoldTime",
         "mantleHeight",
@@ -7660,15 +7833,24 @@ export const gatewayManifest = {
         "meshRotation",
         "modeId",
         "modeName",
+        "movementProperty",
         "name",
+        "nameOverride",
         "navAgentHeight",
         "navAgentRadius",
         "orientToMovement",
+        "overwrite",
         "parentClass",
         "particleScale",
         "path",
+        "pipelineQuality",
+        "pipelineType",
+        "projectPath",
+        "reportProgress",
+        "rigType",
         "rotationRate",
         "runSpeed",
+        "setting",
         "skeletalMeshPath",
         "slideCooldown",
         "slideDuration",
@@ -7693,6 +7875,20 @@ export const gatewayManifest = {
       "inputSchema": {
         "type": "object",
         "properties": {
+          "ability": {
+            "type": "string",
+            "enum": [
+              "movement",
+              "climbing",
+              "mantling",
+              "vaulting",
+              "sliding",
+              "wall_running",
+              "grappling",
+              "footstep_system"
+            ],
+            "description": "Which setup character ability variant to run."
+          },
           "acceleration": {
             "type": "number",
             "description": "Maximum acceleration."
@@ -7705,21 +7901,37 @@ export const gatewayManifest = {
             "type": "string",
             "description": "Canonical /Game Animation Blueprint asset path."
           },
+          "applyAsOverrides": {
+            "type": "boolean",
+            "description": "Apply exported materials back onto the character as overrides. Default true."
+          },
           "avoidanceEnabled": {
             "type": "boolean",
             "description": "Whether RVO avoidance is enabled."
+          },
+          "blocking": {
+            "type": "boolean",
+            "description": "Wait for auto-rigging to finish before answering. Default false: the request is queued on the Epic cloud service and metahuman_status reports canBuild once it lands. True parks the editor until the service answers."
           },
           "blueprintPath": {
             "type": "string",
             "description": "Canonical /Game Blueprint asset path."
           },
+          "bodyMesh": {
+            "type": "boolean",
+            "description": "Export the body skeletal mesh. Default true."
+          },
           "brakingDeceleration": {
             "type": "number",
             "description": "Braking deceleration while walking."
           },
+          "buildPath": {
+            "type": "string",
+            "description": "Content folder for the assembled assets. Defaults to the palette setting."
+          },
           "cameraUsePawnControlRotation": {
             "type": "boolean",
-            "description": "Whether the camera uses pawn control rotation."
+            "description": "Whether the spring arm follows the controller look rotation. The camera under it is always arm-relative."
           },
           "canCrouch": {
             "type": "boolean",
@@ -7733,6 +7945,10 @@ export const gatewayManifest = {
             "type": "number",
             "description": "Capsule collision radius in world units."
           },
+          "characterPath": {
+            "type": "string",
+            "description": "Canonical /Game path of a MetaHuman Character asset."
+          },
           "climbSpeed": {
             "type": "number",
             "description": "Climb speed."
@@ -7740,6 +7956,10 @@ export const gatewayManifest = {
           "climbableTag": {
             "type": "string",
             "description": "Actor tag marking climbable surfaces."
+          },
+          "commonFolderPath": {
+            "type": "string",
+            "description": "Content folder for shared MetaHuman assets."
           },
           "crouchSpeed": {
             "type": "number",
@@ -7756,6 +7976,27 @@ export const gatewayManifest = {
           "deceleration": {
             "type": "number",
             "description": "Walking deceleration."
+          },
+          "dnaBody": {
+            "type": "boolean",
+            "description": "Export body DNA. Default true."
+          },
+          "dnaHead": {
+            "type": "boolean",
+            "description": "Export head DNA. Default true."
+          },
+          "exportType": {
+            "type": "string",
+            "description": "Which artifact to export: skeletal meshes, material instances, or DNA.",
+            "enum": [
+              "geometry",
+              "materials",
+              "dna"
+            ]
+          },
+          "externalPath": {
+            "type": "string",
+            "description": "Folder on disk for exported .dna files. DNA export only."
           },
           "fallingLateralFriction": {
             "type": "number",
@@ -7781,6 +8022,10 @@ export const gatewayManifest = {
             "type": "number",
             "description": "Footstep ground-trace distance."
           },
+          "fullBodyMesh": {
+            "type": "boolean",
+            "description": "Export a combined full-body skeletal mesh. Default false."
+          },
           "grappleRange": {
             "type": "number",
             "description": "Maximum grapple range in world units."
@@ -7800,6 +8045,10 @@ export const gatewayManifest = {
           "groundFriction": {
             "type": "number",
             "description": "Ground friction."
+          },
+          "headMesh": {
+            "type": "boolean",
+            "description": "Export the head skeletal mesh. Default true."
           },
           "jumpHeight": {
             "type": "number",
@@ -7861,9 +8110,24 @@ export const gatewayManifest = {
             "type": "string",
             "description": "Custom movement mode name."
           },
+          "movementProperty": {
+            "type": "string",
+            "enum": [
+              "walk_speed",
+              "jump_height",
+              "gravity_scale",
+              "ground_friction",
+              "braking_deceleration"
+            ],
+            "description": "Which set movement property variant to run."
+          },
           "name": {
             "type": "string",
             "description": "Name for the created asset or actor."
+          },
+          "nameOverride": {
+            "type": "string",
+            "description": "Folder name for the assembled character instead of the asset name."
           },
           "navAgentHeight": {
             "type": "number",
@@ -7877,6 +8141,10 @@ export const gatewayManifest = {
             "type": "boolean",
             "description": "Whether the character orients rotation to movement."
           },
+          "overwrite": {
+            "type": "boolean",
+            "description": "Overwrite existing assets instead of creating uniquely-named ones. Default true."
+          },
           "parentClass": {
             "type": "string",
             "description": "String parameter."
@@ -7889,6 +8157,41 @@ export const gatewayManifest = {
             "type": "string",
             "description": "Canonical /Game output path for the created asset."
           },
+          "pipelineQuality": {
+            "type": "string",
+            "description": "Quality level. Only meaningful when pipelineType is Optimized or UEFN.",
+            "enum": [
+              "Low",
+              "Medium",
+              "High",
+              "Cinematic"
+            ]
+          },
+          "pipelineType": {
+            "type": "string",
+            "description": "Assembly pipeline. Cinematic is the film-quality path; Optimized and UEFN trade fidelity for runtime cost.",
+            "enum": [
+              "Cinematic",
+              "Optimized",
+              "UEFN"
+            ]
+          },
+          "projectPath": {
+            "type": "string",
+            "description": "Content folder receiving the exported assets."
+          },
+          "reportProgress": {
+            "type": "boolean",
+            "description": "Emit editor progress notifications during auto-rigging. Default false."
+          },
+          "rigType": {
+            "type": "string",
+            "description": "Face rig detail to request. JointsAndBlendShapes is required for facial animation.",
+            "enum": [
+              "JointsOnly",
+              "JointsAndBlendShapes"
+            ]
+          },
           "rotationRate": {
             "type": "number",
             "description": "Rotation rate in degrees per second."
@@ -7896,6 +8199,24 @@ export const gatewayManifest = {
           "runSpeed": {
             "type": "number",
             "description": "Run speed; ignored when walkSpeed is also supplied."
+          },
+          "setting": {
+            "type": "string",
+            "enum": [
+              "movement_speeds",
+              "jump",
+              "crouch",
+              "sprint",
+              "rotation",
+              "capsule_component",
+              "mesh_component",
+              "camera_component",
+              "nav_movement",
+              "footstep_fx",
+              "custom_movement_mode",
+              "surface_sound"
+            ],
+            "description": "Which configure character variant to run."
           },
           "skeletalMeshPath": {
             "type": "string",
@@ -7981,32 +8302,15 @@ export const gatewayManifest = {
             "type": "string",
             "enum": [
               "create_character_blueprint",
-              "configure_capsule_component",
-              "configure_mesh_component",
-              "configure_camera_component",
-              "configure_movement_speeds",
-              "configure_jump",
-              "configure_rotation",
-              "add_custom_movement_mode",
-              "configure_nav_movement",
-              "setup_movement",
-              "set_walk_speed",
-              "set_jump_height",
-              "set_gravity_scale",
-              "set_ground_friction",
-              "set_braking_deceleration",
-              "setup_mantling",
-              "setup_vaulting",
-              "setup_climbing",
-              "setup_sliding",
-              "setup_wall_running",
-              "setup_grappling",
-              "setup_footstep_system",
-              "map_surface_to_sound",
-              "configure_footstep_fx",
+              "configure_character",
+              "setup_character_ability",
+              "set_movement_property",
               "get_character_info",
-              "configure_crouch",
-              "configure_sprint"
+              "metahuman_status",
+              "create_metahuman",
+              "rig_metahuman",
+              "build_metahuman",
+              "export_metahuman"
             ],
             "description": "Action to invoke on manage_character."
           },
@@ -8028,45 +8332,11 @@ export const gatewayManifest = {
       "category": "gameplay",
       "description": "Create weapons with hitscan/projectile firing, configure damage types, hitboxes, reload, and melee combat (combos, parry, block).",
       "actions": [
-        "create_weapon_blueprint",
-        "configure_weapon_mesh",
-        "configure_weapon_sockets",
-        "set_weapon_stats",
-        "configure_hitscan",
+        "create_combat_asset",
+        "configure_weapon",
         "configure_projectile",
-        "configure_spread_pattern",
-        "configure_recoil_pattern",
-        "configure_aim_down_sights",
-        "create_projectile_blueprint",
-        "configure_projectile_movement",
-        "configure_projectile_collision",
-        "configure_projectile_homing",
-        "create_damage_type",
-        "configure_damage_execution",
-        "setup_hitbox_component",
-        "setup_reload_system",
-        "setup_ammo_system",
-        "setup_attachment_system",
-        "setup_weapon_switching",
-        "configure_muzzle_flash",
-        "configure_tracer",
-        "configure_impact_effects",
-        "configure_shell_ejection",
-        "create_melee_trace",
-        "configure_combo_system",
-        "create_hit_pause",
-        "configure_hit_reaction",
-        "setup_parry_block_system",
-        "configure_weapon_trails",
-        "get_combat_info",
-        "setup_damage_type",
-        "configure_hit_detection",
-        "get_combat_stats",
-        "create_damage_effect",
-        "apply_damage",
-        "heal",
-        "create_shield",
-        "modify_armor"
+        "configure_damage",
+        "get_combat_info"
       ],
       "parameterNames": [
         "adsEnabled",
@@ -8113,7 +8383,9 @@ export const gatewayManifest = {
         "impactParticlePath",
         "impactSoundPath",
         "infiniteAmmo",
+        "info",
         "isDamageZoneHead",
+        "kind",
         "magazineSize",
         "maxAmmo",
         "maxComboCount",
@@ -8142,6 +8414,7 @@ export const gatewayManifest = {
         "recoilYaw",
         "reloadAnimationPath",
         "reloadTime",
+        "setting",
         "shellEjectionForce",
         "shellLifespan",
         "shellMeshPath",
@@ -8399,9 +8672,29 @@ export const gatewayManifest = {
             "type": "boolean",
             "description": "Skip ammo consumption entirely."
           },
+          "info": {
+            "type": "string",
+            "enum": [
+              "info",
+              "stats"
+            ],
+            "description": "Which get combat info variant to run; omit for 'info'.",
+            "default": "info"
+          },
           "isDamageZoneHead": {
             "type": "boolean",
             "description": "Mark this hitbox as a headshot zone."
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "weapon_blueprint",
+              "projectile_blueprint",
+              "damage_type",
+              "damage_type_setup",
+              "damage_effect"
+            ],
+            "description": "Which create combat asset variant to run."
           },
           "magazineSize": {
             "type": "number",
@@ -8515,6 +8808,44 @@ export const gatewayManifest = {
             "type": "number",
             "description": "Reload duration in seconds."
           },
+          "setting": {
+            "type": "string",
+            "enum": [
+              "execution",
+              "hit_detection",
+              "hitbox",
+              "hit_reaction",
+              "impact_effects",
+              "combo",
+              "hit_pause",
+              "melee_trace",
+              "parry_block",
+              "shield",
+              "armor",
+              "apply",
+              "heal",
+              "projectile",
+              "movement",
+              "collision",
+              "homing",
+              "weapon_mesh",
+              "weapon_sockets",
+              "hitscan",
+              "spread_pattern",
+              "recoil_pattern",
+              "aim_down_sights",
+              "muzzle_flash",
+              "tracer",
+              "shell_ejection",
+              "weapon_trails",
+              "stats",
+              "ammo",
+              "reload",
+              "attachments",
+              "switching"
+            ],
+            "description": "Which configure damage variant to run."
+          },
           "shellEjectionForce": {
             "type": "number",
             "description": "Impulse applied to ejected shells."
@@ -8614,45 +8945,11 @@ export const gatewayManifest = {
           "action": {
             "type": "string",
             "enum": [
-              "create_weapon_blueprint",
-              "configure_weapon_mesh",
-              "configure_weapon_sockets",
-              "set_weapon_stats",
-              "configure_hitscan",
+              "create_combat_asset",
+              "configure_weapon",
               "configure_projectile",
-              "configure_spread_pattern",
-              "configure_recoil_pattern",
-              "configure_aim_down_sights",
-              "create_projectile_blueprint",
-              "configure_projectile_movement",
-              "configure_projectile_collision",
-              "configure_projectile_homing",
-              "create_damage_type",
-              "configure_damage_execution",
-              "setup_hitbox_component",
-              "setup_reload_system",
-              "setup_ammo_system",
-              "setup_attachment_system",
-              "setup_weapon_switching",
-              "configure_muzzle_flash",
-              "configure_tracer",
-              "configure_impact_effects",
-              "configure_shell_ejection",
-              "create_melee_trace",
-              "configure_combo_system",
-              "create_hit_pause",
-              "configure_hit_reaction",
-              "setup_parry_block_system",
-              "configure_weapon_trails",
-              "get_combat_info",
-              "setup_damage_type",
-              "configure_hit_detection",
-              "get_combat_stats",
-              "create_damage_effect",
-              "apply_damage",
-              "heal",
-              "create_shield",
-              "modify_armor"
+              "configure_damage",
+              "get_combat_info"
             ],
             "description": "Action to invoke on manage_combat."
           },
@@ -8674,65 +8971,19 @@ export const gatewayManifest = {
       "category": "gameplay",
       "description": "Niagara particle systems, VFX, debug shapes, and GPU simulations. Create systems, emitters, modules, and control particle effects.",
       "actions": [
-        "particle",
-        "niagara",
+        "create_effect",
         "debug_shape",
         "spawn_niagara",
         "create_dynamic_light",
-        "create_niagara_system",
-        "create_niagara_emitter",
-        "create_volumetric_fog",
-        "create_particle_trail",
-        "create_environment_effect",
-        "create_impact_effect",
-        "create_niagara_ribbon",
         "activate",
-        "activate_effect",
-        "deactivate",
-        "reset",
         "advance_simulation",
         "add_niagara_module",
-        "connect_niagara_pins",
+        "edit_niagara_system",
         "remove_niagara_node",
-        "set_niagara_parameter",
-        "clear_debug_shapes",
         "cleanup",
         "list_debug_shapes",
-        "add_emitter_to_system",
-        "set_emitter_properties",
-        "add_spawn_rate_module",
-        "add_spawn_burst_module",
-        "add_spawn_per_unit_module",
-        "add_initialize_particle_module",
-        "add_particle_state_module",
-        "add_force_module",
-        "add_velocity_module",
-        "add_acceleration_module",
-        "add_size_module",
-        "add_color_module",
-        "add_user_parameter",
-        "set_parameter_value",
-        "bind_parameter_to_source",
-        "set_niagara_dynamic_input",
-        "add_sprite_renderer_module",
-        "add_mesh_renderer_module",
-        "add_ribbon_renderer_module",
-        "add_light_renderer_module",
-        "add_collision_module",
-        "add_kill_particles_module",
-        "add_camera_offset_module",
-        "add_skeletal_mesh_data_interface",
-        "add_static_mesh_data_interface",
-        "add_spline_data_interface",
-        "add_audio_spectrum_data_interface",
-        "add_collision_query_data_interface",
-        "add_event_generator",
-        "add_event_receiver",
-        "configure_event_payload",
-        "enable_gpu_simulation",
-        "add_simulation_stage",
-        "get_niagara_info",
-        "validate_niagara_system"
+        "add_niagara_data_interface",
+        "get_niagara_info"
       ],
       "parameterNames": [
         "acceleration",
@@ -8743,9 +8994,11 @@ export const gatewayManifest = {
         "burstCount",
         "burstTime",
         "cameraOffset",
+        "cleanupTarget",
         "collisionMode",
         "color",
         "colorMode",
+        "control",
         "count",
         "deltaTime",
         "density",
@@ -8753,6 +9006,7 @@ export const gatewayManifest = {
         "dieOnCollision",
         "duration",
         "dynamicInputScriptPath",
+        "edit",
         "emitter",
         "emitterName",
         "emitterPath",
@@ -8767,9 +9021,12 @@ export const gatewayManifest = {
         "forceStrength",
         "forceType",
         "friction",
+        "info",
         "inputName",
         "intensity",
+        "interfaceKind",
         "killCondition",
+        "kind",
         "lifetime",
         "lightRadius",
         "lightType",
@@ -8777,6 +9034,7 @@ export const gatewayManifest = {
         "mass",
         "materialPath",
         "meshPath",
+        "moduleKind",
         "moduleName",
         "modulePath",
         "name",
@@ -8859,6 +9117,15 @@ export const gatewayManifest = {
             "type": "number",
             "description": "Camera-relative offset distance."
           },
+          "cleanupTarget": {
+            "type": "string",
+            "enum": [
+              "effects",
+              "debug_shapes"
+            ],
+            "description": "Which cleanup variant to run; omit for 'effects'.",
+            "default": "effects"
+          },
           "collisionMode": {
             "type": "string",
             "description": "Particle collision mode."
@@ -8869,6 +9136,17 @@ export const gatewayManifest = {
           "colorMode": {
             "type": "string",
             "description": "Color module mode."
+          },
+          "control": {
+            "type": "string",
+            "enum": [
+              "activate",
+              "deactivate",
+              "reset",
+              "effect"
+            ],
+            "description": "Which activate variant to run; omit for 'activate'.",
+            "default": "activate"
           },
           "count": {
             "type": "number",
@@ -8897,6 +9175,22 @@ export const gatewayManifest = {
           "dynamicInputScriptPath": {
             "type": "string",
             "description": "Canonical /Niagara dynamic input script path."
+          },
+          "edit": {
+            "type": "string",
+            "enum": [
+              "add_emitter",
+              "add_user_parameter",
+              "bind_parameter",
+              "set_parameter_value",
+              "set_parameter",
+              "set_dynamic_input",
+              "set_emitter_properties",
+              "configure_event_payload",
+              "enable_gpu_simulation",
+              "connect_pins"
+            ],
+            "description": "Which edit niagara system variant to run."
           },
           "emitter": {
             "type": "string",
@@ -8968,6 +9262,15 @@ export const gatewayManifest = {
             "type": "number",
             "description": "Collision friction coefficient."
           },
+          "info": {
+            "type": "string",
+            "enum": [
+              "info",
+              "validate"
+            ],
+            "description": "Which get niagara info variant to run; omit for 'info'.",
+            "default": "info"
+          },
           "inputName": {
             "type": "string",
             "description": "Module input name receiving the dynamic input."
@@ -8976,9 +9279,35 @@ export const gatewayManifest = {
             "type": "number",
             "description": "Light intensity."
           },
+          "interfaceKind": {
+            "type": "string",
+            "enum": [
+              "static_mesh",
+              "skeletal_mesh",
+              "spline",
+              "collision_query",
+              "audio_spectrum"
+            ],
+            "description": "Which add niagara data interface variant to run."
+          },
           "killCondition": {
             "type": "string",
             "description": "Expression deciding when particles are killed."
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "niagara_system",
+              "niagara_emitter",
+              "niagara_ribbon",
+              "particle_trail",
+              "impact",
+              "environment",
+              "volumetric_fog",
+              "niagara",
+              "particle"
+            ],
+            "description": "Which create effect variant to run."
           },
           "lifetime": {
             "type": "number",
@@ -9012,6 +9341,34 @@ export const gatewayManifest = {
           "meshPath": {
             "type": "string",
             "description": "Canonical /Game mesh asset path."
+          },
+          "moduleKind": {
+            "type": "string",
+            "enum": [
+              "module",
+              "spawn_rate",
+              "spawn_burst",
+              "spawn_per_unit",
+              "initialize_particle",
+              "velocity",
+              "acceleration",
+              "force",
+              "color",
+              "size",
+              "collision",
+              "kill_particles",
+              "camera_offset",
+              "particle_state",
+              "sprite_renderer",
+              "mesh_renderer",
+              "ribbon_renderer",
+              "light_renderer",
+              "simulation_stage",
+              "event_generator",
+              "event_receiver"
+            ],
+            "description": "Which add niagara module variant to run; omit for 'module'.",
+            "default": "module"
           },
           "moduleName": {
             "type": "string",
@@ -9150,65 +9507,19 @@ export const gatewayManifest = {
           "action": {
             "type": "string",
             "enum": [
-              "particle",
-              "niagara",
+              "create_effect",
               "debug_shape",
               "spawn_niagara",
               "create_dynamic_light",
-              "create_niagara_system",
-              "create_niagara_emitter",
-              "create_volumetric_fog",
-              "create_particle_trail",
-              "create_environment_effect",
-              "create_impact_effect",
-              "create_niagara_ribbon",
               "activate",
-              "activate_effect",
-              "deactivate",
-              "reset",
               "advance_simulation",
               "add_niagara_module",
-              "connect_niagara_pins",
+              "edit_niagara_system",
               "remove_niagara_node",
-              "set_niagara_parameter",
-              "clear_debug_shapes",
               "cleanup",
               "list_debug_shapes",
-              "add_emitter_to_system",
-              "set_emitter_properties",
-              "add_spawn_rate_module",
-              "add_spawn_burst_module",
-              "add_spawn_per_unit_module",
-              "add_initialize_particle_module",
-              "add_particle_state_module",
-              "add_force_module",
-              "add_velocity_module",
-              "add_acceleration_module",
-              "add_size_module",
-              "add_color_module",
-              "add_user_parameter",
-              "set_parameter_value",
-              "bind_parameter_to_source",
-              "set_niagara_dynamic_input",
-              "add_sprite_renderer_module",
-              "add_mesh_renderer_module",
-              "add_ribbon_renderer_module",
-              "add_light_renderer_module",
-              "add_collision_module",
-              "add_kill_particles_module",
-              "add_camera_offset_module",
-              "add_skeletal_mesh_data_interface",
-              "add_static_mesh_data_interface",
-              "add_spline_data_interface",
-              "add_audio_spectrum_data_interface",
-              "add_collision_query_data_interface",
-              "add_event_generator",
-              "add_event_receiver",
-              "configure_event_payload",
-              "enable_gpu_simulation",
-              "add_simulation_stage",
-              "get_niagara_info",
-              "validate_niagara_system"
+              "add_niagara_data_interface",
+              "get_niagara_info"
             ],
             "description": "Action to invoke on manage_effect."
           },
@@ -9230,37 +9541,14 @@ export const gatewayManifest = {
       "category": "gameplay",
       "description": "Create Gameplay Abilities, Effects, Attribute Sets, and Gameplay Cues for ability systems.",
       "actions": [
-        "add_ability_system_component",
         "configure_asc",
-        "create_attribute_set",
-        "add_attribute",
-        "set_attribute_base_value",
-        "set_attribute_clamping",
-        "create_gameplay_ability",
-        "set_ability_tags",
-        "set_ability_costs",
-        "set_ability_cooldown",
-        "set_ability_targeting",
-        "add_ability_task",
-        "set_activation_policy",
-        "set_instancing_policy",
-        "create_gameplay_effect",
-        "set_effect_duration",
-        "add_effect_modifier",
-        "set_modifier_magnitude",
-        "add_effect_execution_calculation",
-        "add_effect_cue",
-        "set_effect_stacking",
-        "set_effect_tags",
-        "create_gameplay_cue_notify",
-        "configure_cue_trigger",
-        "set_cue_effects",
+        "create_gas_asset",
+        "configure_attribute_set",
+        "configure_ability",
+        "configure_gameplay_effect",
+        "configure_gameplay_cue",
         "add_tag_to_asset",
-        "get_gas_info",
-        "create_ability_set",
-        "add_ability",
-        "grant_ability",
-        "create_execution_calculation"
+        "get_gas_info"
       ],
       "parameterNames": [
         "abilityClass",
@@ -9299,6 +9587,7 @@ export const gatewayManifest = {
         "immunityTags",
         "inputID",
         "instancingPolicy",
+        "kind",
         "magnitudeCalculationType",
         "maxValue",
         "minValue",
@@ -9314,6 +9603,7 @@ export const gatewayManifest = {
         "setByCallerTag",
         "setName",
         "setPath",
+        "setting",
         "soundPath",
         "stackDurationRefreshPolicy",
         "stackExpirationPolicy",
@@ -9534,6 +9824,18 @@ export const gatewayManifest = {
             ],
             "description": "How the ability is instanced."
           },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "gameplay_ability",
+              "gameplay_effect",
+              "attribute_set",
+              "ability_set",
+              "gameplay_cue_notify",
+              "execution_calculation"
+            ],
+            "description": "Which create gas asset variant to run."
+          },
           "magnitudeCalculationType": {
             "type": "string",
             "enum": [
@@ -9613,6 +9915,34 @@ export const gatewayManifest = {
           "setPath": {
             "type": "string",
             "description": "Canonical /Game ability set asset path."
+          },
+          "setting": {
+            "type": "string",
+            "enum": [
+              "add_attribute",
+              "base_value",
+              "clamping",
+              "configure",
+              "add_component",
+              "duration",
+              "stacking",
+              "tags",
+              "add_modifier",
+              "modifier_magnitude",
+              "add_execution_calculation",
+              "add_cue",
+              "cooldown",
+              "costs",
+              "targeting",
+              "activation_policy",
+              "instancing_policy",
+              "add_task",
+              "add_to_set",
+              "grant",
+              "trigger",
+              "effects"
+            ],
+            "description": "Which configure ability variant to run."
           },
           "soundPath": {
             "type": "string",
@@ -9701,37 +10031,14 @@ export const gatewayManifest = {
           "action": {
             "type": "string",
             "enum": [
-              "add_ability_system_component",
               "configure_asc",
-              "create_attribute_set",
-              "add_attribute",
-              "set_attribute_base_value",
-              "set_attribute_clamping",
-              "create_gameplay_ability",
-              "set_ability_tags",
-              "set_ability_costs",
-              "set_ability_cooldown",
-              "set_ability_targeting",
-              "add_ability_task",
-              "set_activation_policy",
-              "set_instancing_policy",
-              "create_gameplay_effect",
-              "set_effect_duration",
-              "add_effect_modifier",
-              "set_modifier_magnitude",
-              "add_effect_execution_calculation",
-              "add_effect_cue",
-              "set_effect_stacking",
-              "set_effect_tags",
-              "create_gameplay_cue_notify",
-              "configure_cue_trigger",
-              "set_cue_effects",
+              "create_gas_asset",
+              "configure_attribute_set",
+              "configure_ability",
+              "configure_gameplay_effect",
+              "configure_gameplay_cue",
               "add_tag_to_asset",
-              "get_gas_info",
-              "create_ability_set",
-              "add_ability",
-              "grant_ability",
-              "create_execution_calculation"
+              "get_gas_info"
             ],
             "description": "Action to invoke on manage_gas."
           },
@@ -9753,111 +10060,47 @@ export const gatewayManifest = {
       "category": "world",
       "description": "Create procedural meshes using Geometry Script: booleans, deformers, UVs, collision, and LOD generation.",
       "actions": [
-        "create_box",
-        "create_sphere",
-        "create_cylinder",
-        "create_cone",
-        "create_capsule",
-        "create_torus",
-        "create_plane",
-        "create_disc",
-        "create_stairs",
-        "create_spiral_stairs",
-        "create_ring",
-        "create_arch",
-        "create_pipe",
-        "create_ramp",
-        "boolean_union",
-        "boolean_subtract",
-        "boolean_intersection",
-        "boolean_trim",
-        "self_union",
-        "extrude",
-        "inset",
-        "outset",
-        "bevel",
-        "offset_faces",
-        "shell",
-        "revolve",
-        "chamfer",
-        "extrude_along_spline",
-        "bridge",
-        "loft",
-        "sweep",
-        "duplicate_along_spline",
-        "loop_cut",
-        "edge_split",
-        "quadrangulate",
-        "bend",
-        "twist",
-        "taper",
-        "noise_deform",
-        "smooth",
-        "relax",
-        "stretch",
-        "spherify",
-        "cylindrify",
-        "lattice_deform",
-        "displace_by_texture",
-        "triangulate",
-        "poke",
+        "create_primitive",
+        "boolean_mesh",
+        "model_mesh",
+        "deform_mesh",
         "mirror",
-        "array_linear",
-        "array_radial",
-        "simplify_mesh",
-        "subdivide",
-        "remesh_uniform",
-        "merge_vertices",
-        "remesh_voxel",
-        "weld_vertices",
-        "fill_holes",
-        "remove_degenerates",
-        "auto_uv",
-        "project_uv",
-        "transform_uvs",
-        "unwrap_uv",
-        "pack_uv_islands",
-        "recalculate_normals",
-        "flip_normals",
-        "recompute_tangents",
-        "generate_collision",
-        "generate_complex_collision",
-        "simplify_collision",
-        "generate_lods",
-        "set_lod_settings",
-        "set_lod_screen_sizes",
+        "array_mesh",
+        "optimize_mesh",
+        "edit_uvs",
+        "configure_mesh_collision",
+        "configure_mesh_lods",
         "convert_to_nanite",
         "convert_to_static_mesh",
         "get_mesh_info",
-        "create_procedural_mesh",
-        "append_vertex",
-        "append_triangle",
-        "get_vertex_position",
-        "set_vertex_position",
-        "set_vertex_color",
-        "set_uvs",
-        "split_normals",
-        "translate_mesh",
-        "difference"
+        "edit_dynamic_mesh",
+        "get_vertex_position"
       ],
       "parameterNames": [
         "a",
         "actorName",
         "amount",
         "angle",
+        "arrayMode",
         "assetPath",
         "axis",
         "b",
+        "baseRadius",
+        "booleanOp",
         "cap",
         "center",
+        "collisionOp",
         "collisionType",
         "computeWeightedNormals",
         "count",
+        "deform",
         "depth",
         "depthSegments",
         "dimensions",
         "distance",
+        "edit",
         "enableCollision",
+        "floating",
         "g",
         "groupID",
         "hardEdgeAngle",
@@ -9871,22 +10114,27 @@ export const gatewayManifest = {
         "keepInside",
         "keepTool",
         "latticeResolution",
+        "length",
         "location",
         "lodCount",
         "lodIndex",
+        "lodOp",
         "maxHullCount",
         "maxHullVerts",
         "maxVerticesPerHull",
         "midpoint",
+        "modeling",
         "name",
         "numRings",
         "numSides",
         "numSteps",
         "numTurns",
         "offset",
+        "optimization",
         "outerRadius",
         "outputPath",
         "position",
+        "primitive",
         "r",
         "radialSegments",
         "radius",
@@ -9913,6 +10161,7 @@ export const gatewayManifest = {
         "texturePath",
         "thickness",
         "toolActor",
+        "topRadius",
         "translation",
         "triangleIndices",
         "trianglePercent",
@@ -9920,6 +10169,7 @@ export const gatewayManifest = {
         "u",
         "uvChannel",
         "uvOffset",
+        "uvOp",
         "uvScale",
         "v",
         "v0",
@@ -9950,6 +10200,14 @@ export const gatewayManifest = {
             "type": "number",
             "description": "Angle in degrees."
           },
+          "arrayMode": {
+            "type": "string",
+            "enum": [
+              "linear",
+              "radial"
+            ],
+            "description": "Which array mesh variant to run."
+          },
           "assetPath": {
             "type": "string",
             "description": "Canonical /Game asset path."
@@ -9961,6 +10219,21 @@ export const gatewayManifest = {
           "b": {
             "type": "number",
             "description": "Blue channel, 0-1."
+          },
+          "baseRadius": {
+            "type": "number",
+            "description": "Cone base radius; defaults to radius."
+          },
+          "booleanOp": {
+            "type": "string",
+            "enum": [
+              "union",
+              "subtract",
+              "intersection",
+              "trim",
+              "self_union"
+            ],
+            "description": "Which boolean mesh variant to run."
           },
           "cap": {
             "type": "boolean",
@@ -9985,6 +10258,15 @@ export const gatewayManifest = {
             },
             "additionalProperties": false
           },
+          "collisionOp": {
+            "type": "string",
+            "enum": [
+              "generate",
+              "generate_complex",
+              "simplify"
+            ],
+            "description": "Which configure mesh collision variant to run."
+          },
           "collisionType": {
             "type": "string",
             "description": "Collision complexity type."
@@ -9996,6 +10278,25 @@ export const gatewayManifest = {
           "count": {
             "type": "integer",
             "description": "Count of repeated elements."
+          },
+          "deform": {
+            "type": "string",
+            "enum": [
+              "bend",
+              "twist",
+              "taper",
+              "stretch",
+              "spherify",
+              "cylindrify",
+              "smooth",
+              "relax",
+              "noise_deform",
+              "lattice_deform",
+              "displace_by_texture",
+              "poke",
+              "triangulate"
+            ],
+            "description": "Which deform mesh variant to run."
           },
           "depth": {
             "type": "number",
@@ -10028,9 +10329,28 @@ export const gatewayManifest = {
             "type": "number",
             "description": "Distance for offset-style operations."
           },
+          "edit": {
+            "type": "string",
+            "enum": [
+              "create",
+              "append_vertex",
+              "append_triangle",
+              "set_vertex_position",
+              "set_vertex_color",
+              "set_uvs",
+              "split_normals",
+              "translate",
+              "difference"
+            ],
+            "description": "Which edit dynamic mesh variant to run."
+          },
           "enableCollision": {
             "type": "boolean",
             "description": "Enable simple collision on the created DynamicMesh actor."
+          },
+          "floating": {
+            "type": "boolean",
+            "description": "Build the stairs as free-floating steps with no solid underside."
           },
           "g": {
             "type": "number",
@@ -10046,7 +10366,7 @@ export const gatewayManifest = {
           },
           "height": {
             "type": "number",
-            "description": "Primitive height."
+            "description": "Box Y dimension: the box is X=width, Y=height, Z=depth (dimensions.{x,y,z})."
           },
           "heightScale": {
             "type": "number",
@@ -10084,6 +10404,10 @@ export const gatewayManifest = {
             "type": "integer",
             "description": "Control lattice resolution for lattice deformation."
           },
+          "length": {
+            "type": "number",
+            "description": "Length along the primary axis: the capsule shaft, or the ramp run."
+          },
           "location": {
             "type": "object",
             "description": "World location {x, y, z}.",
@@ -10111,6 +10435,15 @@ export const gatewayManifest = {
             "type": "integer",
             "description": "Specific LOD index to configure."
           },
+          "lodOp": {
+            "type": "string",
+            "enum": [
+              "generate",
+              "set_settings",
+              "set_screen_sizes"
+            ],
+            "description": "Which configure mesh lods variant to run."
+          },
           "maxHullCount": {
             "type": "integer",
             "description": "Maximum hull count for complex collision generation."
@@ -10126,6 +10459,28 @@ export const gatewayManifest = {
           "midpoint": {
             "type": "number",
             "description": "Texture luminance midpoint for displacement."
+          },
+          "modeling": {
+            "type": "string",
+            "enum": [
+              "extrude",
+              "inset",
+              "outset",
+              "offset_faces",
+              "bevel",
+              "chamfer",
+              "bridge",
+              "loft",
+              "sweep",
+              "revolve",
+              "shell",
+              "loop_cut",
+              "edge_split",
+              "quadrangulate",
+              "extrude_along_spline",
+              "duplicate_along_spline"
+            ],
+            "description": "Which model mesh variant to run."
           },
           "name": {
             "type": "string",
@@ -10166,6 +10521,23 @@ export const gatewayManifest = {
             },
             "additionalProperties": false
           },
+          "optimization": {
+            "type": "string",
+            "enum": [
+              "simplify_mesh",
+              "remesh_uniform",
+              "remesh_voxel",
+              "subdivide",
+              "merge_vertices",
+              "weld_vertices",
+              "remove_degenerates",
+              "fill_holes",
+              "flip_normals",
+              "recalculate_normals",
+              "recompute_tangents"
+            ],
+            "description": "Which optimize mesh variant to run."
+          },
           "outerRadius": {
             "type": "number",
             "description": "Outer radius for ring and pipe primitives."
@@ -10192,6 +10564,26 @@ export const gatewayManifest = {
               }
             },
             "additionalProperties": false
+          },
+          "primitive": {
+            "type": "string",
+            "enum": [
+              "box",
+              "sphere",
+              "cylinder",
+              "cone",
+              "capsule",
+              "plane",
+              "disc",
+              "ring",
+              "torus",
+              "pipe",
+              "arch",
+              "ramp",
+              "stairs",
+              "spiral_stairs"
+            ],
+            "description": "Which create primitive variant to run."
           },
           "r": {
             "type": "number",
@@ -10340,6 +10732,10 @@ export const gatewayManifest = {
             "type": "string",
             "description": "Tool actor name for boolean operations."
           },
+          "topRadius": {
+            "type": "number",
+            "description": "Cone top radius; non-zero makes a truncated cone. Defaults to 0."
+          },
           "translation": {
             "type": "object",
             "description": "Translation {x, y, z} applied to every mesh vertex.",
@@ -10396,6 +10792,17 @@ export const gatewayManifest = {
               }
             },
             "additionalProperties": false
+          },
+          "uvOp": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "unwrap",
+              "project",
+              "pack_islands",
+              "transform"
+            ],
+            "description": "Which edit uvs variant to run."
           },
           "uvScale": {
             "type": "object",
@@ -10496,92 +10903,21 @@ export const gatewayManifest = {
           "action": {
             "type": "string",
             "enum": [
-              "create_box",
-              "create_sphere",
-              "create_cylinder",
-              "create_cone",
-              "create_capsule",
-              "create_torus",
-              "create_plane",
-              "create_disc",
-              "create_stairs",
-              "create_spiral_stairs",
-              "create_ring",
-              "create_arch",
-              "create_pipe",
-              "create_ramp",
-              "boolean_union",
-              "boolean_subtract",
-              "boolean_intersection",
-              "boolean_trim",
-              "self_union",
-              "extrude",
-              "inset",
-              "outset",
-              "bevel",
-              "offset_faces",
-              "shell",
-              "revolve",
-              "chamfer",
-              "extrude_along_spline",
-              "bridge",
-              "loft",
-              "sweep",
-              "duplicate_along_spline",
-              "loop_cut",
-              "edge_split",
-              "quadrangulate",
-              "bend",
-              "twist",
-              "taper",
-              "noise_deform",
-              "smooth",
-              "relax",
-              "stretch",
-              "spherify",
-              "cylindrify",
-              "lattice_deform",
-              "displace_by_texture",
-              "triangulate",
-              "poke",
+              "create_primitive",
+              "boolean_mesh",
+              "model_mesh",
+              "deform_mesh",
               "mirror",
-              "array_linear",
-              "array_radial",
-              "simplify_mesh",
-              "subdivide",
-              "remesh_uniform",
-              "merge_vertices",
-              "remesh_voxel",
-              "weld_vertices",
-              "fill_holes",
-              "remove_degenerates",
-              "auto_uv",
-              "project_uv",
-              "transform_uvs",
-              "unwrap_uv",
-              "pack_uv_islands",
-              "recalculate_normals",
-              "flip_normals",
-              "recompute_tangents",
-              "generate_collision",
-              "generate_complex_collision",
-              "simplify_collision",
-              "generate_lods",
-              "set_lod_settings",
-              "set_lod_screen_sizes",
+              "array_mesh",
+              "optimize_mesh",
+              "edit_uvs",
+              "configure_mesh_collision",
+              "configure_mesh_lods",
               "convert_to_nanite",
               "convert_to_static_mesh",
               "get_mesh_info",
-              "create_procedural_mesh",
-              "append_vertex",
-              "append_triangle",
-              "get_vertex_position",
-              "set_vertex_position",
-              "set_vertex_color",
-              "set_uvs",
-              "split_normals",
-              "translate_mesh",
-              "difference"
+              "edit_dynamic_mesh",
+              "get_vertex_position"
             ],
             "description": "Action to invoke on manage_geometry."
           },
@@ -10603,28 +10939,10 @@ export const gatewayManifest = {
       "category": "gameplay",
       "description": "Create interactive objects: doors, switches, chests, levers. Set up destructible meshes and trigger volumes.",
       "actions": [
-        "add_destruction_component",
-        "add_interaction_events",
-        "configure_chest_properties",
-        "configure_destruction_damage",
-        "configure_destruction_effects",
-        "configure_destruction_levels",
-        "configure_door_properties",
-        "configure_interaction_trace",
-        "configure_interaction_widget",
-        "configure_switch_properties",
-        "configure_trigger_events",
-        "configure_trigger_filter",
-        "configure_trigger_response",
-        "create_chest_actor",
-        "create_door_actor",
-        "create_interactable_interface",
-        "create_interaction_component",
-        "create_lever_actor",
-        "create_switch_actor",
-        "create_trigger_actor",
-        "get_interaction_info",
-        "setup_destructible_mesh"
+        "configure_destruction",
+        "configure_interactable",
+        "create_interactable",
+        "get_interaction_info"
       ],
       "parameterNames": [
         "actorName",
@@ -10636,6 +10954,7 @@ export const gatewayManifest = {
         "componentName",
         "doorPath",
         "folder",
+        "kind",
         "locked",
         "lootTablePath",
         "name",
@@ -10644,6 +10963,7 @@ export const gatewayManifest = {
         "promptTextFormat",
         "requiresKey",
         "resetTime",
+        "setting",
         "showOnHover",
         "showPromptText",
         "switchPath",
@@ -10694,6 +11014,19 @@ export const gatewayManifest = {
             "type": "string",
             "description": "Canonical /Game folder that receives the created asset."
           },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "door",
+              "chest",
+              "switch",
+              "lever",
+              "trigger",
+              "interface",
+              "component"
+            ],
+            "description": "Which create interactable variant to run."
+          },
           "locked": {
             "type": "boolean",
             "description": "Whether the interactable starts locked."
@@ -10725,6 +11058,26 @@ export const gatewayManifest = {
           "resetTime": {
             "type": "number",
             "description": "Switch reset delay in seconds."
+          },
+          "setting": {
+            "type": "string",
+            "enum": [
+              "add_component",
+              "setup_mesh",
+              "damage",
+              "effects",
+              "levels",
+              "door",
+              "chest",
+              "switch",
+              "trigger_events",
+              "trigger_filter",
+              "trigger_response",
+              "trace",
+              "widget",
+              "add_events"
+            ],
+            "description": "Which configure destruction variant to run."
           },
           "showOnHover": {
             "type": "boolean",
@@ -10769,28 +11122,10 @@ export const gatewayManifest = {
           "action": {
             "type": "string",
             "enum": [
-              "add_destruction_component",
-              "add_interaction_events",
-              "configure_chest_properties",
-              "configure_destruction_damage",
-              "configure_destruction_effects",
-              "configure_destruction_levels",
-              "configure_door_properties",
-              "configure_interaction_trace",
-              "configure_interaction_widget",
-              "configure_switch_properties",
-              "configure_trigger_events",
-              "configure_trigger_filter",
-              "configure_trigger_response",
-              "create_chest_actor",
-              "create_door_actor",
-              "create_interactable_interface",
-              "create_interaction_component",
-              "create_lever_actor",
-              "create_switch_actor",
-              "create_trigger_actor",
-              "get_interaction_info",
-              "setup_destructible_mesh"
+              "configure_destruction",
+              "configure_interactable",
+              "create_interactable",
+              "get_interaction_info"
             ],
             "description": "Action to invoke on manage_interaction."
           },
@@ -10812,39 +11147,14 @@ export const gatewayManifest = {
       "category": "gameplay",
       "description": "Create item data assets, inventory components, world pickups, loot tables, and crafting recipes.",
       "actions": [
-        "add_crafting_component",
-        "add_equipment_functions",
-        "add_inventory_functions",
-        "add_loot_entry",
-        "add_recipe_ingredient",
-        "assign_item_category",
-        "configure_equipment_effects",
-        "configure_equipment_visuals",
-        "configure_inventory_events",
-        "configure_inventory_slots",
-        "configure_inventory_weight",
-        "configure_item_stacking",
-        "configure_loot_drop",
-        "configure_pickup_effects",
-        "configure_pickup_interaction",
-        "configure_pickup_respawn",
-        "configure_recipe_requirements",
-        "configure_station_recipes",
-        "create_crafting_recipe",
-        "create_crafting_station",
-        "create_equipment_component",
-        "create_inventory_component",
-        "create_item_category",
-        "create_item_data_asset",
-        "create_loot_table",
-        "create_pickup_actor",
-        "define_equipment_slots",
-        "get_inventory_info",
-        "remove_loot_entry",
-        "set_inventory_replication",
-        "set_item_icon",
-        "set_item_properties",
-        "set_loot_quality_tiers"
+        "configure_crafting",
+        "configure_equipment",
+        "configure_inventory",
+        "configure_loot",
+        "configure_item",
+        "configure_pickup",
+        "create_inventory_asset",
+        "get_inventory_info"
       ],
       "parameterNames": [
         "abilityGrants",
@@ -10869,6 +11179,7 @@ export const gatewayManifest = {
         "ingredientItemPath",
         "interactionType",
         "itemPath",
+        "kind",
         "lootTablePath",
         "lootWeight",
         "maxQuantity",
@@ -10894,6 +11205,7 @@ export const gatewayManifest = {
         "respawnable",
         "rotation",
         "save",
+        "setting",
         "slotCount",
         "slots",
         "stackable",
@@ -10993,6 +11305,18 @@ export const gatewayManifest = {
           "itemPath": {
             "type": "string",
             "description": "Canonical /Game item definition asset path."
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "item_data_asset",
+              "item_category",
+              "loot_table",
+              "crafting_recipe",
+              "crafting_station",
+              "pickup_actor"
+            ],
+            "description": "Which create inventory asset variant to run."
           },
           "lootTablePath": {
             "type": "string",
@@ -11099,6 +11423,35 @@ export const gatewayManifest = {
             "type": "boolean",
             "description": "Persist the created/modified asset to disk."
           },
+          "setting": {
+            "type": "string",
+            "enum": [
+              "add_component",
+              "add_recipe_ingredient",
+              "recipe_requirements",
+              "station_recipes",
+              "add_entry",
+              "remove_entry",
+              "quality_tiers",
+              "drop",
+              "create_component",
+              "add_functions",
+              "define_slots",
+              "visuals",
+              "effects",
+              "slots",
+              "weight",
+              "events",
+              "replication",
+              "interaction",
+              "respawn",
+              "properties",
+              "icon",
+              "stacking",
+              "category"
+            ],
+            "description": "Which configure crafting variant to run."
+          },
           "slotCount": {
             "type": "number",
             "description": "Number of inventory slots to author."
@@ -11155,39 +11508,14 @@ export const gatewayManifest = {
           "action": {
             "type": "string",
             "enum": [
-              "add_crafting_component",
-              "add_equipment_functions",
-              "add_inventory_functions",
-              "add_loot_entry",
-              "add_recipe_ingredient",
-              "assign_item_category",
-              "configure_equipment_effects",
-              "configure_equipment_visuals",
-              "configure_inventory_events",
-              "configure_inventory_slots",
-              "configure_inventory_weight",
-              "configure_item_stacking",
-              "configure_loot_drop",
-              "configure_pickup_effects",
-              "configure_pickup_interaction",
-              "configure_pickup_respawn",
-              "configure_recipe_requirements",
-              "configure_station_recipes",
-              "create_crafting_recipe",
-              "create_crafting_station",
-              "create_equipment_component",
-              "create_inventory_component",
-              "create_item_category",
-              "create_item_data_asset",
-              "create_loot_table",
-              "create_pickup_actor",
-              "define_equipment_slots",
-              "get_inventory_info",
-              "remove_loot_entry",
-              "set_inventory_replication",
-              "set_item_icon",
-              "set_item_properties",
-              "set_loot_quality_tiers"
+              "configure_crafting",
+              "configure_equipment",
+              "configure_inventory",
+              "configure_loot",
+              "configure_item",
+              "configure_pickup",
+              "create_inventory_asset",
+              "get_inventory_info"
             ],
             "description": "Action to invoke on manage_inventory."
           },
@@ -11210,25 +11538,17 @@ export const gatewayManifest = {
       "description": "Load/save levels, configure streaming, and build lighting.",
       "actions": [
         "load",
-        "load_level",
         "save",
-        "save_level",
-        "save_as",
-        "save_level_as",
         "create_level",
         "delete",
-        "delete_level",
-        "rename_level",
         "duplicate_level",
         "stream",
-        "unload",
         "unload_level",
         "create_light",
         "build_lighting",
         "set_metadata",
         "set_world_settings",
         "list_levels",
-        "get_current_level",
         "get_summary",
         "validate_level",
         "export_level",
@@ -11243,9 +11563,11 @@ export const gatewayManifest = {
         "exportPath",
         "gameMode",
         "gravityZ",
+        "info",
         "intensity",
         "killZ",
         "levelName",
+        "levelOp",
         "levelPath",
         "levelPaths",
         "lightType",
@@ -11261,14 +11583,15 @@ export const gatewayManifest = {
         "quality",
         "rotation",
         "saveDirtyPackages",
+        "saveMode",
         "savePath",
         "shouldBeLoaded",
         "shouldBeVisible",
         "sourcePath",
+        "streamOp",
         "streaming",
         "streamingMethod",
         "subLevelPath",
-        "sublevelPath",
         "targetPath",
         "template",
         "timeDilation",
@@ -11308,6 +11631,15 @@ export const gatewayManifest = {
             "type": "number",
             "description": "World gravity along Z; setting it also enables the global gravity override."
           },
+          "info": {
+            "type": "string",
+            "enum": [
+              "summary",
+              "current_level"
+            ],
+            "description": "Which get summary variant to run; omit for 'summary'.",
+            "default": "summary"
+          },
           "intensity": {
             "type": "number",
             "description": "Light intensity."
@@ -11319,6 +11651,15 @@ export const gatewayManifest = {
           "levelName": {
             "type": "string",
             "description": "Level name identifier."
+          },
+          "levelOp": {
+            "type": "string",
+            "enum": [
+              "duplicate",
+              "rename"
+            ],
+            "description": "Which duplicate level variant to run; omit for 'duplicate'.",
+            "default": "duplicate"
           },
           "levelPath": {
             "type": "string",
@@ -11389,6 +11730,15 @@ export const gatewayManifest = {
             "type": "boolean",
             "description": "Save dirty packages before the operation."
           },
+          "saveMode": {
+            "type": "string",
+            "enum": [
+              "save",
+              "as"
+            ],
+            "description": "Which save variant to run; omit for 'save'.",
+            "default": "save"
+          },
           "savePath": {
             "type": "string",
             "description": "Path to save the level asset."
@@ -11405,6 +11755,15 @@ export const gatewayManifest = {
             "type": "string",
             "description": "Source path for import/move/copy."
           },
+          "streamOp": {
+            "type": "string",
+            "enum": [
+              "stream",
+              "unload"
+            ],
+            "description": "Which stream variant to run; omit for 'stream'.",
+            "default": "stream"
+          },
           "streaming": {
             "type": "boolean",
             "description": "Load the level in streaming mode."
@@ -11416,10 +11775,6 @@ export const gatewayManifest = {
           "subLevelPath": {
             "type": "string",
             "description": "Sub-level asset path to add as a streaming child."
-          },
-          "sublevelPath": {
-            "type": "string",
-            "description": "Alias of subLevelPath resolved by the manage_level argument normalizer."
           },
           "targetPath": {
             "type": "string",
@@ -11441,25 +11796,17 @@ export const gatewayManifest = {
             "type": "string",
             "enum": [
               "load",
-              "load_level",
               "save",
-              "save_level",
-              "save_as",
-              "save_level_as",
               "create_level",
               "delete",
-              "delete_level",
-              "rename_level",
               "duplicate_level",
               "stream",
-              "unload",
               "unload_level",
               "create_light",
               "build_lighting",
               "set_metadata",
               "set_world_settings",
               "list_levels",
-              "get_current_level",
               "get_summary",
               "validate_level",
               "export_level",
@@ -11486,49 +11833,11 @@ export const gatewayManifest = {
       "category": "world",
       "description": "Structure worlds: levels, sublevels, World Partition, streaming, data layers, HLOD, level instances, trigger/blocking/physics/audio/post-process volumes, and nav bounds.",
       "actions": [
-        "create_level",
-        "create_sublevel",
+        "create_level_structure",
         "configure_level_streaming",
-        "set_streaming_distance",
-        "configure_level_bounds",
-        "enable_world_partition",
-        "configure_grid_size",
-        "create_data_layer",
-        "assign_actor_to_data_layer",
-        "configure_hlod_layer",
-        "create_minimap_volume",
-        "open_level_blueprint",
-        "add_level_blueprint_node",
-        "remove_level_blueprint_node",
-        "connect_level_blueprint_nodes",
-        "create_level_instance",
-        "create_packed_level_actor",
+        "edit_level_blueprint",
         "get_level_structure_info",
-        "create_trigger_volume",
-        "add_trigger_volume",
-        "create_trigger_box",
-        "create_trigger_sphere",
-        "create_trigger_capsule",
-        "create_blocking_volume",
-        "add_blocking_volume",
-        "create_kill_z_volume",
-        "add_kill_z_volume",
-        "create_pain_causing_volume",
-        "create_physics_volume",
-        "add_physics_volume",
-        "create_audio_volume",
-        "create_reverb_volume",
-        "create_cull_distance_volume",
-        "add_cull_distance_volume",
-        "create_precomputed_visibility_volume",
-        "create_lightmass_importance_volume",
-        "create_nav_mesh_bounds_volume",
-        "create_nav_modifier_volume",
-        "create_camera_blocking_volume",
-        "create_post_process_volume",
-        "add_post_process_volume",
-        "set_volume_extent",
-        "set_volume_bounds",
+        "create_volume",
         "set_volume_properties",
         "remove_volume",
         "get_volumes_info"
@@ -11568,6 +11877,7 @@ export const gatewayManifest = {
         "damagePerSec",
         "dataLayerName",
         "dataLayerType",
+        "edit",
         "extent",
         "fadeTime",
         "filter",
@@ -11580,6 +11890,7 @@ export const gatewayManifest = {
         "instanceLocation",
         "instanceRotation",
         "instanceScale",
+        "kind",
         "layerType",
         "levelAssetPath",
         "levelInstanceName",
@@ -11598,6 +11909,7 @@ export const gatewayManifest = {
         "reverbVolume",
         "rotation",
         "save",
+        "setting",
         "sourceNodeName",
         "sourcePinName",
         "sphereRadius",
@@ -11610,9 +11922,11 @@ export const gatewayManifest = {
         "targetPinName",
         "terminalVelocity",
         "unboundOnly",
+        "volumeClass",
         "volumeExtent",
         "volumeLocation",
         "volumeName",
+        "volumeProperty",
         "volumeType"
       ],
       "inputSchema": {
@@ -11818,6 +12132,16 @@ export const gatewayManifest = {
             "type": "string",
             "description": "Type of data layer: Runtime or Editor."
           },
+          "edit": {
+            "type": "string",
+            "enum": [
+              "open",
+              "add_node",
+              "connect_nodes",
+              "remove_node"
+            ],
+            "description": "Which edit level blueprint variant to run."
+          },
           "extent": {
             "type": "object",
             "description": "Extent (half-size) of the volume in each axis.",
@@ -11925,6 +12249,18 @@ export const gatewayManifest = {
               }
             },
             "additionalProperties": false
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "level",
+              "sublevel",
+              "level_instance",
+              "packed_level_actor",
+              "data_layer",
+              "minimap_volume"
+            ],
+            "description": "Which create level structure variant to run."
           },
           "layerType": {
             "type": "string",
@@ -12039,6 +12375,20 @@ export const gatewayManifest = {
             "type": "boolean",
             "description": "Whether to save the level after the operation."
           },
+          "setting": {
+            "type": "string",
+            "enum": [
+              "streaming",
+              "streaming_distance",
+              "bounds",
+              "world_partition",
+              "grid_size",
+              "hlod_layer",
+              "data_layer_assignment"
+            ],
+            "description": "Which configure level streaming variant to run; omit for 'streaming'.",
+            "default": "streaming"
+          },
           "sourceNodeName": {
             "type": "string",
             "description": "Source node name for connection."
@@ -12087,6 +12437,29 @@ export const gatewayManifest = {
             "type": "boolean",
             "description": "Remove every call-function node that has no bound function instead of a named node."
           },
+          "volumeClass": {
+            "type": "string",
+            "enum": [
+              "TriggerVolume",
+              "TriggerBox",
+              "TriggerSphere",
+              "TriggerCapsule",
+              "BlockingVolume",
+              "KillZVolume",
+              "PainCausingVolume",
+              "PhysicsVolume",
+              "AudioVolume",
+              "ReverbVolume",
+              "CullDistanceVolume",
+              "PrecomputedVisibilityVolume",
+              "LightmassImportanceVolume",
+              "NavMeshBoundsVolume",
+              "NavModifierVolume",
+              "CameraBlockingVolume",
+              "PostProcessVolume"
+            ],
+            "description": "Volume class to spawn."
+          },
           "volumeExtent": {
             "type": "object",
             "description": "Extent of the volume.",
@@ -12129,6 +12502,16 @@ export const gatewayManifest = {
             "type": "string",
             "description": "Volume actor name."
           },
+          "volumeProperty": {
+            "type": "string",
+            "enum": [
+              "properties",
+              "extent",
+              "bounds"
+            ],
+            "description": "Which set volume properties variant to run; omit for 'properties'.",
+            "default": "properties"
+          },
           "volumeType": {
             "type": "string",
             "description": "Volume type for get_volumes_info."
@@ -12136,49 +12519,11 @@ export const gatewayManifest = {
           "action": {
             "type": "string",
             "enum": [
-              "create_level",
-              "create_sublevel",
+              "create_level_structure",
               "configure_level_streaming",
-              "set_streaming_distance",
-              "configure_level_bounds",
-              "enable_world_partition",
-              "configure_grid_size",
-              "create_data_layer",
-              "assign_actor_to_data_layer",
-              "configure_hlod_layer",
-              "create_minimap_volume",
-              "open_level_blueprint",
-              "add_level_blueprint_node",
-              "remove_level_blueprint_node",
-              "connect_level_blueprint_nodes",
-              "create_level_instance",
-              "create_packed_level_actor",
+              "edit_level_blueprint",
               "get_level_structure_info",
-              "create_trigger_volume",
-              "add_trigger_volume",
-              "create_trigger_box",
-              "create_trigger_sphere",
-              "create_trigger_capsule",
-              "create_blocking_volume",
-              "add_blocking_volume",
-              "create_kill_z_volume",
-              "add_kill_z_volume",
-              "create_pain_causing_volume",
-              "create_physics_volume",
-              "add_physics_volume",
-              "create_audio_volume",
-              "create_reverb_volume",
-              "create_cull_distance_volume",
-              "add_cull_distance_volume",
-              "create_precomputed_visibility_volume",
-              "create_lightmass_importance_volume",
-              "create_nav_mesh_bounds_volume",
-              "create_nav_modifier_volume",
-              "create_camera_blocking_volume",
-              "create_post_process_volume",
-              "add_post_process_volume",
-              "set_volume_extent",
-              "set_volume_bounds",
+              "create_volume",
               "set_volume_properties",
               "remove_volume",
               "get_volumes_info"
@@ -12203,84 +12548,26 @@ export const gatewayManifest = {
       "category": "utility",
       "description": "Configure multiplayer and player flow: replication, RPCs, authority/relevancy, network prediction, sessions, split-screen, LAN/voice chat, game framework classes, match rules, and input mappings.",
       "actions": [
-        "add_legacy_action_mapping",
-        "add_legacy_axis_mapping",
+        "add_legacy_mapping",
         "add_local_player",
-        "add_mapping",
-        "add_network_prediction_data",
-        "check_has_authority",
-        "check_is_locally_controlled",
-        "configure_client_prediction",
-        "configure_game_rules",
-        "configure_lan_play",
-        "configure_local_session_settings",
-        "configure_movement_prediction",
-        "configure_net_cull_distance",
-        "configure_net_driver",
-        "configure_net_priority",
-        "configure_net_serialization",
-        "configure_net_update_frequency",
-        "configure_player_start",
-        "configure_push_model",
-        "configure_push_to_talk",
-        "configure_replicated_movement",
-        "configure_replication_graph",
-        "configure_round_system",
-        "configure_rpc_validation",
-        "configure_scoring_system",
-        "configure_server_correction",
-        "configure_session_interface",
-        "configure_spawn_system",
-        "configure_spectating",
-        "configure_split_screen",
-        "configure_team_system",
-        "configure_voice_settings",
-        "create_game_instance",
-        "create_game_mode",
-        "create_game_state",
-        "create_hud_class",
-        "create_input_action",
-        "create_input_mapping_context",
-        "create_player_controller",
-        "create_player_state",
-        "create_rpc_function",
-        "disable_input_action",
-        "enable_input_mapping",
-        "enable_voice_chat",
+        "check_authority",
+        "configure_game_mode",
+        "configure_input",
+        "configure_prediction",
+        "configure_replication",
+        "configure_rpc",
+        "configure_session",
+        "configure_voice",
+        "create_framework_class",
         "get_game_framework_info",
         "get_input_info",
         "get_networking_info",
         "get_sessions_info",
         "host_lan_server",
-        "join_lan_server",
-        "map_input_action",
-        "mute_player",
-        "remove_legacy_action_mapping",
-        "remove_legacy_axis_mapping",
+        "remove_legacy_mapping",
         "remove_local_player",
         "remove_mapping",
-        "set_always_relevant",
-        "set_autonomous_proxy",
-        "set_default_pawn_class",
-        "set_game_state_class",
-        "set_hud_class",
-        "set_input_modifier",
-        "set_input_trigger",
-        "set_net_dormancy",
-        "set_net_role",
-        "set_only_relevant_to_owner",
-        "set_owner",
-        "set_player_controller_class",
-        "set_player_state_class",
-        "set_property_replicated",
-        "set_replicated_using",
-        "set_replication_condition",
-        "set_respawn_rules",
-        "set_rpc_reliability",
-        "set_split_screen_type",
-        "set_voice_attenuation",
-        "set_voice_channel",
-        "setup_match_states"
+        "set_owner"
       ],
       "parameterNames": [
         "actionName",
@@ -12305,6 +12592,7 @@ export const gatewayManifest = {
         "canRespawn",
         "channelName",
         "channelType",
+        "check",
         "cmd",
         "condition",
         "contextPath",
@@ -12328,8 +12616,10 @@ export const gatewayManifest = {
         "intermissionTime",
         "isAutonomousProxy",
         "key",
+        "kind",
         "localPlayerNum",
         "mapName",
+        "mapping",
         "maxClientRate",
         "maxInternetClientRate",
         "maxPlayers",
@@ -12381,9 +12671,11 @@ export const gatewayManifest = {
         "scorePerObjective",
         "serverAddress",
         "serverName",
+        "serverOp",
         "serverPassword",
         "serverPort",
         "sessionName",
+        "setting",
         "shift",
         "smoothingRate",
         "spatiallyLoaded",
@@ -12500,6 +12792,14 @@ export const gatewayManifest = {
             "type": "string",
             "description": "Channel type."
           },
+          "check": {
+            "type": "string",
+            "enum": [
+              "has_authority",
+              "is_locally_controlled"
+            ],
+            "description": "Which check authority variant to run."
+          },
           "cmd": {
             "type": "boolean",
             "description": "Whether the Cmd modifier must be held."
@@ -12592,6 +12892,18 @@ export const gatewayManifest = {
             "type": "string",
             "description": "Input key name, e.g. SpaceBar, W, LeftMouseButton."
           },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "game_mode",
+              "game_state",
+              "game_instance",
+              "player_controller",
+              "player_state",
+              "hud"
+            ],
+            "description": "Which create framework class variant to run."
+          },
           "localPlayerNum": {
             "type": "number",
             "description": "Local player num."
@@ -12599,6 +12911,14 @@ export const gatewayManifest = {
           "mapName": {
             "type": "string",
             "description": "Map name."
+          },
+          "mapping": {
+            "type": "string",
+            "enum": [
+              "action",
+              "axis"
+            ],
+            "description": "Which add legacy mapping variant to run."
           },
           "maxClientRate": {
             "type": "string",
@@ -12609,7 +12929,7 @@ export const gatewayManifest = {
             "description": "Max internet client rate."
           },
           "maxPlayers": {
-            "type": "string",
+            "type": "number",
             "description": "Max players."
           },
           "maxRespawns": {
@@ -12804,6 +13124,15 @@ export const gatewayManifest = {
             "type": "string",
             "description": "Server name."
           },
+          "serverOp": {
+            "type": "string",
+            "enum": [
+              "host",
+              "join"
+            ],
+            "description": "Which host lan server variant to run; omit for 'host'.",
+            "default": "host"
+          },
           "serverPassword": {
             "type": "string",
             "description": "Server password."
@@ -12815,6 +13144,68 @@ export const gatewayManifest = {
           "sessionName": {
             "type": "string",
             "description": "Session name."
+          },
+          "setting": {
+            "type": "string",
+            "enum": [
+              "client",
+              "movement",
+              "server_correction",
+              "add_data",
+              "create",
+              "validation",
+              "reliability",
+              "create_action",
+              "create_mapping_context",
+              "add_mapping",
+              "map_action",
+              "set_trigger",
+              "set_modifier",
+              "enable_mapping",
+              "disable_action",
+              "default_pawn_class",
+              "player_controller_class",
+              "game_state_class",
+              "player_state_class",
+              "hud_class",
+              "rules",
+              "match_states",
+              "rounds",
+              "scoring",
+              "teams",
+              "spawn",
+              "respawn",
+              "spectating",
+              "player_start",
+              "enable",
+              "settings",
+              "push_to_talk",
+              "attenuation",
+              "channel",
+              "mute_player",
+              "lan_play",
+              "local_settings",
+              "interface",
+              "split_screen",
+              "split_screen_type",
+              "property",
+              "condition",
+              "rep_notify",
+              "net_role",
+              "dormancy",
+              "always_relevant",
+              "only_relevant_to_owner",
+              "autonomous_proxy",
+              "priority",
+              "update_frequency",
+              "cull_distance",
+              "push_model",
+              "replicated_movement",
+              "replication_graph",
+              "serialization",
+              "net_driver"
+            ],
+            "description": "Which configure game mode variant to run."
           },
           "shift": {
             "type": "boolean",
@@ -12918,84 +13309,26 @@ export const gatewayManifest = {
           "action": {
             "type": "string",
             "enum": [
-              "add_legacy_action_mapping",
-              "add_legacy_axis_mapping",
+              "add_legacy_mapping",
               "add_local_player",
-              "add_mapping",
-              "add_network_prediction_data",
-              "check_has_authority",
-              "check_is_locally_controlled",
-              "configure_client_prediction",
-              "configure_game_rules",
-              "configure_lan_play",
-              "configure_local_session_settings",
-              "configure_movement_prediction",
-              "configure_net_cull_distance",
-              "configure_net_driver",
-              "configure_net_priority",
-              "configure_net_serialization",
-              "configure_net_update_frequency",
-              "configure_player_start",
-              "configure_push_model",
-              "configure_push_to_talk",
-              "configure_replicated_movement",
-              "configure_replication_graph",
-              "configure_round_system",
-              "configure_rpc_validation",
-              "configure_scoring_system",
-              "configure_server_correction",
-              "configure_session_interface",
-              "configure_spawn_system",
-              "configure_spectating",
-              "configure_split_screen",
-              "configure_team_system",
-              "configure_voice_settings",
-              "create_game_instance",
-              "create_game_mode",
-              "create_game_state",
-              "create_hud_class",
-              "create_input_action",
-              "create_input_mapping_context",
-              "create_player_controller",
-              "create_player_state",
-              "create_rpc_function",
-              "disable_input_action",
-              "enable_input_mapping",
-              "enable_voice_chat",
+              "check_authority",
+              "configure_game_mode",
+              "configure_input",
+              "configure_prediction",
+              "configure_replication",
+              "configure_rpc",
+              "configure_session",
+              "configure_voice",
+              "create_framework_class",
               "get_game_framework_info",
               "get_input_info",
               "get_networking_info",
               "get_sessions_info",
               "host_lan_server",
-              "join_lan_server",
-              "map_input_action",
-              "mute_player",
-              "remove_legacy_action_mapping",
-              "remove_legacy_axis_mapping",
+              "remove_legacy_mapping",
               "remove_local_player",
               "remove_mapping",
-              "set_always_relevant",
-              "set_autonomous_proxy",
-              "set_default_pawn_class",
-              "set_game_state_class",
-              "set_hud_class",
-              "set_input_modifier",
-              "set_input_trigger",
-              "set_net_dormancy",
-              "set_net_role",
-              "set_only_relevant_to_owner",
-              "set_owner",
-              "set_player_controller_class",
-              "set_player_state_class",
-              "set_property_replicated",
-              "set_replicated_using",
-              "set_replication_condition",
-              "set_respawn_rules",
-              "set_rpc_reliability",
-              "set_split_screen_type",
-              "set_voice_attenuation",
-              "set_voice_channel",
-              "setup_match_states"
+              "set_owner"
             ],
             "description": "Action to invoke on manage_networking."
           },
@@ -13017,35 +13350,8 @@ export const gatewayManifest = {
       "category": "world",
       "description": "Create, edit, execute, and configure PCG graphs: graph assets, input/sampler/filter/spawner nodes, pin connections, node settings, and partition grid size.",
       "actions": [
-        "create_pcg_graph",
-        "create_pcg_subgraph",
+        "edit_pcg_graph",
         "add_pcg_node",
-        "connect_pcg_pins",
-        "set_pcg_node_settings",
-        "add_landscape_data_node",
-        "add_spline_data_node",
-        "add_volume_data_node",
-        "add_actor_data_node",
-        "add_texture_data_node",
-        "add_surface_sampler",
-        "add_mesh_sampler",
-        "add_spline_sampler",
-        "add_volume_sampler",
-        "add_bounds_modifier",
-        "add_density_filter",
-        "add_height_filter",
-        "add_slope_filter",
-        "add_distance_filter",
-        "add_bounds_filter",
-        "add_self_pruning",
-        "add_transform_points",
-        "add_project_to_surface",
-        "add_copy_points",
-        "add_merge_points",
-        "add_static_mesh_spawner",
-        "add_actor_spawner",
-        "add_spline_spawner",
-        "set_pcg_partition_grid_size",
         "execute_pcg_graph"
       ],
       "parameterNames": [
@@ -13056,6 +13362,7 @@ export const gatewayManifest = {
         "componentName",
         "componentPath",
         "createComponent",
+        "edit",
         "force",
         "graphPath",
         "gridSize",
@@ -13063,6 +13370,7 @@ export const gatewayManifest = {
         "meshPath",
         "name",
         "nodeId",
+        "nodeKind",
         "nodeName",
         "nodeType",
         "outputName",
@@ -13116,6 +13424,17 @@ export const gatewayManifest = {
             "type": "boolean",
             "description": "Create a new PCG component when no selector is supplied."
           },
+          "edit": {
+            "type": "string",
+            "enum": [
+              "create",
+              "create_subgraph",
+              "connect_pins",
+              "set_node_settings",
+              "set_partition_grid_size"
+            ],
+            "description": "Which edit pcg graph variant to run."
+          },
           "force": {
             "type": "boolean",
             "description": "Force regeneration even if a result already exists."
@@ -13143,6 +13462,37 @@ export const gatewayManifest = {
           "nodeId": {
             "type": "string",
             "description": "PCG node identifier."
+          },
+          "nodeKind": {
+            "type": "string",
+            "enum": [
+              "node",
+              "surface_sampler",
+              "spline_sampler",
+              "mesh_sampler",
+              "volume_sampler",
+              "static_mesh_spawner",
+              "actor_spawner",
+              "spline_spawner",
+              "density_filter",
+              "distance_filter",
+              "height_filter",
+              "slope_filter",
+              "bounds_filter",
+              "bounds_modifier",
+              "landscape_data_node",
+              "spline_data_node",
+              "actor_data_node",
+              "texture_data_node",
+              "volume_data_node",
+              "transform_points",
+              "copy_points",
+              "merge_points",
+              "project_to_surface",
+              "self_pruning"
+            ],
+            "description": "Which add pcg node variant to run; omit for 'node'.",
+            "default": "node"
           },
           "nodeName": {
             "type": "string",
@@ -13233,35 +13583,8 @@ export const gatewayManifest = {
           "action": {
             "type": "string",
             "enum": [
-              "create_pcg_graph",
-              "create_pcg_subgraph",
+              "edit_pcg_graph",
               "add_pcg_node",
-              "connect_pcg_pins",
-              "set_pcg_node_settings",
-              "add_landscape_data_node",
-              "add_spline_data_node",
-              "add_volume_data_node",
-              "add_actor_data_node",
-              "add_texture_data_node",
-              "add_surface_sampler",
-              "add_mesh_sampler",
-              "add_spline_sampler",
-              "add_volume_sampler",
-              "add_bounds_modifier",
-              "add_density_filter",
-              "add_height_filter",
-              "add_slope_filter",
-              "add_distance_filter",
-              "add_bounds_filter",
-              "add_self_pruning",
-              "add_transform_points",
-              "add_project_to_surface",
-              "add_copy_points",
-              "add_merge_points",
-              "add_static_mesh_spawner",
-              "add_actor_spawner",
-              "add_spline_spawner",
-              "set_pcg_partition_grid_size",
               "execute_pcg_graph"
             ],
             "description": "Action to invoke on manage_pcg."
@@ -13285,86 +13608,24 @@ export const gatewayManifest = {
       "description": "Edit Level Sequences, cinematic tracks, Movie Render Queue jobs, media playback assets, Take Recorder, and replay controls.",
       "actions": [
         "create",
-        "open",
-        "duplicate",
-        "rename",
-        "delete",
-        "list",
-        "play",
-        "pause",
-        "stop",
-        "set_playback_speed",
         "get_properties",
+        "delete",
+        "play",
         "set_properties",
-        "add_camera",
-        "add_actor",
-        "add_actors",
-        "remove_actors",
-        "get_bindings",
-        "add_spawnable_from_class",
-        "add_keyframe",
-        "add_track",
-        "add_section",
-        "remove_track",
-        "list_tracks",
-        "list_track_types",
-        "set_track_muted",
-        "set_track_solo",
-        "set_track_locked",
-        "set_display_rate",
-        "set_tick_resolution",
-        "set_work_range",
-        "set_view_range",
+        "edit_sequence_bindings",
+        "edit_sequence_tracks",
         "get_metadata",
         "set_metadata",
-        "create_master_sequence",
-        "add_subsequence",
-        "add_shot_track",
-        "configure_shot_settings",
-        "create_cine_camera_actor",
-        "configure_camera_settings",
-        "add_camera_cut_track",
-        "add_camera_shake_track",
-        "configure_camera_rig_rail",
-        "configure_camera_rig_crane",
-        "add_fade_track",
-        "add_level_visibility_track",
-        "add_material_parameter_track",
-        "add_particle_track",
-        "add_skeletal_animation_track",
-        "add_transform_track",
-        "add_event_track",
-        "add_property_track",
+        "create_cinematic_asset",
+        "add_cinematic_track",
+        "configure_cinematic",
         "create_render_job",
-        "configure_output_settings",
-        "add_render_pass",
-        "configure_anti_aliasing",
-        "configure_console_variables",
-        "configure_burn_ins",
-        "queue_render",
-        "start_render",
-        "create_media_player",
-        "create_media_source",
-        "create_media_texture",
-        "create_media_sound_component",
-        "create_media_playlist",
+        "configure_render_job",
+        "create_media_asset",
         "play_media",
-        "pause_media",
-        "seek_media",
-        "create_take_recorder_panel",
-        "configure_take_sources",
-        "start_recording",
-        "stop_recording",
-        "configure_recorded_tracks",
-        "start_demo_recording",
-        "stop_demo_recording",
-        "configure_demo_settings",
+        "configure_take_recorder",
         "play_demo",
-        "pause_demo",
-        "seek_demo",
-        "set_demo_playback_speed",
-        "configure_killcam_duration",
-        "start_killcam"
+        "configure_demo_settings"
       ],
       "parameterNames": [
         "activate",
@@ -13392,12 +13653,14 @@ export const gatewayManifest = {
         "clearSources",
         "componentName",
         "consoleVariables",
+        "control",
         "craneArmLength",
         "cranePitch",
         "craneYaw",
         "currentAperture",
         "currentFocalLength",
         "defaultSourcePath",
+        "deleteScope",
         "demoName",
         "destinationPath",
         "disableOthers",
@@ -13405,6 +13668,7 @@ export const gatewayManifest = {
         "duration",
         "durationFrames",
         "durationSeconds",
+        "edit",
         "enabled",
         "end",
         "endFrame",
@@ -13422,8 +13686,10 @@ export const gatewayManifest = {
         "from",
         "height",
         "includeTranslucentObjects",
+        "info",
         "jobId",
         "jobName",
+        "kind",
         "label",
         "lengthInFrames",
         "lens",
@@ -13489,7 +13755,10 @@ export const gatewayManifest = {
         "seekTime",
         "sensorHeight",
         "sensorWidth",
+        "sequenceOp",
         "sequencePath",
+        "sequenceProperty",
+        "setting",
         "settings",
         "shotName",
         "shotSequencePath",
@@ -13515,6 +13784,7 @@ export const gatewayManifest = {
         "time",
         "timeSeconds",
         "to",
+        "trackKind",
         "trackName",
         "trackNames",
         "trackType",
@@ -13661,6 +13931,23 @@ export const gatewayManifest = {
             "additionalProperties": true,
             "x-unreal-reflection-boundary": true
           },
+          "control": {
+            "type": "string",
+            "enum": [
+              "create",
+              "queue",
+              "start",
+              "play",
+              "pause",
+              "seek",
+              "set_playback_speed",
+              "start_recording",
+              "stop_recording",
+              "start_killcam",
+              "stop"
+            ],
+            "description": "Which create render job variant to run; omit for 'create'."
+          },
           "craneArmLength": {
             "type": "number",
             "description": "Crane arm length."
@@ -13684,6 +13971,16 @@ export const gatewayManifest = {
           "defaultSourcePath": {
             "type": "string",
             "description": "Default media source asset path for a platform media source."
+          },
+          "deleteScope": {
+            "type": "string",
+            "enum": [
+              "sequence",
+              "track",
+              "keyframe"
+            ],
+            "description": "Which delete variant to run; omit for 'sequence'.",
+            "default": "sequence"
           },
           "demoName": {
             "type": "string",
@@ -13712,6 +14009,23 @@ export const gatewayManifest = {
           "durationSeconds": {
             "type": "number",
             "description": "Killcam duration in seconds (<=600)."
+          },
+          "edit": {
+            "type": "string",
+            "enum": [
+              "add_actor",
+              "add_actors",
+              "add_camera",
+              "add_spawnable",
+              "remove_actors",
+              "add_track",
+              "add_section",
+              "add_keyframe",
+              "set_locked",
+              "set_muted",
+              "set_solo"
+            ],
+            "description": "Which edit sequence bindings variant to run."
           },
           "enabled": {
             "type": "boolean",
@@ -13811,6 +14125,20 @@ export const gatewayManifest = {
             "type": "boolean",
             "description": "Whether the pass includes translucent objects."
           },
+          "info": {
+            "type": "string",
+            "enum": [
+              "properties",
+              "bindings",
+              "tracks",
+              "keys",
+              "track_types",
+              "list",
+              "open"
+            ],
+            "description": "Which get properties variant to run; omit for 'properties'.",
+            "default": "properties"
+          },
           "jobId": {
             "type": "string",
             "description": "Render job identifier."
@@ -13818,6 +14146,19 @@ export const gatewayManifest = {
           "jobName": {
             "type": "string",
             "description": "Render job name (alias of renderJobName)."
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "cine_camera_actor",
+              "master_sequence",
+              "source",
+              "player",
+              "playlist",
+              "texture",
+              "sound_component"
+            ],
+            "description": "Which create cinematic asset variant to run."
           },
           "label": {
             "type": "string",
@@ -14155,9 +14496,54 @@ export const gatewayManifest = {
             "type": "number",
             "description": "Sensor width in mm."
           },
+          "sequenceOp": {
+            "type": "string",
+            "enum": [
+              "create",
+              "duplicate",
+              "rename"
+            ],
+            "description": "Which create variant to run; omit for 'create'.",
+            "default": "create"
+          },
           "sequencePath": {
             "type": "string",
             "description": "Canonical /Game sequence asset path."
+          },
+          "sequenceProperty": {
+            "type": "string",
+            "enum": [
+              "properties",
+              "display_rate",
+              "tick_resolution",
+              "playback_speed",
+              "view_range",
+              "work_range"
+            ],
+            "description": "Which set properties variant to run; omit for 'properties'.",
+            "default": "properties"
+          },
+          "setting": {
+            "type": "string",
+            "enum": [
+              "camera",
+              "rig_crane",
+              "rig_rail",
+              "shot",
+              "demo",
+              "killcam_duration",
+              "output",
+              "anti_aliasing",
+              "add_render_pass",
+              "burn_ins",
+              "console_variables",
+              "sources",
+              "recorded_tracks",
+              "panel",
+              "start_recording",
+              "stop_recording"
+            ],
+            "description": "Which configure cinematic variant to run."
           },
           "settings": {
             "type": "object",
@@ -14298,6 +14684,24 @@ export const gatewayManifest = {
             "type": "number",
             "description": "Fade end opacity value."
           },
+          "trackKind": {
+            "type": "string",
+            "enum": [
+              "camera_cut",
+              "camera_shake",
+              "transform",
+              "property",
+              "skeletal_animation",
+              "material_parameter",
+              "particle",
+              "event",
+              "fade",
+              "level_visibility",
+              "shot",
+              "subsequence"
+            ],
+            "description": "Which add cinematic track variant to run."
+          },
           "trackName": {
             "type": "string",
             "description": "Name of the track to modify."
@@ -14353,86 +14757,24 @@ export const gatewayManifest = {
             "type": "string",
             "enum": [
               "create",
-              "open",
-              "duplicate",
-              "rename",
-              "delete",
-              "list",
-              "play",
-              "pause",
-              "stop",
-              "set_playback_speed",
               "get_properties",
+              "delete",
+              "play",
               "set_properties",
-              "add_camera",
-              "add_actor",
-              "add_actors",
-              "remove_actors",
-              "get_bindings",
-              "add_spawnable_from_class",
-              "add_keyframe",
-              "add_track",
-              "add_section",
-              "remove_track",
-              "list_tracks",
-              "list_track_types",
-              "set_track_muted",
-              "set_track_solo",
-              "set_track_locked",
-              "set_display_rate",
-              "set_tick_resolution",
-              "set_work_range",
-              "set_view_range",
+              "edit_sequence_bindings",
+              "edit_sequence_tracks",
               "get_metadata",
               "set_metadata",
-              "create_master_sequence",
-              "add_subsequence",
-              "add_shot_track",
-              "configure_shot_settings",
-              "create_cine_camera_actor",
-              "configure_camera_settings",
-              "add_camera_cut_track",
-              "add_camera_shake_track",
-              "configure_camera_rig_rail",
-              "configure_camera_rig_crane",
-              "add_fade_track",
-              "add_level_visibility_track",
-              "add_material_parameter_track",
-              "add_particle_track",
-              "add_skeletal_animation_track",
-              "add_transform_track",
-              "add_event_track",
-              "add_property_track",
+              "create_cinematic_asset",
+              "add_cinematic_track",
+              "configure_cinematic",
               "create_render_job",
-              "configure_output_settings",
-              "add_render_pass",
-              "configure_anti_aliasing",
-              "configure_console_variables",
-              "configure_burn_ins",
-              "queue_render",
-              "start_render",
-              "create_media_player",
-              "create_media_source",
-              "create_media_texture",
-              "create_media_sound_component",
-              "create_media_playlist",
+              "configure_render_job",
+              "create_media_asset",
               "play_media",
-              "pause_media",
-              "seek_media",
-              "create_take_recorder_panel",
-              "configure_take_sources",
-              "start_recording",
-              "stop_recording",
-              "configure_recorded_tracks",
-              "start_demo_recording",
-              "stop_demo_recording",
-              "configure_demo_settings",
+              "configure_take_recorder",
               "play_demo",
-              "pause_demo",
-              "seek_demo",
-              "set_demo_playback_speed",
-              "configure_killcam_duration",
-              "start_killcam"
+              "configure_demo_settings"
             ],
             "description": "Action to invoke on manage_sequence."
           },
@@ -14520,38 +14862,15 @@ export const gatewayManifest = {
       "category": "core",
       "description": "Control the project runtime: profiling, benchmarks, scalability/LOD/Nanite settings, CVars, console commands, Python scripts, UBT, tests, logs, and widgets.",
       "actions": [
-        "show_fps",
-        "profile",
-        "set_quality",
-        "execute_command",
+        "configure_display",
         "console_command",
-        "set_cvar",
-        "set_resolution",
-        "set_fullscreen",
-        "start_profiling",
-        "stop_profiling",
-        "run_benchmark",
-        "show_stats",
-        "generate_memory_report",
-        "set_scalability",
-        "set_resolution_scale",
-        "set_vsync",
-        "set_frame_rate_limit",
-        "enable_gpu_timing",
-        "configure_texture_streaming",
-        "configure_lod",
-        "apply_baseline_settings",
-        "optimize_draw_calls",
+        "profile_performance",
+        "configure_performance",
         "merge_actors",
-        "configure_occlusion_culling",
-        "optimize_shaders",
-        "configure_nanite",
-        "configure_world_partition",
-        "run_ubt",
-        "run_tests",
+        "run_build",
+        "package_project",
+        "package_status",
         "subscribe",
-        "unsubscribe",
-        "spawn_category",
         "execute_python",
         "set_project_setting",
         "get_project_settings",
@@ -14559,28 +14878,19 @@ export const gatewayManifest = {
         "lumen_update_scene",
         "list_plugins",
         "enable_plugin",
-        "disable_plugin",
         "start_session",
-        "start_unreal_insights",
-        "capture_insights_trace",
         "get_trace_status",
-        "pause_session",
-        "resume_session",
-        "stop_session",
-        "write_snapshot",
-        "send_snapshot",
-        "analyze_trace",
         "create_widget",
-        "show_widget",
-        "add_widget_child",
         "play_sound",
         "screenshot"
       ],
       "parameterNames": [
         "actors",
+        "archiveDirectory",
         "arguments",
         "assetPath",
         "boostPlayerLocation",
+        "build",
         "category",
         "categoryName",
         "cellSize",
@@ -14590,6 +14900,7 @@ export const gatewayManifest = {
         "command",
         "configuration",
         "connectionType",
+        "control",
         "cvar",
         "detailed",
         "duration",
@@ -14605,10 +14916,14 @@ export const gatewayManifest = {
         "height",
         "host",
         "includeMetadata",
+        "info",
+        "jobId",
         "key",
+        "kind",
         "launchViewer",
         "level",
         "lodBias",
+        "maps",
         "maxFPS",
         "mergeActors",
         "message",
@@ -14618,12 +14933,14 @@ export const gatewayManifest = {
         "outputPath",
         "overwrite",
         "packageName",
+        "pak",
         "parentName",
         "path",
         "paths",
         "pitch",
         "platform",
         "pluginName",
+        "pluginState",
         "poolSize",
         "port",
         "profile",
@@ -14635,6 +14952,7 @@ export const gatewayManifest = {
         "savePath",
         "scale",
         "section",
+        "setting",
         "snapshotPath",
         "soundPath",
         "streamingDistance",
@@ -14646,9 +14964,11 @@ export const gatewayManifest = {
         "value",
         "volume",
         "widgetId",
+        "widgetOp",
         "widgetPath",
         "widgetType",
         "width",
+        "window",
         "windowed"
       ],
       "inputSchema": {
@@ -14661,6 +14981,10 @@ export const gatewayManifest = {
             },
             "description": "Actor names to merge (>=2 required)."
           },
+          "archiveDirectory": {
+            "type": "string",
+            "description": "Where the archived build lands (default <Project>/Packaged)."
+          },
           "arguments": {
             "type": "string",
             "description": "Extra UBT arguments (validated)."
@@ -14672,6 +14996,10 @@ export const gatewayManifest = {
           "boostPlayerLocation": {
             "type": "boolean",
             "description": "Prioritize streaming around the player."
+          },
+          "build": {
+            "type": "boolean",
+            "description": "Compile the game target first (default true)."
           },
           "category": {
             "type": "string",
@@ -14714,6 +15042,26 @@ export const gatewayManifest = {
             ],
             "description": "Trace connection type; network is restricted to loopback."
           },
+          "control": {
+            "type": "string",
+            "enum": [
+              "start",
+              "stop",
+              "benchmark",
+              "memory_report",
+              "show_stats",
+              "pause",
+              "resume",
+              "capture_trace",
+              "send_snapshot",
+              "write_snapshot",
+              "launch_viewer",
+              "subscribe",
+              "unsubscribe",
+              "spawn_category"
+            ],
+            "description": "Which profile performance variant to run."
+          },
           "cvar": {
             "type": "string",
             "description": "Alternate CVar name field."
@@ -14724,7 +15072,7 @@ export const gatewayManifest = {
           },
           "duration": {
             "type": "number",
-            "description": "Benchmark duration in seconds (default 60)."
+            "description": "Notification duration."
           },
           "enableBatching": {
             "type": "boolean",
@@ -14736,7 +15084,7 @@ export const gatewayManifest = {
           },
           "enabled": {
             "type": "boolean",
-            "description": "Enable (true) or disable (false) GPU timing."
+            "description": "Enable (true) or disable (false) VSync."
           },
           "enabledOnly": {
             "type": "boolean",
@@ -14775,9 +15123,30 @@ export const gatewayManifest = {
             "type": "boolean",
             "description": "Include capture metadata."
           },
+          "info": {
+            "type": "string",
+            "enum": [
+              "status",
+              "analyze"
+            ],
+            "description": "Which get trace status variant to run; omit for 'status'.",
+            "default": "status"
+          },
+          "jobId": {
+            "type": "string",
+            "description": "The jobId package_project returned. Omit to list the jobIds this editor session knows."
+          },
           "key": {
             "type": "string",
             "description": "Alternate CVar name field."
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "tests",
+              "ubt"
+            ],
+            "description": "Which run build variant to run."
           },
           "launchViewer": {
             "type": "boolean",
@@ -14790,6 +15159,14 @@ export const gatewayManifest = {
           "lodBias": {
             "type": "number",
             "description": "Additional LOD bias."
+          },
+          "maps": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "description": "A /Game map package path."
+            },
+            "description": "Maps to cook. Pass these when a map is reached by NAME at runtime (OpenLevel) rather than by reference, or the cooker will not find it."
           },
           "maxFPS": {
             "type": "number",
@@ -14810,26 +15187,12 @@ export const gatewayManifest = {
             "x-unreal-reflection-boundary": true
           },
           "mode": {
-            "oneOf": [
-              {
-                "type": "string",
-                "description": "Optimization mode."
-              },
-              {
-                "type": "string",
-                "enum": [
-                  "editor_viewport",
-                  "game_viewport",
-                  "full_editor_window"
-                ],
-                "description": "Screenshot target mode."
-              }
-            ],
+            "type": "string",
             "description": "Optimization mode."
           },
           "name": {
             "type": "string",
-            "description": "Alternate widget path selector."
+            "description": "CVar name (alternatively cvar, key, or command)."
           },
           "outputPath": {
             "type": "string",
@@ -14842,6 +15205,10 @@ export const gatewayManifest = {
           "packageName": {
             "type": "string",
             "description": "Package name for the merged asset."
+          },
+          "pak": {
+            "type": "boolean",
+            "description": "Pak the staged content (default true)."
           },
           "parentName": {
             "type": "string",
@@ -14869,6 +15236,15 @@ export const gatewayManifest = {
           "pluginName": {
             "type": "string",
             "description": "Plugin name exactly as reported by list_plugins (the .uplugin name, not the friendly name)."
+          },
+          "pluginState": {
+            "type": "string",
+            "enum": [
+              "enable",
+              "disable"
+            ],
+            "description": "Which enable plugin variant to run; omit for 'enable'.",
+            "default": "enable"
           },
           "poolSize": {
             "type": "number",
@@ -14922,6 +15298,31 @@ export const gatewayManifest = {
             "type": "string",
             "description": "Settings section."
           },
+          "setting": {
+            "type": "string",
+            "enum": [
+              "resolution",
+              "fullscreen",
+              "quality",
+              "cvar",
+              "fps",
+              "profile",
+              "scalability",
+              "frame_rate_limit",
+              "resolution_scale",
+              "vsync",
+              "lod",
+              "nanite",
+              "occlusion_culling",
+              "texture_streaming",
+              "world_partition",
+              "gpu_timing",
+              "draw_calls",
+              "shaders",
+              "baseline"
+            ],
+            "description": "Which configure display variant to run."
+          },
           "snapshotPath": {
             "type": "string",
             "description": "Output snapshot path."
@@ -14951,30 +15352,8 @@ export const gatewayManifest = {
             "description": "Output trace directory path."
           },
           "type": {
-            "oneOf": [
-              {
-                "type": "string",
-                "description": "Alternate category selector."
-              },
-              {
-                "type": "string",
-                "description": "Optional benchmark type."
-              },
-              {
-                "type": "string",
-                "enum": [
-                  "CPU",
-                  "GPU",
-                  "Memory",
-                  "RenderThread",
-                  "GameThread",
-                  "All",
-                  "fps"
-                ],
-                "description": "Profiling domain to capture."
-              }
-            ],
-            "description": "Alternate category selector."
+            "type": "string",
+            "description": "Profiling domain to capture."
           },
           "value": {
             "type": "string",
@@ -14988,6 +15367,16 @@ export const gatewayManifest = {
             "type": "string",
             "description": "Widget id; \"notification\" renders a notification."
           },
+          "widgetOp": {
+            "type": "string",
+            "enum": [
+              "create",
+              "add_child",
+              "show"
+            ],
+            "description": "Which create widget variant to run; omit for 'create'.",
+            "default": "create"
+          },
           "widgetPath": {
             "type": "string",
             "description": "Full widget path; name and savePath are derived when name is absent."
@@ -15000,45 +15389,26 @@ export const gatewayManifest = {
             "type": "number",
             "description": "Width in pixels."
           },
+          "window": {
+            "type": "string",
+            "description": "With mode full_editor_window, which window to capture: a list index (\"2\") or a case-insensitive substring of its title (\"WBP_HubUI\"). Omit for the main editor frame; responses list the open windows under windows[]."
+          },
           "windowed": {
             "type": "boolean",
-            "description": "Force windowed (true) or fullscreen (false)."
+            "description": "Windowed (true) or fullscreen (false)."
           },
           "action": {
             "type": "string",
             "enum": [
-              "show_fps",
-              "profile",
-              "set_quality",
-              "execute_command",
+              "configure_display",
               "console_command",
-              "set_cvar",
-              "set_resolution",
-              "set_fullscreen",
-              "start_profiling",
-              "stop_profiling",
-              "run_benchmark",
-              "show_stats",
-              "generate_memory_report",
-              "set_scalability",
-              "set_resolution_scale",
-              "set_vsync",
-              "set_frame_rate_limit",
-              "enable_gpu_timing",
-              "configure_texture_streaming",
-              "configure_lod",
-              "apply_baseline_settings",
-              "optimize_draw_calls",
+              "profile_performance",
+              "configure_performance",
               "merge_actors",
-              "configure_occlusion_culling",
-              "optimize_shaders",
-              "configure_nanite",
-              "configure_world_partition",
-              "run_ubt",
-              "run_tests",
+              "run_build",
+              "package_project",
+              "package_status",
               "subscribe",
-              "unsubscribe",
-              "spawn_category",
               "execute_python",
               "set_project_setting",
               "get_project_settings",
@@ -15046,20 +15416,9 @@ export const gatewayManifest = {
               "lumen_update_scene",
               "list_plugins",
               "enable_plugin",
-              "disable_plugin",
               "start_session",
-              "start_unreal_insights",
-              "capture_insights_trace",
               "get_trace_status",
-              "pause_session",
-              "resume_session",
-              "stop_session",
-              "write_snapshot",
-              "send_snapshot",
-              "analyze_trace",
               "create_widget",
-              "show_widget",
-              "add_widget_child",
               "play_sound",
               "screenshot"
             ],

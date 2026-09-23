@@ -18,6 +18,12 @@ bool UMcpAutomationBridgeSubsystem::HandleControlEditorScreenshot(
   }
 
   if (Mode == TEXT("game_viewport")) {
+    // The UI handler gates on the payload's own subAction, which still carries
+    // whichever ALIAS the caller used. `take_screenshot` therefore fell past
+    // the screenshot branch and answered "System control action
+    // 'take_screenshot' not implemented" for a mode this action publishes.
+    // Forward under the canonical name; the alias is a routing detail.
+    Payload->SetStringField(TEXT("subAction"), TEXT("screenshot"));
     return HandleUiAction(RequestId, TEXT("system_control"), Payload, Socket);
   }
 
@@ -36,7 +42,37 @@ bool UMcpAutomationBridgeSubsystem::HandleControlEditorScreenshot(
   const FString FullPath = ScreenshotDir / Filename;
 
   if (Mode == TEXT("full_editor_window")) {
-    TSharedPtr<SWindow> EditorWindow = GetFullEditorSlateWindowForMcp();
+    // `window` selects any open editor window - the main frame is only the
+    // default. An asset editor (Widget Blueprint designer, material graph) lives
+    // in its own window, so without this it could never be photographed.
+    FString WindowQuery;
+    Payload->TryGetStringField(TEXT("window"), WindowQuery);
+    if (WindowQuery.IsEmpty() && Payload->HasTypedField<EJson::Number>(TEXT("window"))) {
+      WindowQuery = FString::FromInt(
+          static_cast<int32>(Payload->GetNumberField(TEXT("window"))));
+    }
+
+    FString ResolvedWindowTitle;
+    TSharedPtr<SWindow> EditorWindow;
+    if (!WindowQuery.IsEmpty()) {
+      FString FindError;
+      EditorWindow = FindEditorSlateWindowForMcp(WindowQuery, ResolvedWindowTitle, FindError);
+      if (!EditorWindow.IsValid()) {
+        TSharedPtr<FJsonObject> Details = McpHandlerUtils::CreateResultObject();
+        AppendEditorWindowListForMcp(Details);
+        SendStandardErrorResponse(this, Socket, RequestId,
+                                  TEXT("EDITOR_WINDOW_NOT_FOUND"), FindError, Details);
+        return true;
+      }
+    } else {
+      EditorWindow = GetFullEditorSlateWindowForMcp();
+      if (!EditorWindow.IsValid()) {
+        EditorWindow = GetAnyVisibleEditorWindowForMcp();
+      }
+      if (EditorWindow.IsValid()) {
+        ResolvedWindowTitle = EditorWindow->GetTitle().ToString();
+      }
+    }
     if (!EditorWindow.IsValid()) {
       SendStandardErrorResponse(this, Socket, RequestId,
                                 TEXT("EDITOR_WINDOW_NOT_AVAILABLE"),
@@ -44,6 +80,10 @@ bool UMcpAutomationBridgeSubsystem::HandleControlEditorScreenshot(
                                 nullptr);
       return true;
     }
+
+    // The editor minimizes itself on launch and after some PIE cycles; a
+    // minimized window sits at -32000,-32000 and photographs as nothing.
+    const bool bRestored = RestoreWindowForCaptureForMcp(EditorWindow.ToSharedRef());
 
     TArray<uint8> PngData;
     FIntVector ImageSize(0, 0, 0);
@@ -75,6 +115,11 @@ bool UMcpAutomationBridgeSubsystem::HandleControlEditorScreenshot(
       Resp->SetStringField(TEXT("path"), FullPath);
       Resp->SetStringField(TEXT("screenshotPath"), FPaths::ConvertRelativePathToFull(FullPath));
     }
+    // Report which window was photographed and what else was open, so the next
+    // call can address a different one without guessing at titles.
+    Resp->SetStringField(TEXT("window"), ResolvedWindowTitle);
+    Resp->SetBoolField(TEXT("windowRestored"), bRestored);
+    AppendEditorWindowListForMcp(Resp);
     AddScreenshotMetadataForMcp(Resp, Payload);
     if (!bSaved && !bReturnBase64) {
       const FString SaveError = TEXT("Full editor window screenshot captured but failed to save, and returnBase64=false leaves no image output.");

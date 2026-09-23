@@ -2,6 +2,7 @@
 #include "Foundation/BridgeHelpers/Assets/McpAutomationBridgeHelpersAssetSaveRegistry.h"
 #include "Foundation/BridgeHelpers/Blueprints/McpAutomationBridgeHelpersBlueprintAssetLoad.h"
 #include "Foundation/BridgeHelpers/Blueprints/McpAutomationBridgeHelpersBlueprintCompilation.h"
+#include "Foundation/BridgeHelpers/Blueprints/McpAutomationBridgeHelpersBlueprintDiagnostics.h"
 #include "Foundation/HandlerUtils/McpHandlerUtils.h"
 #include "Foundation/BridgeHelpers/Responses/McpAutomationBridgeHelpersMutationEvidence.h"
 
@@ -45,7 +46,10 @@ bool HandleBlueprintCompile(const FBlueprintActionContext &Context) {
     // it (BS_UpToDate / BS_UpToDateWithWarnings) — previously the result was
     // discarded and `compiled` hardcoded to true, so a fatally broken blueprint
     // reported compiled:true (and was even saved to disk below).
-    const bool bCompiled = McpSafeCompileBlueprint(BP);
+    TSharedPtr<FJsonObject> Out = McpHandlerUtils::CreateResultObject();
+    FString FirstError;
+    const bool bCompiled =
+        McpCompileBlueprintWithDiagnostics(BP, Out, FirstError);
     bool bSaved = false;
     bool bSaveSkipped = false;
     if (bSaveAfterCompile) {
@@ -57,19 +61,24 @@ bool HandleBlueprintCompile(const FBlueprintActionContext &Context) {
       }
     }
 
-    const TCHAR *StatusName = TEXT("Unknown");
-    switch (BP->Status) {
-      case BS_UpToDate:             StatusName = TEXT("UpToDate"); break;
-      case BS_UpToDateWithWarnings: StatusName = TEXT("UpToDateWithWarnings"); break;
-      case BS_Error:                StatusName = TEXT("Error"); break;
-      case BS_Dirty:                StatusName = TEXT("Dirty"); break;
-      case BS_BeingCreated:         StatusName = TEXT("BeingCreated"); break;
-      default: break;
+    // A compile regenerates the class in memory. Left alone it does not dirty
+    // the package, so control_editor.save_all answers "0 dirty" and the caller
+    // reasonably concludes everything persisted -- while the asset on disk
+    // still carries the previous bytecode and the recompile is lost on the next
+    // editor start. Compiling from the editor UI marks the asset unsaved; do
+    // the same so the ordinary edit -> compile -> save_all workflow works.
+    if (bCompiled && !bSaved) {
+      if (UPackage *Package = BP->GetOutermost()) {
+        Package->SetDirtyFlag(true);
+        Out->SetBoolField(TEXT("pendingSave"), true);
+        Out->SetStringField(
+            TEXT("persistenceHint"),
+            TEXT("Compiled in memory. The package is now marked unsaved -- run "
+                 "control_editor.save_all, or pass saveAfterCompile: true, or "
+                 "the recompile is lost when the editor closes."));
+      }
     }
 
-    TSharedPtr<FJsonObject> Out = McpHandlerUtils::CreateResultObject();
-    Out->SetBoolField(TEXT("compiled"), bCompiled);
-    Out->SetStringField(TEXT("compilerStatus"), StatusName);
     Out->SetBoolField(TEXT("saved"), bSaved);
     if (bSaveSkipped) {
       Out->SetBoolField(TEXT("saveSkipped"), true);
@@ -88,9 +97,13 @@ bool HandleBlueprintCompile(const FBlueprintActionContext &Context) {
     AddMutationEvidence(Out, BP, CompileChanges);
     Bridge.SendAutomationResponse(
         RequestingSocket, RequestId, /*bSuccess=*/bCompiled,
-        bCompiled ? TEXT("Blueprint compiled")
-                  : TEXT("Blueprint compile FAILED — see the editor's Compiler "
-                         "Results / log for the errors."),
+        bCompiled ? FString(TEXT("Blueprint compiled"))
+                  : FString::Printf(
+                        TEXT("Blueprint compile FAILED: %s (see `diagnostics` "
+                             "for every compiler message)"),
+                        FirstError.IsEmpty()
+                            ? TEXT("the compiler reported no message")
+                            : *FirstError),
         Out, bCompiled ? FString() : FString(TEXT("COMPILE_FAILED")));
     return true;
   }

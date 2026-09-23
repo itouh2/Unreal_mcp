@@ -1,7 +1,10 @@
 #include "McpAutomationBridgeSubsystem.h"
 
+#include "Editor.h"
 #include "MCP/Transport/McpNativeTransport.h"
 #include "Core/Requests/McpRequestOriginRegistry.h"
+#include "Core/Security/McpPrequeueGate.h"
+#include "Core/Subsystem/McpAutomationBridgeSubsystemResponseEnrichment.h"
 #include "Foundation/Diagnostics/McpDiagnosticsSnapshot.h"
 #include "Foundation/McpTelemetryRegistry.h"
 #include "Core/Subsystem/McpAutomationBridgeSubsystemResponseSanitization.h"
@@ -14,6 +17,18 @@ using namespace McpAutomationBridgeSubsystemResponse;
 
 namespace
 {
+// An error CODE is a SCREAMING_SNAKE token. Anything else in that slot is a
+// human sentence a dispatch wrapper forwarded out of the handler's `error`
+// field, which is not the same thing.
+bool LooksLikeErrorCode(const FString& Candidate)
+{
+    for (const TCHAR Ch : Candidate)
+    {
+        if ((Ch < TEXT('A') || Ch > TEXT('Z')) && (Ch < TEXT('0') || Ch > TEXT('9')) && Ch != TEXT('_')) { return false; }
+    }
+    return !Candidate.IsEmpty();
+}
+
 bool IsLogAutomationEvent(const TSharedPtr<FJsonObject>& Event)
 {
     FString EventName;
@@ -78,6 +93,15 @@ void UMcpAutomationBridgeSubsystem::SendAutomationResponse(
 {
     ClearAutomationRequestCancellation(RequestId);
 
+    // The gate burns the caller's single-use consent grant BEFORE the handler
+    // runs, so a handler that refuses -- a misspelled component name, a path
+    // that resolves to nothing -- used to cost the grant for a call that
+    // changed nothing, and the retry needed a fresh describe. Hand it back on
+    // any failure; a call that succeeded keeps the burn, so replay protection
+    // is unchanged.
+    if (bSuccess) { McpPrequeueGate::ForgetConsentForRequest(RequestId); }
+    else { McpPrequeueGate::RefundConsentForRequest(RequestId); }
+
     bool bEffectiveSuccess = bSuccess;
     FString EffectiveMessage = Message;
     FString EffectiveErrorCode = ErrorCode;
@@ -85,61 +109,68 @@ void UMcpAutomationBridgeSubsystem::SendAutomationResponse(
 
     if (bSuccess && bProcessingAutomationRequest)
     {
+        // Warnings were captured alongside errors and then never read, so every
+        // "it worked, but..." the engine logged died at this line. Both are
+        // copied unconditionally now; an empty capture copies empty arrays.
         TArray<FString> CapturedErrors;
+        TArray<FString> CapturedWarnings;
         int32 TotalCapturedErrorCount = 0;
+        int32 TotalCapturedWarningCount = 0;
         bool bCapturedErrorsTruncated = false;
+        bool bCapturedWarningsTruncated = false;
         {
             FScopeLock Lock(&ErrorCaptureMutex);
-            if (CurrentErrorCapture.bHasErrors.load())
-            {
-                CapturedErrors = CurrentErrorCapture.ErrorMessages;
-                TotalCapturedErrorCount = CurrentErrorCapture.ErrorCount;
-                bCapturedErrorsTruncated = CurrentErrorCapture.bErrorMessagesTruncated;
-            }
+            const auto& Capture = CurrentErrorCapture;
+            CapturedErrors = Capture.ErrorMessages;
+            CapturedWarnings = Capture.WarningMessages;
+            TotalCapturedErrorCount = Capture.ErrorCount;
+            TotalCapturedWarningCount = Capture.WarningCount;
+            bCapturedErrorsTruncated = Capture.bErrorMessagesTruncated;
+            bCapturedWarningsTruncated = Capture.bWarningMessagesTruncated;
         }
 
-        if (CapturedErrors.Num() > 0)
+        // WORLD-01: name the world this request ran against. An actor mutation reports success for
+        // whichever world was current at that instant; if a level load then replaces it, the actor is
+        // unreachable and the receipt gives no hint. Reporting the world (and flagging a transient
+        // /Temp one) makes that detectable. PIE context wins when present, since that is the world an
+        // actor-facing request actually touched.
+        FString WorldName;
+        bool bTransientWorld = false;
+        UWorld* ContextWorld = nullptr;
+        if (GEditor)
         {
-            // Surface, don't override: engine-log errors observed during the
-            // request are ATTACHED for the caller to judge, but the handler's
-            // own verdict stands. Downgrading success here conflated transport
-            // success with asset-level warnings and produced false negatives —
-            // a handler that completed its work (node created, asset saved)
-            // was reported as failed, triggering pointless retries and
-            // undo-then-reapply flows. Handlers that can genuinely fail are
-            // responsible for reporting it themselves (e.g. blueprint_compile
-            // returns its real compile status).
-            TSharedPtr<FJsonObject> AugmentedResult = MakeShared<FJsonObject>();
-            if (Result.IsValid())
+            if (const FWorldContext* PieContext = GEditor->GetPIEWorldContext())
             {
-                for (const auto& Pair : Result->Values)
-                {
-                    AugmentedResult->SetField(Pair.Key, Pair.Value);
-                }
+                ContextWorld = PieContext->World();
             }
-
-            TArray<TSharedPtr<FJsonValue>> ErrorValues;
-            const int32 MaxErrorsInResponse = 3;
-            const int32 ErrorResponseCount =
-                FMath::Min(CapturedErrors.Num(), MaxErrorsInResponse);
-            for (int32 ErrorIndex = 0; ErrorIndex < ErrorResponseCount; ++ErrorIndex)
+            if (!ContextWorld)
             {
-                ErrorValues.Add(MakeShared<FJsonValueString>(
-                    SanitizeEngineErrorForResponse(CapturedErrors[ErrorIndex])));
+                ContextWorld = GEditor->GetEditorWorldContext().World();
             }
-            AugmentedResult->SetBoolField(TEXT("engineErrorsObserved"), true);
-            AugmentedResult->SetNumberField(
-                TEXT("engineErrorCount"),
-                TotalCapturedErrorCount);
-            AugmentedResult->SetArrayField(TEXT("engineErrors"), ErrorValues);
-            if (bCapturedErrorsTruncated || CapturedErrors.Num() > MaxErrorsInResponse)
-            {
-                AugmentedResult->SetBoolField(TEXT("engineErrorsTruncated"), true);
-            }
-            EffectiveResult = AugmentedResult;
         }
+        if (ContextWorld)
+        {
+            const UPackage* WorldPackage = ContextWorld->GetOutermost();
+            WorldName = WorldPackage ? WorldPackage->GetName() : ContextWorld->GetName();
+            bTransientWorld = WorldName.StartsWith(TEXT("/Temp/"));
+        }
+
+        EffectiveResult = McpBuildEnrichedResponseResult(
+            Result, WorldName, bTransientWorld, CapturedErrors,
+            TotalCapturedErrorCount, bCapturedErrorsTruncated, CapturedWarnings,
+            TotalCapturedWarningCount, bCapturedWarningsTruncated);
     }
 
+    // Dozens of dispatch wrappers hand the handler's `error` sentence straight
+    // to the ErrorCode parameter, so a failure rendered as
+    // `Error [Parent component not found: X]: execute failed` - the message in
+    // the code slot and a placeholder in the message slot. Normalizing at the
+    // one funnel every response passes through fixes all of them at once.
+    if (!bEffectiveSuccess && !LooksLikeErrorCode(EffectiveErrorCode))
+    {
+        if (EffectiveMessage.IsEmpty()) { EffectiveMessage = EffectiveErrorCode; }
+        EffectiveErrorCode.Reset();
+    }
     if (!bEffectiveSuccess)
     {
         EffectiveMessage = SanitizeEngineErrorForResponse(EffectiveMessage);
@@ -220,8 +251,7 @@ void UMcpAutomationBridgeSubsystem::SendAutomationError(
     const FString& Message,
     const FString& ErrorCode)
 {
-    const FString ResolvedError =
-        ErrorCode.IsEmpty() ? TEXT("AUTOMATION_ERROR") : ErrorCode;
+    const FString ResolvedError = ErrorCode.IsEmpty() ? TEXT("AUTOMATION_ERROR") : ErrorCode;
     UE_LOG(
         LogMcpAutomationBridgeSubsystem,
         Warning,

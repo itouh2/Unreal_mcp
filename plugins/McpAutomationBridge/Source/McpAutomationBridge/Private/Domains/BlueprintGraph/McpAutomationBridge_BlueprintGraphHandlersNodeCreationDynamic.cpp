@@ -178,6 +178,13 @@ void CreateDynamicNode(
         return;
     }
 
+    // Subsystem getters keep their type in a UPROPERTY rather than a pin, so
+    // they must be seeded at construction; see TryCreateSubsystemNode.
+    if (TryCreateSubsystemNode(Context, NodeClass, X, Y))
+    {
+        return;
+    }
+
     // DynamicCast nodes must have TargetType set, or they render as an
     // unusable "Bad cast node" (wildcard Object pin, no typed "As <Class>"
     // output). Read the requested class (with legacy fallbacks) and resolve it.
@@ -217,11 +224,12 @@ void CreateDynamicNode(
         return;
     }
 
-    // CreateWidget nodes carry the widget class as a property on the node
-    // (UK2Node_CreateWidget::WidgetType). Without it the node spawns with a
-    // generic UUserWidget Class pin and Return Value, so callers can't wire
-    // it to anything specific (e.g. an Add to Viewport on the typed widget,
-    // or its bindings). Resolve the requested class and assign it, then let
+    // CreateWidget nodes carry the widget class on their "Class" input PIN.
+    // UK2Node_CreateWidget has no WidgetType property -- the reflection write
+    // that used to live here found nothing and did nothing, so every node came
+    // back classless: the Blueprint stopped compiling with "Spawn node Create
+    // Widget must have a class specified", and the Return Value stayed a bare
+    // UUserWidget nothing could be wired to. Write the pin instead, then let
     // ReconstructNode rebuild pins with the correct typed Return Value.
 #if MCP_HAS_K2NODE_CREATEWIDGET
     if (NodeClass->IsChildOf(UK2Node_CreateWidget::StaticClass()))
@@ -248,16 +256,15 @@ void CreateDynamicNode(
 
         FGraphNodeCreator<UK2Node_CreateWidget> WidgetCreator(*Context.TargetGraph);
         UK2Node_CreateWidget* WidgetNode = WidgetCreator.CreateNode(false);
-        // Bind the widget class on the underlying property so the node knows
-        // its concrete type before pin allocation.
-        if (FProperty* ClassProp = WidgetNode->GetClass()->FindPropertyByName(
-                TEXT("WidgetType")))
+        // Allocate now so the Class pin exists to be written; Finalize() only
+        // allocates when the pin list is still empty, so it will not undo this.
+        WidgetNode->AllocateDefaultPins();
+        if (UEdGraphPin* ClassPin =
+                WidgetNode->FindPin(TEXT("Class"), EGPD_Input))
         {
-            if (FClassProperty* TypedProp = CastField<FClassProperty>(ClassProp))
-            {
-                TypedProp->SetObjectPropertyValue_InContainer(
-                    WidgetNode, ResolvedWidget);
-            }
+            ClassPin->DefaultObject = ResolvedWidget;
+            ClassPin->DefaultValue.Reset();
+            WidgetNode->ReconstructNode();
         }
         Context.FinalizeNode(WidgetCreator, WidgetNode, X, Y);
         return;
@@ -292,19 +299,40 @@ void CreateDynamicNode(
 
     Context.TargetGraph->AddNode(NewNode, false, false);
     NewNode->CreateNewGuid();
-    NewNode->PostPlacedNewNode();
-    // Some K2 nodes (e.g. UK2Node_FunctionResult) already allocate their default
-    // pins inside PostPlacedNewNode(); calling AllocateDefaultPins() again then
-    // duplicates them — a FunctionResult ends up with two 'execute' input pins,
-    // one of which stays unconnected and trips a compiler warning. Mirror the
-    // engine's own FGraphNodeCreator::Finalize guard and only allocate when the
-    // node has no pins yet.
+    // ROOT-CAUSE FIX (mirrors ConstructObjectNodes): allocate pins BEFORE
+    // PostPlacedNewNode(). Node families such as UK2Node_SpawnActorFromClass read
+    // checked pin accessors inside PostPlacedNewNode() (GetScaleMethodPin() =>
+    // FindPinChecked()), which check()-asserts the editor when the pin list is
+    // still empty (EdGraphNode.h:586). Allocating first makes those accessors safe;
+    // the guard below still avoids duplicating pins for nodes that allocate their
+    // own inside PostPlacedNewNode() (e.g. UK2Node_FunctionResult).
     if (NewNode->Pins.Num() == 0)
     {
         NewNode->AllocateDefaultPins();
     }
+    NewNode->PostPlacedNewNode();
     NewNode->NodePosX = X;
     NewNode->NodePosY = Y;
+    // Refuse stacked placements: estimate from the allocated pins and pull the
+    // node back out on overlap, failing with coordinates + free slots.
+    {
+        float NewWidth = 0.0f;
+        float NewHeight = 0.0f;
+        McpGraphLayout::EstimateNodeExtent(*NewNode, NewWidth, NewHeight);
+        TArray<McpGraphLayout::FGraphNodeOccupant> Overlapping;
+        if (McpGraphLayout::CheckGraphNodeOverlap(
+                Context.TargetGraph, X, Y, NewWidth, NewHeight, Overlapping,
+                McpGraphLayout::NodeOverlapPadding, NewNode))
+        {
+            Context.TargetGraph->RemoveNode(NewNode);
+            FString OverlapMessage;
+            TSharedPtr<FJsonObject> OverlapDetails =
+                McpGraphLayout::BuildNodeOverlapDetails(
+                    X, Y, NewWidth, NewHeight, Overlapping, OverlapMessage);
+            Context.SendErrorWithDetails(OverlapMessage, TEXT("NODE_OVERLAP"), OverlapDetails);
+            return;
+        }
+    }
     FBlueprintEditorUtils::MarkBlueprintAsModified(Context.Blueprint);
     SaveLoadedAssetThrottled(Context.Blueprint);
 

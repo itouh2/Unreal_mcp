@@ -1,3 +1,6 @@
+#include "MCP/Gateway/McpNativeGatewayDescribe.h"
+#include "Foundation/HandlerUtils/McpHandlerUtilsJson.h"
+#include "Misc/Guid.h"
 // McpNativeGatewayDescribe.cpp — capability describe for the unreal gateway.
 //
 // Three levels, mirroring the TypeScript discovery reference exactly:
@@ -10,7 +13,6 @@
 // when it is unavailable the caller receives a typed startup error rather than
 // substituted metadata.
 
-#include "MCP/Gateway/McpNativeGatewayDescribe.h"
 #include "MCP/Gateway/McpNativeGatewayGuidance.h"
 #include "MCP/Gateway/McpNativeGatewayCapabilityStore.h"
 #include "MCP/Gateway/McpNativeGatewaySearch.h"
@@ -34,7 +36,7 @@ bool IsRequired(const TSharedPtr<FJsonObject>& Schema, const FString& Name)
 	for (const TSharedPtr<FJsonValue>& Entry : *Required)
 	{
 		FString Value;
-		if (Entry.IsValid() && Entry->TryGetString(Value) && Value.Equals(Name, ESearchCase::CaseSensitive)) return true;
+		if (Entry.IsValid() && McpHandlerUtils::TryGetJsonValueString(Entry, Value) && Value.Equals(Name, ESearchCase::CaseSensitive)) return true;
 	}
 	return false;
 }
@@ -162,6 +164,11 @@ TSharedPtr<FJsonObject> ConsentGrant(const FMcpCapabilityRecord& Record)
 	auto Grant = MakeShared<FJsonObject>();
 	Grant->SetStringField(TEXT("capability"), Record.Id);
 	Grant->SetStringField(TEXT("acknowledge"), bElevated ? TEXT("elevated") : TEXT("explicit"));
+	// Single-use binding: each describe mints a fresh nonce and the prequeue
+	// gate burns it on first acceptance, so replaying a grant object is refused
+	// with CONSENT_REUSED. Additive to the two base fields, so older callers
+	// that omit it keep the previous capability-match-only behaviour.
+	Grant->SetStringField(TEXT("nonce"), FGuid::NewGuid().ToString(EGuidFormats::DigitsWithHyphens));
 	return Grant;
 }
 
@@ -275,6 +282,10 @@ TSharedPtr<FJsonObject> McpGatewayDescribeCapability(
 		auto Out = MakeShared<FJsonObject>();
 		Out->SetStringField(TEXT("capability"), Record->Id);
 		Out->SetStringField(TEXT("catalogRevision"), Revision);
+		// Same capability, same consent requirement. Omitting the grant here made
+		// the compact per-parameter describe useless for any consented write: the
+		// caller still had to pay for a full-size describe just to mint a nonce.
+		if (const TSharedPtr<FJsonObject> Grant = ConsentGrant(*Record)) Out->SetObjectField(TEXT("consentGrant"), Grant);
 		Out->SetStringField(TEXT("message"), TEXT("Exact per-action parameter schema. Pass it under params on execute."));
 		Out->SetStringField(TEXT("operation"), TEXT("describe"));
 		Out->SetStringField(TEXT("param"), Input.Param);

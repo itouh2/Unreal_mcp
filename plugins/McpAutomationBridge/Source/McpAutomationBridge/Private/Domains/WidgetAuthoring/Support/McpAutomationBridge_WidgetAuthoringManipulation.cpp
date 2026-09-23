@@ -1,5 +1,7 @@
 #include "Domains/WidgetAuthoring/McpAutomationBridge_WidgetAuthoringActions.h"
+#include "Core/Compatibility/McpVersionCompatibility.h"
 #include "Domains/WidgetAuthoring/Support/McpAutomationBridge_WidgetAuthoringBlueprintLoading.h"
+#include "Domains/WidgetAuthoring/Support/McpAutomationBridge_WidgetAuthoringTreeMutation.h"
 
 #include "Blueprint/WidgetTree.h"
 #include "Components/CanvasPanelSlot.h"
@@ -50,7 +52,23 @@ bool HandleWidgetAuthoringManipulation(
             return true;
         }
 
-        WidgetBP->WidgetTree->RemoveWidget(TargetWidget);
+        // RemoveWidget only detaches from the parent slot -- the widget stays
+        // outered to the WidgetTree, so the compiler still walks it. That is
+        // what made removal trip BOTH paired ensures: it found a widget whose
+        // GUID we had just dropped ("was added but did not get a GUID"),
+        // assigned a fresh one, and the widget then really went -- leaving an
+        // orphan that ensured "was deleted but still has a GUID" on every
+        // later load. Detach, drop the GUIDs, then move the widget out to the
+        // transient package so the recompile below cannot see it at all.
+        if (!WidgetBP->WidgetTree->RemoveWidget(TargetWidget))
+        {
+            Subsystem.SendAutomationError(RequestingSocket, RequestId, FString::Printf(TEXT("Widget '%s' could not be detached from its parent"), *SlotName), TEXT("REMOVE_FAILED"));
+            return true;
+        }
+        WidgetAuthoringHelpers::UnregisterWidgetAndChildren(WidgetBP, TargetWidget);
+        TargetWidget->Rename(nullptr, GetTransientPackage(),
+                             REN_DontCreateRedirectors | REN_DoNotDirty);
+        TargetWidget->MarkAsGarbage();
         WidgetAuthoringHelpers::MarkWidgetBlueprintModifiedAndSave(WidgetBP);
 
         ResultJson->SetBoolField(TEXT("success"), true);
@@ -90,6 +108,7 @@ bool HandleWidgetAuthoringManipulation(
         // Dogfood #192: a bare UObject::Rename left WidgetVariableNameToGuidMap keyed by the old
         // name, so the next compile ensured twice ("was added but did not get a GUID" / "was
         // deleted but still has a GUID"). Mirror FWidgetBlueprintEditorUtils::RenameWidget.
+        // The map only exists from UE 5.6; before that there is nothing keyed to fix up.
         if (WidgetBP->WidgetTree->FindWidget(FName(*NewName)) != nullptr)
         {
             Subsystem.SendAutomationError(RequestingSocket, RequestId, FString::Printf(TEXT("A widget named '%s' already exists"), *NewName), TEXT("ALREADY_EXISTS"));
@@ -101,11 +120,13 @@ bool HandleWidgetAuthoringManipulation(
         TargetWidget->Modify();
         TargetWidget->Rename(*NewName, nullptr, REN_DontCreateRedirectors);
         TargetWidget->SetDisplayLabel(NewName);
+#if MCP_HAS_WIDGET_VARIABLE_GUID_MAP
         FGuid WidgetGuid;
         if (WidgetBP->WidgetVariableNameToGuidMap.RemoveAndCopyValue(OldFName, WidgetGuid))
         {
             WidgetBP->WidgetVariableNameToGuidMap.Add(NewFName, WidgetGuid);
         }
+#endif
         if (TargetWidget->bIsVariable)
         {
             FBlueprintEditorUtils::ReplaceVariableReferences(WidgetBP, OldFName, NewFName);
@@ -200,7 +221,28 @@ bool HandleWidgetAuthoringManipulation(
         ResultJson->SetStringField(TEXT("widgetPath"), WidgetPath);
         ResultJson->SetStringField(TEXT("slotName"), SlotName);
         ResultJson->SetStringField(TEXT("widgetClass"), TargetWidget->GetClass()->GetName());
-        ResultJson->SetBoolField(TEXT("isVisible"), TargetWidget->IsVisible());
+        // UWidget::IsVisible() asks the LIVE Slate widget, which a design-time
+        // template in a Widget Blueprint does not have -- so this answered
+        // false for every widget in the tree, including ones plainly on screen
+        // at runtime, and reading it back after set_visibility never agreed
+        // with what was written. Report the Visibility enum that set_visibility
+        // actually writes and that the designer shows, and derive isVisible
+        // from it so the boolean means what a reader assumes.
+        const ESlateVisibility SlotVisibility = TargetWidget->GetVisibility();
+        auto VisibilityName = [SlotVisibility]() -> const TCHAR * {
+            switch (SlotVisibility)
+            {
+            case ESlateVisibility::Collapsed: return TEXT("Collapsed");
+            case ESlateVisibility::Hidden: return TEXT("Hidden");
+            case ESlateVisibility::HitTestInvisible: return TEXT("HitTestInvisible");
+            case ESlateVisibility::SelfHitTestInvisible: return TEXT("SelfHitTestInvisible");
+            default: return TEXT("Visible");
+            }
+        };
+        ResultJson->SetStringField(TEXT("visibility"), VisibilityName());
+        ResultJson->SetBoolField(TEXT("isVisible"),
+                                 SlotVisibility != ESlateVisibility::Collapsed &&
+                                     SlotVisibility != ESlateVisibility::Hidden);
 
         if (UPanelSlot* Slot = TargetWidget->Slot)
         {

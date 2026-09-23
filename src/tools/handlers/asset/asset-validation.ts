@@ -1,4 +1,8 @@
 import { cleanObject } from '../../../utils/serialization/safe-json.js';
+import {
+  HOST_PATH_PATTERN,
+  isTraversalPath,
+} from '../../../utils/paths/content-path-policy.js';
 
 const VALID_ASSET_ACTIONS = new Set([
   'list', 'import', 'list_content_sources', 'migrate_assets',
@@ -14,6 +18,14 @@ const VALID_ASSET_ACTIONS = new Set([
   'connect_material_pins', 'break_material_connections', 'get_material_node_details',
   'source_control_checkout', 'source_control_submit', 'source_control_enable', 'get_source_control_state',
   'analyze_graph', 'get_asset_graph',
+  // Marketplace (Fab/Megascans/query/import): folded legacy pairs of
+  // asset.query_marketplace and asset.import_marketplace_asset. The bridge
+  // dispatches the old names (they are handler-visible actions, not a
+  // hypothetical gate), so the allowlist must name every shipped name.
+  'query_marketplace', 'get_fab_listing_details', 'list_fab_downloads',
+  'list_fab_library', 'search_fab_listings', 'list_megascans_library',
+  'import_marketplace_asset', 'add_fab_asset_to_project', 'download_fab_asset',
+  'import_megascans_asset',
   // Struct authoring (first-class Blueprint Struct support, issue #510)
   'create_struct', 'get_struct', 'read_struct', 'list_struct_members',
   'add_struct_member', 'remove_struct_member', 'rename_struct_member',
@@ -33,14 +45,11 @@ const VALID_ASSET_ACTIONS = new Set([
   'get_instanced_struct_property', 'set_instanced_struct_property'
 ]);
 
-const TRAVERSAL_PATTERNS = [
-  '../', '..\\',
-  '/etc/', '/proc/', '/sys/',
-  'c:\\', 'c:/',
-  '\\\\', '//',
-  '%2e%2e', '%252e',
-  '....//', '....\\'
-];
+// Filter-evasion spellings that survive a naive `..` strip. `..` itself and
+// the host-path roots are the SHARED policy's job (content-path-policy.ts);
+// the second list that used to live here caught only the `c:` drive letter, so
+// `d:\payload` walked straight through every asset handler.
+const EVASION_PATTERNS = ['....//', '....\\', '//'];
 
 export function isValidAssetAction(action: string): boolean {
   return VALID_ASSET_ACTIONS.has(action);
@@ -52,8 +61,13 @@ export function validAssetActionMessage(): string {
 
 function isPathTraversalAttempt(path: string): boolean {
   if (!path || typeof path !== 'string') return false;
-  const normalized = path.toLowerCase();
-  return TRAVERSAL_PATTERNS.some(pattern => normalized.includes(pattern));
+  // No ENCODED_TRAVERSAL_PATTERN clause: isTraversalPath decodes to a fixed
+  // point, so it already subsumes that test and strictly more besides.
+  return (
+    isTraversalPath(path)
+    || HOST_PATH_PATTERN.test(path)
+    || EVASION_PATTERNS.some((pattern) => path.includes(pattern))
+  );
 }
 
 export function validatePathSecurity(pathValue: string | undefined, paramName: string): Record<string, unknown> | null {

@@ -22,6 +22,7 @@ import {
 } from '../../scripts/canonical-registry/native-shards.js';
 import type { CapabilityRecord } from '../../src/tools/catalog/capabilities/model.js';
 import { RECORDS, SORTED } from './canonical-registry-data-generation-fixtures.js';
+import { ALL_CAPABILITY_RECORD_COUNT } from '../../src/tools/catalog/capabilities/records/aggregate.js';
 
 describe('native capability shard plan', () => {
   const shards = buildNativeCapabilityShards(SORTED);
@@ -41,9 +42,9 @@ describe('native capability shard plan', () => {
     expect(symbols.size).toBe(23);
   });
 
-  it('covers all 1,384 COMPLETE records exactly once (no schema boolean; full record)', () => {
+  it('covers every ALL_CAPABILITY_RECORD_COUNT record exactly once (no schema boolean; full record)', () => {
     const total = shards.reduce((n, s) => n + s.count, 0);
-    expect(total).toBe(1401);
+    expect(total).toBe(ALL_CAPABILITY_RECORD_COUNT);
     const seen = new Set<string>();
     for (const s of shards) {
       const parsed = JSON.parse(s.json) as { record: CapabilityRecord }[];
@@ -63,7 +64,7 @@ describe('native capability shard plan', () => {
         expect((e as unknown as { sch?: unknown }).sch).toBeUndefined();
       }
     }
-    expect(seen.size).toBe(1401);
+    expect(seen.size).toBe(ALL_CAPABILITY_RECORD_COUNT);
   });
 
   it('is deterministically ordered: shards by parent, entries by canonical id', () => {
@@ -110,7 +111,7 @@ describe('native capability shard plan', () => {
         `{ TEXT("${s.parent}"), Detail::${s.symbol}_CHUNKS, ${s.chunks.length}, ${s.count} },`,
       );
     }
-    expect(header).toContain('23 shards, 1401 records total.');
+    expect(header).toContain(`23 shards, ${ALL_CAPABILITY_RECORD_COUNT} records total.`);
     expect(header).toContain('inline const TCHAR* CatalogRevision() { return TEXT("revision00000000"); }');
   });
 

@@ -1,22 +1,11 @@
-import type { Logger } from '../utils/logging/logger.js';
+import { bridgeNotConnectedMessage, describeBridgeFailure } from './bridge-config.js';
 import type {
-    AutomationBridgeEvents
+    ConnectionControlDependencies
 } from './types.js';
 
-export interface ConnectionLifecycleDependencies {
+export interface ConnectionLifecycleDependencies extends ConnectionControlDependencies {
     readonly enabled: boolean;
     readonly connectionTimeoutMs: number;
-    readonly log: Logger;
-    readonly startClient: () => void;
-    readonly abortPendingConnection: (reason: Error) => void;
-    readonly once: <K extends keyof AutomationBridgeEvents>(
-        event: K,
-        listener: AutomationBridgeEvents[K]
-    ) => void;
-    readonly off: <K extends keyof AutomationBridgeEvents>(
-        event: K,
-        listener: AutomationBridgeEvents[K]
-    ) => void;
 }
 
 /**
@@ -65,8 +54,10 @@ export class ConnectionLifecycle {
             if (message === 'Lazy connection timeout') {
                 this.abort(new Error('Lazy connection timeout'));
             }
+            // The full exception stays in the log; the caller only ever sees the
+            // closed-set reason, never OS, TLS or peer-supplied text.
             this.deps.log.error('Lazy connection failed', error);
-            throw new Error(`Failed to establish connection to Unreal Engine: ${message}`);
+            throw new Error(bridgeNotConnectedMessage(this.deps.describeTarget?.(), describeBridgeFailure(error)));
         }
     }
 

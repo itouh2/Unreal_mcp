@@ -1,10 +1,12 @@
 /**
- * build_environment pilot catalog: exactly 150 canonical CapabilityRecord
- * entries aggregated from family-sharded data files.
+ * build_environment catalog: 150 authored CapabilityRecordSource entries
+ * aggregated from family-sharded data files, folded by BUILD_ENVIRONMENT_FOLDS
+ * into the 40 shipped records.
  *
- * Each record is a CapabilityRecordSource (hashes are computed at parse time
- * by createCapabilityRecord / parseCapabilityCatalog). The canonical IDs
- * exactly equal the 150-action source set from the normalization inventory.
+ * Each authored entry is a CapabilityRecordSource (hashes are computed at parse
+ * time by createCapabilityRecord / parseCapabilityCatalog). The authored set
+ * equals the 150-action source set from the normalization inventory; the folded
+ * count is pinned by tests/unit/build-environment-pilot-records.test.ts.
  *
  * Family shards:
  *   landscape      16   foliage       14   procedural      5
@@ -25,8 +27,11 @@ import { RENDER_SCREEN_RECORDS } from './render-screen.data.js';
 import { SPLINE_RECORDS } from './spline.data.js';
 import { WATER_RECORDS } from './water.data.js';
 import { WEATHER_RECORDS } from './weather.data.js';
+import { applyFolds } from '../shared/fold.js';
+import { BUILD_ENVIRONMENT_FOLDS } from '../folds/build-environment.folds.js';
 
-export const BUILD_ENVIRONMENT_RECORDS: readonly CapabilityRecordSource[] = [
+/** The authored records before folding; per-action contract tests pin these. */
+export const BUILD_ENVIRONMENT_UNFOLDED_SOURCES: readonly CapabilityRecordSource[] = [
   ...LANDSCAPE_RECORDS,
   ...FOLIAGE_RECORDS,
   ...PROCEDURAL_RECORDS,
@@ -39,6 +44,8 @@ export const BUILD_ENVIRONMENT_RECORDS: readonly CapabilityRecordSource[] = [
   ...WEATHER_RECORDS,
   ...WATER_RECORDS,
 ];
+
+export const BUILD_ENVIRONMENT_RECORDS: readonly CapabilityRecordSource[] = applyFolds(BUILD_ENVIRONMENT_UNFOLDED_SOURCES, BUILD_ENVIRONMENT_FOLDS, 'build_environment');
 
 export const BUILD_ENVIRONMENT_EXPECTED_IDS: readonly string[] =
   BUILD_ENVIRONMENT_RECORDS.map((r) => r.id);

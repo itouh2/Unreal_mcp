@@ -1,13 +1,12 @@
 /**
  * tests/unit/capability-records/utility-contract-honesty.test.ts
  *
- * TASK 29 GATE - zero-tolerance output/input contract honesty for the 128
- * utility records built by `records/utility/helpers.ts`.
+ * TASK 29 GATE - zero-tolerance output/input contract honesty for the utility
+ * records built by `records/utility/helpers.ts` (EXPECTED_UTILITY_RECORDS below).
  *
- * The aggregate Task 29 gate (`schema-compilation.test.ts`) PINS this
- * debt at its historical magnitude so it cannot grow. This gate is the opposite
- * polarity: it demands the debt be ZERO within the utility lane, so the repair
- * cannot silently regress once made.
+ * `capability-metadata-audit.test.ts` RATCHETS the catalog-wide sealed-stub debt
+ * so it cannot grow. This gate is the opposite polarity: it demands the debt be
+ * ZERO within the utility lane, so the repair cannot silently regress once made.
  *
  * Scope is deliberately narrow - `manage_audio` + `manage_networking` only -
  * so it never collides with the parallel manage-asset / migration / native
@@ -32,7 +31,7 @@ import {
 import { isRecord as isRecordObject } from '../../../src/utils/validation/type-guards.js';
 
 const UTILITY_RECORDS = [...MANAGE_AUDIO_RECORDS, ...MANAGE_NETWORKING_RECORDS];
-const EXPECTED_UTILITY_RECORDS = 128;
+const EXPECTED_UTILITY_RECORDS = 32;
 
 /** Round-trip so branded/readonly values compare and validate as plain data. */
 const plain = (value: unknown): unknown => JSON.parse(JSON.stringify(value));
@@ -46,7 +45,7 @@ const SUCCESS_DESCRIPTION = 'Whether the action succeeded.';
 const MESSAGE_DESCRIPTION = 'Human-readable result message.';
 
 describe('Task 29 utility lane - the record universe under test', () => {
-  it('covers exactly the 128 utility records owned by the two utility parents', () => {
+  it('covers exactly the 32 utility records owned by the two utility parents', () => {
     expect(UTILITY_RECORDS.length).toBe(EXPECTED_UTILITY_RECORDS);
     const parents = [...new Set(UTILITY_RECORDS.map((r) => String(r.routing.parentTool)))].sort();
     expect(parents).toEqual(['manage_audio', 'manage_networking']);

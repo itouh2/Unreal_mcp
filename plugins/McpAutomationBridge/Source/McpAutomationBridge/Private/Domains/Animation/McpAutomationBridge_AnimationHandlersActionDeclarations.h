@@ -28,6 +28,8 @@ bool HandleAnimationCreateAnimationAssetAction(FActionContext &Context,
                const TSharedPtr<FJsonObject> &Payload);
 bool HandleAnimationSetupRetargetingAction(FActionContext &Context,
                const TSharedPtr<FJsonObject> &Payload);
+bool HandleAnimationSkinMeshToSkeletonAction(FActionContext &Context,
+               const TSharedPtr<FJsonObject> &Payload);
 bool HandleAnimationPlayMontageAliasAction(FActionContext &Context,
                const TSharedPtr<FJsonObject> &Payload);
 bool HandleAnimationAddNotifyAction(FActionContext &Context,
@@ -89,12 +91,6 @@ bool HandleAnimationAddCachedPoseAction(FActionContext &Context,
 bool HandleAnimationAddSlotNodeAction(FActionContext &Context,
                const TSharedPtr<FJsonObject> &Payload);
 bool HandleAnimationCreateControlRigAction(FActionContext &Context,
-               const TSharedPtr<FJsonObject> &Payload);
-bool HandleAnimationAddControlAction(FActionContext &Context,
-               const TSharedPtr<FJsonObject> &Payload);
-bool HandleAnimationAddRigUnitAction(FActionContext &Context,
-               const TSharedPtr<FJsonObject> &Payload);
-bool HandleAnimationConnectRigElementsAction(FActionContext &Context,
                const TSharedPtr<FJsonObject> &Payload);
 bool HandleAnimationCreatePoseLibraryAction(FActionContext &Context,
                const TSharedPtr<FJsonObject> &Payload);

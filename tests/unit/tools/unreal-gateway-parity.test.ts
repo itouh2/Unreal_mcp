@@ -86,14 +86,20 @@ describe('gateway error-code parity with native McpNativeGateway', () => {
     expect(result.message).toBe("Tool 'manage_asset' is disabled or unavailable.");
   });
 
-  it('rejects params that override action with the native INVALID_PARAMS message', async () => {
-    const result = await handleUnrealGatewayCall(
+  it('rejects params that conflict with the gateway action, and strips a matching one', async () => {
+    const conflict = await handleUnrealGatewayCall(
       { operation: 'execute', tool: 'manage_tools', action: 'get_status', params: { action: 'hack' } },
       makeContext(new Logger('parity', 'error'))
     ) as Record<string, unknown>;
-    expect(result.success).toBe(false);
-    expect(result.errorCode).toBe('INVALID_PARAMS');
-    expect(result.message).toBe('params must not override action or subAction. Supply the selected action at the gateway level.');
+    expect(conflict.success).toBe(false);
+    expect(conflict.errorCode).toBe('INVALID_PARAMS');
+    expect(conflict.message).toBe('params must not override action or subAction. Supply the selected action at the gateway level.');
+
+    const echoed = await handleUnrealGatewayCall(
+      { operation: 'execute', tool: 'manage_tools', action: 'list_tools', params: { action: 'list_tools' } },
+      makeContext(new Logger('parity', 'error'))
+    ) as Record<string, unknown>;
+    expect(echoed.errorCode).not.toBe('INVALID_PARAMS');
   });
 
   it('rejects non-object params with the native INVALID_PARAMS message', async () => {
@@ -113,7 +119,7 @@ describe('gateway error-code parity with native McpNativeGateway', () => {
     ) as Record<string, unknown>;
     expect(result.success).toBe(false);
     expect(result.errorCode).toBe('UNDECLARED_PARAMETER');
-    expect(result.message).toBe("Undeclared parameter 'bogus' for manage_tools.get_status. Call describe before execution.");
+    expect(result.message).toBe("Undeclared parameter 'bogus' (allowed: action) for manage_tools.get_status. Call describe before execution.");
     expect(Array.isArray(result.allowedParameters)).toBe(true);
   });
 

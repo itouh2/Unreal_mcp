@@ -1,9 +1,11 @@
 /**
- * manage_blueprint pilot capability records - 104 canonical records.
+ * manage_blueprint capability records - 121 authored CapabilityRecordSource
+ * entries, folded by MANAGE_BLUEPRINT_FOLDS into MANAGE_BLUEPRINT_RECORDS.
  *
- * 39 core (lifecycle, scs, variables, graph, functions, probe) +
- * 65 widget (lifecycle, panels, content, game-ui, templates, layout,
- * bindings, animation, info).
+ * 39 core (lifecycle 6, scs 8, variables 6, graph-nodes 9, graph-pins 5,
+ * functions 4, probe 1) + 82 widget (lifecycle, panels, content, game-ui,
+ * templates, layout, bindings, animation, info). The authored total is pinned
+ * by parent-metadata.test.ts.
  *
  * 21 hidden operations have explicit route dispositions (promote/map/remove)
  * verified in tests against the normalization inventory:
@@ -12,8 +14,9 @@
  * - 1 graph remove route (get_nodes: orphaned/dead)
  * - create_widget map alias encoded on create_widget_blueprint
  *
- * The catalog is validated via createCapabilityRecord (Zod + hash) in tests.
- * Do NOT import at runtime; this is a pilot inspection artifact.
+ * Every record is validated via createCapabilityRecord (Zod + hash) at module
+ * load. This module IS on the runtime path: retrieval/aggregate.ts imports
+ * MANAGE_BLUEPRINT_RECORDS and records/unfolded.ts imports the unfolded sources.
  */
 import type { CapabilityRecord, CapabilityRecordSource } from '../../index.js';
 import { createCapabilityRecord } from '../../index.js';
@@ -33,8 +36,11 @@ import { WIDGET_LAYOUT_RECORDS } from './widget-layout.js';
 import { WIDGET_LIFECYCLE_RECORDS } from './widget-lifecycle.js';
 import { WIDGET_PANELS_RECORDS } from './widget-panels.js';
 import { WIDGET_TEMPLATES_RECORDS } from './widget-templates.js';
+import { applyFolds } from '../shared/fold.js';
+import { MANAGE_BLUEPRINT_FOLDS } from '../folds/manage-blueprint.folds.js';
 
-const SOURCES: readonly CapabilityRecordSource[] = [
+/** The authored records before folding; per-action contract tests pin these. */
+export const MANAGE_BLUEPRINT_UNFOLDED_SOURCES: readonly CapabilityRecordSource[] = [
   ...BLUEPRINT_LIFECYCLE_RECORDS,
   ...SCS_COMPONENTS_RECORDS,
   ...VARIABLES_METADATA_RECORDS,
@@ -52,6 +58,8 @@ const SOURCES: readonly CapabilityRecordSource[] = [
   ...WIDGET_ANIMATION_RECORDS,
   ...WIDGET_INFO_RECORDS,
 ];
+
+const SOURCES: readonly CapabilityRecordSource[] = applyFolds(MANAGE_BLUEPRINT_UNFOLDED_SOURCES, MANAGE_BLUEPRINT_FOLDS, 'manage_blueprint');
 
 
 export const MANAGE_BLUEPRINT_RECORDS: readonly CapabilityRecord[] = SOURCES.map((source) =>

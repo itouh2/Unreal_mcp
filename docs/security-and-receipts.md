@@ -187,33 +187,37 @@ Hazardous operations go through the wrappers in `Private/Safety/`
 `UPackage::SavePackage()` calls are forbidden and a source-contract test fails
 the build if one appears.
 
+## Dependency advisory posture
+
+`npm audit --omit=dev` is a blocking gate in CI at `--audit-level=moderate`, so
+a moderate-or-worse advisory on the production dependency tree fails the build.
+That gate, not this page, is the current answer to "does an advisory reach
+shipped code" — its verdict changes whenever the advisory database does, which
+is why no count is written down here.
+
+The full-tree audit (`npm audit --audit-level=moderate`, dev dependencies
+included) runs alongside it as `continue-on-error`. Dev-tree advisories are
+reported, never gated: that tooling is not installed by a consumer of this
+package. Both live in the `dependency-audit` job rather than inside `lint`,
+so an advisory published upstream cannot take the deterministic gates red with
+it.
+
+This section previously recorded `GHSA-frvp-7c67-39w9` — path traversal in
+`serve-static` on Windows via an encoded backslash (`%5C`) — on the production
+path through `@modelcontextprotocol/sdk` (pinned at exactly 1.29.0) →
+`@hono/node-server`, with its exploitability in this product explicitly
+unassessed, and the blocking gate narrowed to `high` to tolerate it. It no
+longer reports against this lockfile; the SDK pin is unchanged, so the resolved
+transitive versions are what moved, not this project's direct dependencies. The
+gate is back at `moderate`.
+
 ## Known security posture gaps
 
-Two gaps are carried openly rather than closed, because closing either one
-requires a decision this project is not authorized to take alone. Both are
-recorded in `.omo/evidence/task-64-pure-unreal-mcp-implementation.json`. The
-section below additionally records the advisory fixed in 0.5.30 so its
-remediation stays on the record.
-
-### A shipped dependency carries an advisory
-
-`npm audit --audit-level=moderate` exits **1** against this tree: 7 advisories,
-2 moderate and 5 high.
-
-| Advisory | Path | Reaches users |
-| --- | --- | --- |
-| `GHSA-frvp-7c67-39w9` — path traversal in `serve-static` on Windows via an encoded backslash (`%5C`) | production: `@modelcontextprotocol/sdk` (pinned at exactly 1.29.0) → `@hono/node-server` | **yes** |
-| `GHSA-mh99-v99m-4gvg` — unbounded expansion in `brace-expansion` | dev only: the ESLint `minimatch` chain | no |
-
-The 5 high-severity findings are all the ESLint development chain and are never
-installed by a consumer of this package. The moderate one is different: it sits
-on the production path, so it ships in the bytes a user installs. **Its
-exploitability in this product has not been assessed** — no lane audited
-whether the vulnerable `serve-static` route is reachable here, and absence of
-an assessment is not evidence of safety.
-
-Clearing it requires moving off the pinned SDK version, which is a breaking
-dependency change. That decision is not taken here.
+Gaps are carried openly rather than closed when closing one requires a decision
+this project is not authorized to take alone. They are recorded in
+`.omo/evidence/task-64-pure-unreal-mcp-implementation.json`. Remediated
+advisories are recorded below rather than deleted, so the remediation stays on
+the record.
 
 ### Advisory GHSA-x982-3jx2-x6q3 — loopback WS → Admin → `execute_python` / `console_command` RCE (patched 0.5.30)
 

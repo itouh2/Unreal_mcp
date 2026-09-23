@@ -1,9 +1,10 @@
 /**
  * inspect capability record catalog.
  *
- * Exactly 36 canonical CapabilityRecord entries mapped 1:1 to the 36 inspect
- * actions in inspect-tool.ts. Each record is grounded in the TypeScript
- * inspect handlers (src/tools/handlers/inspect/), native Inspect domain
+ * 36 authored CapabilityRecordSource entries covering the 36 inspect actions
+ * in inspect-tool.ts, folded by INSPECT_FOLDS into the 16 shipped records
+ * (INSPECT_FOLDED_RECORD_COUNT in inspect-records.shared.ts). Each record is
+ * grounded in the TypeScript inspect handlers (src/tools/handlers/inspect/), native Inspect domain
  * dispatch (Private/Domains/Environment/Inspection/McpAutomationBridge_EnvironmentHandlersInspect.cpp),
  * and the normalization inventory (all 36 inspect actions cataloged;
  * get_project_settings is the primary of cap:shared:get_project_settings,
@@ -38,16 +39,21 @@ import { type CapabilityRecord, type CapabilityRecordSource, createCapabilityRec
 import { COMPONENT_ACTOR_RECORDS } from './component-actor.data.js';
 import { GLOBAL_RUNTIME_RECORDS } from './global-runtime.data.js';
 import { OBJECT_PROPERTY_RECORDS } from './object-property.data.js';
+import { applyFolds } from '../shared/fold.js';
+import { INSPECT_FOLDS } from '../folds/inspect.folds.js';
 
 /**
  * Record order is the authored data-file concatenation; this module does not
  * re-derive an action order.
  */
-const SOURCES: readonly CapabilityRecordSource[] = [
+/** The authored records before folding; per-action contract tests pin these. */
+export const INSPECT_UNFOLDED_SOURCES: readonly CapabilityRecordSource[] = [
   ...OBJECT_PROPERTY_RECORDS,
   ...COMPONENT_ACTOR_RECORDS,
   ...GLOBAL_RUNTIME_RECORDS,
 ];
+
+const SOURCES: readonly CapabilityRecordSource[] = applyFolds(INSPECT_UNFOLDED_SOURCES, INSPECT_FOLDS, 'inspect');
 
 export const INSPECT_SOURCES: readonly CapabilityRecordSource[] = SOURCES;
 

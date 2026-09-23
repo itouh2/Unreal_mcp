@@ -1,14 +1,14 @@
 /**
  * tests/unit/capability-metadata-audit.test.ts
  *
- * Cross-domain metadata audit for all 1,384 capability records.
+ * Cross-domain metadata audit over every ALL_CAPABILITY_RECORD_COUNT record.
  *
  * RED first: a seeded stale "5.1-5.6 only" comment OR verb-derived metadata
  * (a read record relabelled as a mutating write) MUST make the audit fail with
  * a leaf-evidence violation. This proves the audit catches dishonest/derived
  * metadata rather than rubber-stamping the source.
  *
- * GREEN after Task 19 corrections: the real 1,384-record universe passes with
+ * GREEN after Task 19 corrections: the real record universe passes with
  * zero hard violations, and the audit is deterministic across runs.
  */
 import { describe, expect, it } from 'vitest';
@@ -18,12 +18,13 @@ import {
   loadAllCapabilityRecords,
   type AuditViolation,
 } from '../../scripts/qa/capability-metadata-audit.js';
+import { ALL_CAPABILITY_RECORD_COUNT } from '../../src/tools/catalog/capabilities/records/aggregate.js';
 
 function cloneRecord(record: CapabilityRecord): CapabilityRecord {
   return structuredClone(record);
 }
 
-describe('capability metadata audit â€” RED seed must fail', () => {
+describe('capability metadata audit — RED seed must fail', () => {
   it('flags a seeded stale "5.1-5.6 only" UE-version comment (C6)', () => {
     const records = loadAllCapabilityRecords();
     const target = cloneRecord(records[0]);
@@ -71,11 +72,11 @@ describe('capability metadata audit â€” RED seed must fail', () => {
   });
 });
 
-describe('capability metadata audit â€” GREEN universe passes', () => {
-  it('audits all 1,384 records with zero hard violations', () => {
+describe('capability metadata audit — GREEN universe passes', () => {
+  it('audits every ALL_CAPABILITY_RECORD_COUNT record with zero hard violations', () => {
     const records = loadAllCapabilityRecords();
-    expect(records.length).toBe(1401);
-    expect(new Set(records.map((r) => r.id)).size).toBe(1401);
+    expect(records.length).toBe(ALL_CAPABILITY_RECORD_COUNT);
+    expect(new Set(records.map((r) => r.id)).size).toBe(ALL_CAPABILITY_RECORD_COUNT);
     const report = auditCapabilityMetadata(records);
     expect(report.passed).toBe(true);
     expect(report.violations).toHaveLength(0);
@@ -127,7 +128,10 @@ describe('capability metadata audit â€” GREEN universe passes', () => {
       .map((r) => r.id);
     // Ratchet, not a target: `additionalProperties: false` on a `{success, message}` schema
     // forbids the payload the summary promises. Clearing it is per-record output authoring.
-    expect(sealedStubs.length).toBeLessThanOrEqual(827);
+    // The bound tracks the real figure and only ever moves DOWN. It sat at 827 while the
+    // catalog was unfolded; against 380 records that was above the arithmetic maximum, so
+    // the assertion could not fail for any input.
+    expect(sealedStubs.length).toBeLessThanOrEqual(7);
   });
 
   it('MCPBB-079: named read capabilities publish the data their summaries promise', () => {
@@ -136,11 +140,12 @@ describe('capability metadata audit â€” GREEN universe passes', () => {
     // generate_memory_report is deliberately excluded: PerformanceHandlersProfiling.cpp
     // replies envelope-only, so its stub is correct and the defect is handler-side (C++).
     const byId = new Map(loadAllCapabilityRecords().map((r) => [String(r.id), r]));
+    // Folding merged several authored read records into one id each, so the list
+    // that used to name five now names three; repeating a folded id would only
+    // re-check the same record.
     const namedReadStubs = [
-      'inspect.get_scene_stats',
-      'inspect.get_performance_stats',
-      'inspect.get_memory_stats',
-      'inspect.get_editor_settings',
+      'inspect.get_stats',
+      'inspect.get_editor_state',
       'manage_level.get_summary',
     ];
     const stillSealed = namedReadStubs.filter((id) => {
@@ -158,13 +163,14 @@ describe('capability metadata audit â€” GREEN universe passes', () => {
   it('declares the path parameter each material handler actually reads', () => {
     // These native handlers read assetPath with no fallback branch, and the native transport
     // has no alias layer, so declaring any other spelling is unsatisfiable there.
+    // One entry per surviving record: folding collapsed the fourteen authored
+    // material records this list was written against into these five.
     const readsAssetPath = [
-      'material.set_blend_mode', 'material.set_shading_model', 'material.set_material_domain',
-      'material.compile_material', 'material.get_material_info', 'material.set_two_sided',
-      'material.add_function_input', 'material.add_function_output',
-      'material.get_material_function_info', 'material.set_material_parameter',
-      'material.set_scalar_parameter_value', 'material.set_vector_parameter_value',
-      'material.set_texture_parameter_value', 'material.set_static_switch_parameter_value',
+      'material.set_material_property',
+      'material.compile_material',
+      'material.get_material_info',
+      'material.add_function_io',
+      'material.set_material_parameter',
     ];
     const byId = new Map(loadAllCapabilityRecords().map((r) => [String(r.id), r]));
     const undeclared = readsAssetPath.filter((id) => {

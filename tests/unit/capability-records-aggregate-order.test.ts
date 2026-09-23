@@ -34,6 +34,7 @@ import {
   UTILITY_SOURCE_RECORDS,
 } from '../../src/tools/catalog/capabilities/records/utility/index.js';
 import { loadAllCapabilityRecords } from '../../scripts/qa/capability-metadata-audit.js';
+import { compareAscii } from '../../src/utils/serialization/ordering.js';
 import type {
   CapabilityCatalog,
   CapabilityRecordSource,
@@ -71,13 +72,13 @@ const idSorted = (records: readonly CapabilityRecordSource[]): readonly Capabili
   [...records].sort((left, right) => (left.id < right.id ? -1 : left.id > right.id ? 1 : 0));
 
 const alphabetised = (values: readonly string[]): readonly string[] =>
-  [...values].sort((left, right) => left.localeCompare(right));
+  [...values].sort(compareAscii);
 
 describe('canonical record loader preserves authored order', () => {
-  it('loads exactly 1,384 unique sha256-hashed records', () => {
-    expect(ALL_CAPABILITY_RECORD_COUNT).toBe(1401);
-    expect(ALL_CAPABILITY_RECORDS).toHaveLength(1401);
-    expect(new Set(ALL_CAPABILITY_RECORDS.map((record) => record.id)).size).toBe(1401);
+  it('loads exactly 387 unique sha256-hashed records', () => {
+    expect(ALL_CAPABILITY_RECORD_COUNT).toBe(387);
+    expect(ALL_CAPABILITY_RECORDS).toHaveLength(ALL_CAPABILITY_RECORD_COUNT);
+    expect(new Set(ALL_CAPABILITY_RECORDS.map((record) => record.id)).size).toBe(ALL_CAPABILITY_RECORD_COUNT);
     expect(ALL_CAPABILITY_RECORDS.every((record) => record.hashes.algorithm === 'sha256')).toBe(true);
   });
 

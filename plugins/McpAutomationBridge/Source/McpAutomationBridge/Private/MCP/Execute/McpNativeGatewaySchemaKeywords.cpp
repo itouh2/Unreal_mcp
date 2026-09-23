@@ -1,8 +1,10 @@
+#include "MCP/Execute/McpNativeGatewaySchemaKeywords.h"
+#include "Foundation/HandlerUtils/McpHandlerUtilsJson.h"
+#include "MCP/Execute/Request/McpNativeGatewayParameterHints.h"
 // McpNativeGatewaySchemaKeywords.cpp — per-keyword semantics for the canonical
 // Draft-2020-12 subset. The document traversal that applies these lives in
 // McpNativeGatewaySchemaValidation.cpp.
 
-#include "MCP/Execute/McpNativeGatewaySchemaKeywords.h"
 
 namespace McpSchemaKeywords
 {
@@ -97,7 +99,7 @@ TArray<FString> DeclaredTypes(const TSharedPtr<FJsonObject>& Schema)
 		for (const TSharedPtr<FJsonValue>& Entry : *Declared)
 		{
 			FString Name;
-			if (Entry.IsValid() && Entry->TryGetString(Name))
+			if (Entry.IsValid() && McpHandlerUtils::TryGetJsonValueString(Entry, Name))
 			{
 				Types.Add(Name);
 			}
@@ -199,7 +201,7 @@ bool CheckRequiredOneOf(
 	for (const TSharedPtr<FJsonValue>& GroupValue : *RequiredOneOf)
 	{
 		FString Name;
-		if (GroupValue.IsValid() && GroupValue->TryGetString(Name))
+		if (GroupValue.IsValid() && McpHandlerUtils::TryGetJsonValueString(GroupValue, Name))
 		{
 			GroupNames.Add(Name);
 			bAnyPresent = bAnyPresent || Object->HasField(Name);
@@ -209,10 +211,55 @@ bool CheckRequiredOneOf(
 	{
 		OutViolation = MakeViolation(EMcpSchemaViolation::RequiredOneOf,
 			JoinPointer(Pointer, TEXT("requiredOneOf")),
-			FString::Printf(TEXT("At least one of [%s] must be provided"),
-				*FString::Join(GroupNames, TEXT(", "))));
-		return false;
-	}
+				FString::Printf(TEXT("At least one of [%s] must be provided"),
+					*FString::Join(GroupNames, TEXT(", "))));
+			return false;
+		}
 	return true;
 }
+
+FString DescribeAllowedValues(const TArray<TSharedPtr<FJsonValue>>& Allowed, int32 MaxNames)
+{
+	TArray<FString> Names;
+	for (const TSharedPtr<FJsonValue>& Candidate : Allowed)
+	{
+		Names.Add(McpHandlerUtils::JsonValueToString(Candidate));
+		if (Names.Num() >= MaxNames)
+		{
+			break;
+		}
+	}
+	FString Text = FString::Join(Names, TEXT(" | "));
+	if (Allowed.Num() > Names.Num())
+	{
+		Text += FString::Printf(TEXT(" | ... (%d more)"), Allowed.Num() - Names.Num());
+	}
+	return Text;
+}
+
+// "Undeclared parameter 'x'" named the one spelling that does NOT work and
+// nothing that does, so every wrong guess cost a describe round trip for a list
+// the validator already held. Byte-for-byte identical to the TypeScript
+// gateway's describeUndeclaredParameter: case-sensitive sort, related names
+// ranked ahead of the rest (see McpParameterHints), at most 24 names listed.
+FString DescribeUndeclaredParameter(const FString& Key, const TSharedPtr<FJsonObject>& Properties)
+{
+	TArray<FString> Declared;
+	if (Properties.IsValid())
+	{
+		for (const auto& Entry : Properties->Values) { Declared.Add(*Entry.Key); }
+	}
+	if (Declared.Num() == 0)
+	{
+		return FString::Printf(TEXT("Undeclared parameter '%s' (this action declares no parameters)"), *Key);
+	}
+	Declared.Sort([](const FString& A, const FString& B) { return A.Compare(B, ESearchCase::CaseSensitive) < 0; });
+	FString Hint;
+	TArray<FString> Ranked = McpParameterHints::RankParameterNames(Key, Declared, Hint);
+	const int32 ListedCount = FMath::Min(Ranked.Num(), 24);
+	const FString More = Ranked.Num() > ListedCount ? FString::Printf(TEXT(" and %d more"), Ranked.Num() - ListedCount) : FString();
+	Ranked.SetNum(ListedCount);
+	return FString::Printf(TEXT("Undeclared parameter '%s' (%sallowed: %s%s)"), *Key, *Hint, *FString::Join(Ranked, TEXT(", ")), *More);
+}
+
 }

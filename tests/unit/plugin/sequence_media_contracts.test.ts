@@ -4,8 +4,10 @@ import { describe, expect, it } from 'vitest';
 
 import {
   privateSource,
+  publicSource,
 } from './sequence_contract_test_utils.js';
 import { consolidatedToolDefinitions } from '../../../src/tools/catalog/consolidated-tool-definitions.js';
+import { ALL_CAPABILITY_RECORDS } from '../../../src/tools/catalog/capabilities/records/aggregate.js';
 
 describe('sequence media contracts', () => {
   it('does not mutate existing media assets during create actions', () => {
@@ -69,6 +71,9 @@ describe('sequence media contracts', () => {
     expect(remoteSecurity).toContain('REMOTE_MEDIA_NETWORK_DISABLED');
     expect(remoteSecurity).not.toContain('bAllowLoopbackMediaUrls');
     expect(remoteSecurity).not.toContain('AllowedLoopbackMediaUrlPrefix');
+    // The settings must not offer the toggle either: a re-added UPROPERTY is
+    // what would let someone wire the bypass back into the path above.
+    expect(publicSource('McpAutomationBridgeSettings.h')).not.toMatch(/LoopbackMediaUrl/u);
     expect(remoteSecurity).not.toContain('ProbeLoopbackEndpoint');
     expect(remoteSecurity).toContain('ERemoteMediaUrlError::NotAllowed');
     expect(mediaSources).toContain('MEDIA_URL_NOT_ALLOWED');
@@ -229,7 +234,12 @@ describe('manage_sequence dead-schema-drift guard', () => {
     const inputSchema = (consolidatedToolDefinitions.find((t) => t.name === 'manage_sequence') as NonNullable<typeof consolidatedToolDefinitions[number]>).inputSchema as {
       properties?: { action?: { enum?: string[] } };
     };
-    const actions = inputSchema.properties?.action?.enum ?? [];
+    // Folded families advertise one primary; the Media names stay callable as
+    // that record's legacy pairs, which is the surface this guard protects.
+    const folded = ALL_CAPABILITY_RECORDS
+      .filter((record) => String(record.routing.parentTool) === 'manage_sequence')
+      .flatMap((record) => record.legacyIds.map((legacy) => String(legacy.action)));
+    const actions = [...(inputSchema.properties?.action?.enum ?? []), ...folded];
     for (const action of MEDIA_ACTIONS) {
       expect(actions, `canonical schema must declare Media action ${action}`).toContain(action);
     }

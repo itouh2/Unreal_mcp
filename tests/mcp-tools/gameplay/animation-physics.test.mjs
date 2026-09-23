@@ -13,10 +13,14 @@ const ts = Date.now();
 const TEST_SKELETON_PATH = `${TEST_FOLDER}/SK_AnimPhys_${ts}`;
 const TEST_IK_RIG_PATH = `${TEST_FOLDER}/Testik_rig`;
 const TEST_IK_RETARGETER_PATH = `${TEST_FOLDER}/Testik_retargeter`;
+const TEST_ANIM_SEQUENCE_PATH = `${TEST_FOLDER}/Testanimation_sequence`;
+// The bare test skeleton carries no preview mesh, so retargeting and skinning
+// are pointed at an engine skeletal mesh instead of inferring one.
+const TEST_SKELETAL_MESH_PATH = '/Engine/EngineMeshes/SkeletalCube';
 
 const testCases = [
 // === SETUP ===
-{ scenario: 'Setup: delete stale test folder', toolName: 'manage_asset', arguments: { action: 'delete', path: TEST_FOLDER, force: true }, expected: 'error|ASSET_NOT_FOUND|success|not found' },
+{ scenario: 'Setup: delete stale test folder', toolName: 'manage_asset', arguments: { action: 'delete', path: TEST_FOLDER, force: true }, expected: 'success|ASSET_NOT_FOUND|not found' },
 { scenario: 'Setup: create test folder', toolName: 'manage_asset', arguments: { action: 'create_folder', path: TEST_FOLDER }, expected: 'success|already exists' },
 { scenario: 'Setup: create test skeleton', toolName: 'animation_physics', arguments: { action: 'create_skeleton', path: TEST_SKELETON_PATH, rootBoneName: 'Root', save: true }, expected: 'success|already exists' },
 
@@ -32,7 +36,7 @@ const testCases = [
 
   // === CREATE (Blend Tree - needs blueprintPath to existing AnimBP) ===
   // ANIMGRAPH_MODULE_UNAVAILABLE: primary intent since AnimGraph BlendTree headers may not be compiled in
-  { scenario: 'CREATE: create_blend_tree', toolName: 'animation_physics', arguments: {"action": "create_blend_tree", "name": "Testblend_tree", "treeName": "Testblend_tree", "animations": [], "connectToOutput": false, "path": TEST_FOLDER, "blueprintPath": `${TEST_FOLDER}/Testanimation_blueprint`}, expected: 'error|ANIMGRAPH_MODULE_UNAVAILABLE|success|already exists' },
+  { scenario: 'CREATE: create_blend_tree', toolName: 'animation_physics', arguments: {"action": "create_blend_tree", "name": "Testblend_tree", "treeName": "Testblend_tree", "animations": [], "connectToOutput": false, "path": TEST_FOLDER, "blueprintPath": `${TEST_FOLDER}/Testanimation_blueprint`}, expected: 'success|ANIMGRAPH_MODULE_UNAVAILABLE|already exists' },
 
 // === CREATE (Procedural Anim - needs skeletonPath) ===
 { scenario: 'CREATE: create_procedural_anim', toolName: 'animation_physics', arguments: {"action": "create_procedural_anim", "name": "Testprocedural_anim", "path": TEST_FOLDER, "skeletonPath": TEST_SKELETON_PATH, "boneTracks": [{"boneName": "Root", "frames": [{"frame": 0}]}], "frameRate": 30}, expected: 'success|already exists' },
@@ -57,6 +61,15 @@ const testCases = [
 
 // === CONFIG (Transition Rules - needs blueprintPath) ===
 { scenario: 'CONFIG: set_transition_rules', toolName: 'animation_physics', arguments: {"action": "set_transition_rules", "blueprintPath": `${TEST_FOLDER}/Testanimation_blueprint`, "stateMachineName": "Teststate_machine", "fromState": "Teststate", "toState": "Teststate", "blendTime": 0.2}, expected: 'success' },
+// Timing and flags: crossfadeDuration is the native spelling of blendTime, and
+// automaticRule/bidirectional are only applied when actually passed.
+{ scenario: 'CONFIG: set_transition_rules timing and flags', toolName: 'animation_physics', arguments: {"action": "set_transition_rules", "blueprintPath": `${TEST_FOLDER}/Testanimation_blueprint`, "stateMachineName": "Teststate_machine", "fromState": "Teststate", "toState": "Teststate", "crossfadeDuration": 0.35, "priorityOrder": 1, "automaticRule": false, "bidirectional": false}, expected: 'success' },
+// The condition needs a variable on the test Animation Blueprint, which it may
+// not carry; a missing one is reported, never silently ignored.
+{ scenario: 'CONFIG: set_transition_rules condition', toolName: 'animation_physics', arguments: {"action": "set_transition_rules", "blueprintPath": `${TEST_FOLDER}/Testanimation_blueprint`, "stateMachineName": "Teststate_machine", "fromState": "Teststate", "toState": "Teststate", "conditionVariable": "Speed", "conditionComparison": "greater", "conditionValue": 10}, expected: 'success|TRANSITION_RULE_FAILED' },
+
+// === DELETE (Transition - runs after the rule cases above, which need it) ===
+{ scenario: 'DELETE: delete_transition', toolName: 'animation_physics', arguments: {"action": "delete_transition", "blueprintPath": `${TEST_FOLDER}/Testanimation_blueprint`, "stateMachineName": "Teststate_machine", "fromState": "Teststate", "toState": "Teststate"}, expected: 'success|TRANSITION_NOT_FOUND' },
 
 // === ADD (Blend Node - needs blueprintPath) ===
 { scenario: 'ADD: add_blend_node', toolName: 'animation_physics', arguments: {"action": "add_blend_node", "blueprintPath": `${TEST_FOLDER}/Testanimation_blueprint`, "blendType": "TwoWayBlend", "nodeName": "Testblend_node"}, expected: 'success|already exists' },
@@ -66,16 +79,22 @@ const testCases = [
 
 // === ADD (Slot Node - needs blueprintPath) ===
 { scenario: 'ADD: add_slot_node', toolName: 'animation_physics', arguments: {"action": "add_slot_node", "blueprintPath": `${TEST_FOLDER}/Testanimation_blueprint`, "slotName": "Testslot_node"}, expected: 'success|already exists' },
-{ scenario: 'ADD: add_layered_blend_per_bone', toolName: 'animation_physics', arguments: {"action": "add_layered_blend_per_bone", "blueprintPath": `${TEST_FOLDER}/Testanimation_blueprint`, "layerSetup": [{"branchFilters": [{"boneName": "Root", "blendDepth": 1}]}]}, expected: 'error|ANIMGRAPH_MODULE_UNAVAILABLE|success' },
-{ scenario: 'CONFIG: set_anim_graph_node_value', toolName: 'animation_physics', arguments: {"action": "set_anim_graph_node_value", "blueprintPath": `${TEST_FOLDER}/Testanimation_blueprint`, "nodeName": "Testblend_node", "propertyName": "NodeComment", "value": "MCPUpdatedBlendNode"}, expected: 'error|ANIMGRAPH_MODULE_UNAVAILABLE|NODE_NOT_FOUND|PROPERTY_NOT_FOUND|success' },
+{ scenario: 'ADD: add_layered_blend_per_bone', toolName: 'animation_physics', arguments: {"action": "add_layered_blend_per_bone", "blueprintPath": `${TEST_FOLDER}/Testanimation_blueprint`, "layerSetup": [{"branchFilters": [{"boneName": "Root", "blendDepth": 1}]}]}, expected: 'success|ANIMGRAPH_MODULE_UNAVAILABLE' },
+{ scenario: 'CONFIG: set_anim_graph_node_value', toolName: 'animation_physics', arguments: {"action": "set_anim_graph_node_value", "blueprintPath": `${TEST_FOLDER}/Testanimation_blueprint`, "nodeName": "Testblend_node", "propertyName": "NodeComment", "value": "MCPUpdatedBlendNode"}, expected: 'success|ANIMGRAPH_MODULE_UNAVAILABLE|NODE_NOT_FOUND|PROPERTY_NOT_FOUND' },
 
 // === CREATE (Control Rig - needs skeletonPath) ===
 { scenario: 'CREATE: create_control_rig', toolName: 'animation_physics', arguments: {"action": "create_control_rig", "name": "Testcontrol_rig", "path": TEST_FOLDER, "skeletonPath": TEST_SKELETON_PATH}, expected: 'success|already exists|NOT_AVAILABLE' },
 
 // === CREATE (IK Rig - explicit retargeter dependency; unavailable on some engine builds) ===
-{ scenario: 'SETUP: create IK Rig for retargeter', toolName: 'animation_physics', arguments: {"action": "create_ik_rig", "name": "Testik_rig", "path": TEST_FOLDER, "skeletonPath": TEST_SKELETON_PATH}, expected: 'error|IKRIG_FACTORY_UNAVAILABLE|NOT_SUPPORTED|success|already exists' },
-{ scenario: 'CREATE: create_ik_retargeter', toolName: 'animation_physics', arguments: {"action": "create_ik_retargeter", "name": "Testik_retargeter", "path": TEST_FOLDER, "sourceIKRigPath": TEST_IK_RIG_PATH, "targetIKRigPath": TEST_IK_RIG_PATH, "save": true}, expected: 'error|IKRETARGET_FACTORY_UNAVAILABLE|NOT_SUPPORTED|success|already exists' },
-{ scenario: 'CONFIG: set_retarget_chain_mapping', toolName: 'animation_physics', arguments: {"action": "set_retarget_chain_mapping", "assetPath": TEST_IK_RETARGETER_PATH, "sourceChain": "Root", "targetChain": "Root"}, expected: 'error|NOT_SUPPORTED|success' },
+{ scenario: 'SETUP: create IK Rig for retargeter', toolName: 'animation_physics', arguments: {"action": "create_ik_rig", "name": "Testik_rig", "path": TEST_FOLDER, "skeletonPath": TEST_SKELETON_PATH}, expected: 'success|IKRIG_FACTORY_UNAVAILABLE|NOT_SUPPORTED|already exists' },
+{ scenario: 'CREATE: create_ik_retargeter', toolName: 'animation_physics', arguments: {"action": "create_ik_retargeter", "name": "Testik_retargeter", "path": TEST_FOLDER, "sourceIKRigPath": TEST_IK_RIG_PATH, "targetIKRigPath": TEST_IK_RIG_PATH, "save": true}, expected: 'success|IKRETARGET_FACTORY_UNAVAILABLE|NOT_SUPPORTED|already exists' },
+{ scenario: 'CONFIG: set_retarget_chain_mapping', toolName: 'animation_physics', arguments: {"action": "set_retarget_chain_mapping", "assetPath": TEST_IK_RETARGETER_PATH, "sourceChain": "Root", "targetChain": "Root"}, expected: 'success|NOT_SUPPORTED' },
+// Retargeting through an explicit retargeter, with both proportion meshes named
+// rather than inferred from the skeletons' preview meshes.
+{ scenario: 'ACTION: setup_retargeting', toolName: 'animation_physics', arguments: {"action": "setup_retargeting", "sourceSkeleton": TEST_SKELETON_PATH, "targetSkeleton": TEST_SKELETON_PATH, "assets": [TEST_ANIM_SEQUENCE_PATH], "savePath": TEST_FOLDER, "suffix": "_Retargeted", "overwrite": true, "sourceMesh": TEST_SKELETAL_MESH_PATH, "targetMesh": TEST_SKELETAL_MESH_PATH, "retargeterPath": TEST_IK_RETARGETER_PATH}, expected: 'success|NOT_SUPPORTED|ASSET_NOT_FOUND|not found' },
+
+// === ACTION (Skin a static mesh onto a skeleton so it deforms with the body) ===
+{ scenario: 'ACTION: skin_mesh_to_skeleton', toolName: 'animation_physics', arguments: {"action": "skin_mesh_to_skeleton", "staticMeshPath": "/Engine/BasicShapes/Cube", "skeletonPath": TEST_SKELETON_PATH, "outputPath": `${TEST_FOLDER}/SKM_SkinTest`, "sourceSkeletalMesh": TEST_SKELETAL_MESH_PATH, "save": true}, expected: 'success|already exists|ASSET_NOT_FOUND|not found' },
 
 // === ACTION (Setup IK - needs name and skeletonPath) ===
 { scenario: 'ACTION: setup_ik', toolName: 'animation_physics', arguments: {"action": "setup_ik", "name": "TestIK", "skeletonPath": TEST_SKELETON_PATH}, expected: 'success|already exists' },

@@ -1,6 +1,8 @@
+#include "MCP/Gateway/McpNativeGatewayCapabilityStore.h"
+#include "Foundation/HandlerUtils/McpHandlerUtilsJson.h"
 // McpNativeGatewayCapabilityStore.cpp — see header for the fail-closed contract.
 
-#include "MCP/Gateway/McpNativeGatewayCapabilityStore.h"
+#include "MCP/Gateway/McpNativeGatewayFolding.h"
 #include "MCP/Generated/McpGeneratedCapabilityShards.h"
 #include "Serialization/JsonReader.h"
 #include "Serialization/JsonSerializer.h"
@@ -26,7 +28,7 @@ TArray<FString> ReadStringArray(const TSharedPtr<FJsonObject>& Owner, const TCHA
 		for (const TSharedPtr<FJsonValue>& Item : *Items)
 		{
 			FString Value;
-			if (Item.IsValid() && Item->TryGetString(Value)) Values.Add(Value);
+			if (Item.IsValid() && McpHandlerUtils::TryGetJsonValueString(Item, Value)) Values.Add(Value);
 		}
 	}
 	return Values;
@@ -67,6 +69,10 @@ bool ParseRecord(const TSharedPtr<FJsonObject>& Entry, FMcpCapabilityRecord& Out
 		Out.Parent.IsEmpty() || Out.DispatchAction.IsEmpty())
 	{
 		OutError = FString::Printf(TEXT("record '%s' has incomplete routing"), *Out.Id);
+		return false;
+	}
+	if (!McpParseRecordFolding(Record, Out, OutError))
+	{
 		return false;
 	}
 	Out.InputSchema = ReadObject(Schemas, TEXT("input"));
@@ -251,6 +257,13 @@ const FMcpCapabilityRecord* FMcpCapabilityStore::FindByParentAction(
 	{
 		if (Record.Parent.Equals(Parent, ESearchCase::CaseSensitive) &&
 			Record.DispatchAction.Equals(Action, ESearchCase::CaseSensitive)) return &Record;
+	}
+	// A folded family keeps every former name as a legacy pair, so describe by
+	// an old name resolves to the record that folded it, as execute does.
+	for (const FMcpCapabilityRecord& Record : Records)
+	{
+		if (Record.Parent.Equals(Parent, ESearchCase::CaseSensitive) &&
+			McpFindLegacyPair(Record, Action) != nullptr) return &Record;
 	}
 	return nullptr;
 }

@@ -1,4 +1,5 @@
 import { config } from '../config.js';
+import { bridgeNotConnectedMessage } from './bridge-config.js';
 import { McpRequestCancelledError } from './request-cancellation-error.js';
 import { ConnectionLifecycle } from './connection-lifecycle.js';
 import { RequestCorrelation } from './request-correlation.js';
@@ -8,12 +9,11 @@ import {
     ExpectedRevisionsSchema,
     type ExpectedRevisions,
 } from '../tools/catalog/capabilities/semantic/execution-options.js';
-import type { Logger } from '../utils/logging/logger.js';
 import type { RequestTracker } from './request-tracker.js';
 import type {
-    AutomationBridgeEvents,
     AutomationBridgeMessage,
     AutomationBridgeResponseMessage,
+    ConnectionControlDependencies,
     NaturalTimeoutNotification,
     QueuedRequestItem
 } from './types.js';
@@ -26,26 +26,15 @@ type AutomationRequestOptions = {
     expectedRevisions?: ExpectedRevisions;
 };
 
-export interface AutomationRequestDispatcherDependencies {
+export interface AutomationRequestDispatcherDependencies extends ConnectionControlDependencies {
     readonly enabled: boolean;
     readonly maxQueuedRequests: number;
     readonly connectionTimeoutMs: number;
     readonly requestTracker: RequestTracker;
-    readonly log: Logger;
     readonly isConnected: () => boolean;
     readonly send: (payload: AutomationBridgeMessage) => boolean;
     /** Connection id of the socket the next send will use, for owner stamping. */
     readonly getSendOwnerId?: () => string | undefined;
-    readonly startClient: () => void;
-    readonly abortPendingConnection: (reason: Error) => void;
-    readonly once: <K extends keyof AutomationBridgeEvents>(
-        event: K,
-        listener: AutomationBridgeEvents[K]
-    ) => void;
-    readonly off: <K extends keyof AutomationBridgeEvents>(
-        event: K,
-        listener: AutomationBridgeEvents[K]
-    ) => void;
 }
 
 export class AutomationRequestDispatcher {
@@ -60,6 +49,7 @@ export class AutomationRequestDispatcher {
             log: deps.log,
             startClient: deps.startClient,
             abortPendingConnection: deps.abortPendingConnection,
+            describeTarget: deps.describeTarget,
             once: deps.once,
             off: deps.off
         });
@@ -76,7 +66,7 @@ export class AutomationRequestDispatcher {
         }
 
         if (!this.deps.isConnected()) {
-            throw new Error('Automation bridge not connected');
+            throw new Error(bridgeNotConnectedMessage(this.deps.describeTarget?.()));
         }
 
         if (this.deps.requestTracker.getPendingCount() >= this.deps.requestTracker.getMaxPendingRequests()) {
@@ -218,7 +208,7 @@ export class AutomationRequestDispatcher {
             this.correlation.noteCoalesceKey(coalesceKey, requestId);
         }
 
-        const resultPromise = promise.then(castAutomationResponse);
+        const resultPromise = promise;
         void resultPromise
             .then(() => this.processRequestQueue(), () => this.processRequestQueue())
             .finally(() => this.correlation.settle(requestId))
@@ -290,10 +280,6 @@ export class AutomationRequestDispatcher {
             }
         }
     }
-}
-
-function castAutomationResponse(response: AutomationBridgeResponseMessage): AutomationBridgeResponseMessage {
-    return response;
 }
 
 function getQueuedOptions(options: Record<string, unknown>): AutomationRequestOptions {

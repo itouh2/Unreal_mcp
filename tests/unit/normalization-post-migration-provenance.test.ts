@@ -4,9 +4,9 @@
  * The normalization inventory audits the pre-gateway 23-tool surface: every
  * `{tool, action}` pair that actually shipped. `extractOccurrences()` derives
  * that audit from each record's `legacyIds`, and `REVIEWED_METRICS` pins the
- * result at 1,340. Those two numbers coincide with the record count only
- * because every migrated record carries exactly one legacy pair — an artifact
- * of the 1:1 migration, not an invariant.
+ * result at 1,341. That total counts legacy PAIRS, not records: a folded
+ * family contributes one pair per folded member, so it does not track the
+ * record count and never did outside the original 1:1 migration.
  *
  * A capability authored after the migration has a live `{tool, action}` pair
  * but no historical one, so `legacyIds` would otherwise have to lie in one of
@@ -39,7 +39,11 @@ import { getActionValues } from '../../src/server/gateway/gateway-shared.js';
 const PARENT = 'manage_blueprint';
 const NEW_ACTION = 'audit_exec_fan_in';
 
-const BASE = ALL_CAPABILITY_RECORDS.find((record) => record.routing.parentTool === PARENT);
+// A folded family carries routing.dispatchBy and several legacy pairs, which the
+// overrides below would leave inconsistent; the fixture clones a plain record.
+const BASE = ALL_CAPABILITY_RECORDS.find(
+  (record) => record.routing.parentTool === PARENT && record.routing.dispatchBy === undefined && record.legacyIds.length === 1,
+);
 if (BASE === undefined) {
   throw new Error(`fixture base record for ${PARENT} is missing from the aggregate`);
 }
@@ -75,7 +79,7 @@ function authoredCapability(provenance?: 'post-migration'): CapabilityRecord {
 function markingOneMigratedRecord(): readonly CapabilityRecord[] {
   let marked = false;
   return ALL_CAPABILITY_RECORDS.map((record) => {
-    if (marked || record.routing.parentTool !== PARENT) return record;
+    if (marked || record.routing.parentTool !== PARENT || record.legacyIds.length !== 1) return record;
     marked = true;
     return {
       ...record,

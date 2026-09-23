@@ -1,6 +1,6 @@
 # PROJECT KNOWLEDGE BASE
 
-MCP tooling for Unreal Engine 5.0-5.8 Preview. Server package version `0.5.30`; bridge plugin version `0.5.30` (separate `.uplugin`). Two user-facing surfaces: a TypeScript stdio MCP server, and the bridge plugin's WebSocket transport and optional native `/mcp` HTTP/SSE transport.
+MCP tooling for Unreal Engine 5.0-5.8 Preview. Server package version `0.6.0-beta-a`; bridge plugin version `0.6.0-beta-a` (separate `.uplugin`). Two user-facing surfaces: a TypeScript stdio MCP server, and the bridge plugin's WebSocket transport and optional native `/mcp` HTTP/SSE transport.
 
 Area-specific guidance lives in nested `AGENTS.md` files (see **AREA GUIDES** below). This root file is the workspace-wide view; do not duplicate their detail here.
 
@@ -16,7 +16,7 @@ Area-specific guidance lives in nested `AGENTS.md` files (see **AREA GUIDES** be
 |   |-- handlers/            (2) # MCP RESOURCE handlers — NOT tool logic (see tools/handlers)
 |   |-- resources/          (18) # resource providers behind handlers/ (actors, assets, levels, editor state)
 |   |-- server/             (13) # SDK construction, stdio lifecycle, tool/resource registry shards
-|   |   |-- gateway/        (27) # gateway search/describe/execute ROUTING — NOT src/gateway
+|   |   |-- gateway/        (24) # gateway search/describe/execute ROUTING — NOT src/gateway
 |   |   `-- mcp-primitives/ (48) # resources/prompts/completions/subscriptions/progress + client profiles, configure store
 |   |-- services/            (9) # health-monitor, metrics-server (Prometheus), readiness, telemetry
 |   |-- tools/                   # catalog/ (contracts), handlers/<37 domains>/ (action logic),
@@ -25,7 +25,7 @@ Area-specific guidance lives in nested `AGENTS.md` files (see **AREA GUIDES** be
 |   |-- types/ utils/            # utils: commands config interaction logging paths responses serialization validation
 |-- plugins/McpAutomationBridge/ # the ONLY plugin; editor-only UE (bridge + native MCP + Fab adapter)
 |   |-- Source/McpAutomationBridge/{Public (17), Private/}
-|   |   Private/: Core(36) Domains(1120 / 66 domains) Foundation(96) MCP(166) Safety(21) Transport(23) Tests(29) UI(2)
+|   |   Private/: Core(36) Domains(1172 / 66 domains) Foundation(95) MCP(174) Safety(20) Transport(22) Tests(29) UI(2)
 |   |   Core/: Compatibility Errors Module Requests Security Settings Subsystem
 |   |   MCP/:  DynamicTools Execute Gateway Generated Primitives Protocol Registry Resources Routing Tools Transport
 |   `-- Source/McpAutomationBridgeFab/     # Fab asset-store adapter module (delay-loaded, optional)
@@ -39,11 +39,11 @@ NOTE: `src/server/` tool-registry is split (`tool-registry.ts` + `tool-registry-
 
 **NAMING TRAPS — get these wrong and you edit the wrong layer:**
 - `src/handlers/` (2 files, MCP **resources**) vs `src/tools/handlers/` (37 domains, **tool action logic**) vs `src/types/handlers/` (types).
-- `src/gateway/` (manifest **data**, generated) vs `src/server/gateway/` (27-file request **routing engine**, incl. the idempotency ledger).
+- `src/gateway/` (manifest **data**, generated; 4 files, 2 of them `*.generated.*`) vs `src/server/gateway/` (26-module request **routing engine**, incl. the idempotency ledger).
 - `src/server/mcp-primitives/` (MCP resources/prompts/completions/subscriptions **protocol primitives**) vs `src/resources/` (the resource **providers** those primitives read) vs `src/handlers/` (the 2-file resource request **handlers**).
 - `src/config.ts` (env Zod schema) vs `src/config/` (UE class aliases only).
 - `src/wasm/` no longer exists (the empty stub directory is gone); `src/tools/definitions/` holds only 2 shared files and is not a source of truth.
-- The experimental in-editor assistant panel (formerly shipped as a separate plugin subtree) was **removed from this tree** in `c5caab21` and is excluded from 0.5.30. It survives only on feature branches (`agent-guide`, `AgentPanel`). Do not document or import it as a shipping surface; external consumers that previously drove the editor through it must target the native `/mcp` or TypeScript stdio `unreal` gateway instead.
+- The experimental in-editor assistant panel (formerly shipped as a separate plugin subtree) was **removed from this tree** in `c5caab21` and has been excluded from every release since 0.5.30. It survives only on feature branches (`agent-guide`, `AgentPanel`). Do not document or import it as a shipping surface; external consumers that previously drove the editor through it must target the native `/mcp` or TypeScript stdio `unreal` gateway instead.
 
 ## WHERE TO LOOK
 | Task | Location | Notes |
@@ -51,12 +51,12 @@ NOTE: `src/server/` tool-registry is split (`tool-registry.ts` + `tool-registry-
 | Start TS MCP server | `src/cli.ts`, `src/index.ts`, `src/server/server-factory.ts`, `src/server/stdio-lifecycle.ts` | CLI shim -> public facade -> construction/lifecycle -> registration |
 | Add/change a TS tool contract | `src/tools/catalog/capabilities/records/<tool>/` + `records/parent-metadata.ts` | **THE source of truth.** `consolidated-tool-definitions.ts` and every `*.generated.*` are OUTPUTS — editing them is overwritten on next generate. See `src/tools/catalog/AGENTS.md` |
 | Regenerate contract artifacts | `npm run registry:generate`, then `registry:check` / `manifest:check` | Records -> TS facades + routing index + gateway manifest + native C++ registry/shards |
-| Change gateway routing (search/describe/execute) | `src/server/gateway/` (27 files) | Its own AGENTS.md. `src/gateway/` is only the generated manifest + loader |
+| Change gateway routing (search/describe/execute) | `src/server/gateway/` (24 files) | Its own AGENTS.md. `src/gateway/` is only the generated manifest + loader |
 | Change MCP protocol primitives (resources/prompts/completions/subscriptions/progress) | `src/server/mcp-primitives/` (48 files) | Its own AGENTS.md. Native mirror in `Private/MCP/Primitives/`; parity gated by `tests/unit/mcp-primitives/*-parity.test.ts` |
 | Change capability auth (scopes/consent/paths/quota) | `.../Private/Foundation/McpCapabilityAuthorization.h` (predicates), `.../Private/Core/Security/` (composition) | Predicates are pure + transport-shared; the plugin is the sole authority and re-enforces every request |
 | Change execute idempotency | `src/server/gateway/idempotency-ledger.ts`, `.../Private/Foundation/McpIdempotencyLedger.{h,cpp}` | Two mirrors, different caps (TS 1024 / native 4096). Change both |
 | Register TS tool behavior | `src/tools/orchestration/consolidated-handler-registration.ts`, `src/server/tool-registry.ts` | `consolidated-tool-handlers.ts` is the bootstrap/export facade |
-| Implement TS action logic | `src/tools/handlers/<domain>/` (38 domains) | Validate/normalize, then use the shared dispatch helpers |
+| Implement TS action logic | `src/tools/handlers/<domain>/` (37 domains) | Validate/normalize, then use the shared dispatch helpers |
 | Change WebSocket automation | `src/automation/` (plus `src/unreal-bridge*.ts` at root) | Handshake, connection policy, request tracking, token/TLS plumbing |
 | Change Unreal request routing | `plugins/McpAutomationBridge/.../Private/Core/` | Queue, game-thread dispatch, handler registration, responses |
 | Add Unreal bridge behavior | `plugins/McpAutomationBridge/.../Private/Domains/<Domain>/` | Register through `Private/Core/Subsystem/*Registration.cpp` shard |
@@ -130,7 +130,7 @@ Every automation request is gated **before it reaches the editor queue**. The Ty
 ## TESTING
 - **Unit (`npm run test:unit`)**: Vitest over `src/**/*.test.ts` + `tests/unit/**/*.test.ts`. No Unreal, no build. Single file: `npx vitest run tests/unit/<file>.test.ts`. Coverage: `npm run test:unit:coverage` (`--coverage`, v8).
 - **Smoke (`npm run test:smoke`)**: `scripts/smoke-test.ts` (NOT under `tests/`). Mock in-memory MCP check against **built `dist/`** — it imports `dist/index.js`, so run `npm run build` first. It self-sets `MOCK_UNREAL_CONNECTION=true`, so prefixing that env var is redundant. It asserts exactly **one public tool (`unreal`)** plus hidden-parent rejection — it does NOT assert a 23-tool listing.
-- **Integration (`npm test` / `npm run test:all` — identical)**: `node tests/integration.mjs` is only the **case list** — it declares `testCases` and calls `runToolTests('integration', testCases)`. The **harness is `tests/test-runner.mjs`**, which spawns the server over stdio via `StdioClientTransport` at `dist/cli.js` (override with `UNREAL_MCP_SERVER_ARGS`) and expects a **live Unreal Editor + bridge**. It auto-builds when `dist/` is missing or older than `src/` (`UNREAL_MCP_NO_AUTO_BUILD=1` disables, `UNREAL_MCP_FORCE_DIST=1` forces dist) and **falls back to TypeScript source if the build fails** — so a green run does not prove you tested `dist/`. `UE_PROJECT_PATH` is consumed only by the spawned server via inherited env.
+- **Integration (`npm test` / `npm run test:all` — identical)**: `node tests/integration.mjs` is only the **case list** — it declares `testCases` and calls `runToolTests('integration', testCases)`. The **harness is `tests/test-runner.mjs`**, which spawns the server over stdio via `StdioClientTransport` at `dist/cli.js` (override with `UNREAL_MCP_SERVER_ARGS`) and expects a **live Unreal Editor + bridge**. It auto-builds when `dist/` is missing or older than `src/` (`UNREAL_MCP_NO_AUTO_BUILD=1` disables, `UNREAL_MCP_FORCE_DIST=1` forces dist). A build that is attempted and **fails aborts the run** — it used to fall through to TypeScript source, so a green run did not prove `dist/` was tested; `UNREAL_MCP_ALLOW_TS_FALLBACK=1` restores the fallback explicitly. `UE_PROJECT_PATH` is consumed only by the spawned server via inherited env.
 - **Native parity**: `npm run test:native-parity` (TS vs native canonical tool/action equality); `npm run test:params` adds static+strict+optional-strict parameter audit.
 - **Expectation grammar**: split on `|` (or ` or `); first token is the primary intent and must be `success`/`error`/`timeout`. Narrow alternatives (`already exists`, `not found`) allowed on success-primary cases. Forbidden: broad masks like `success|error`, or `timeout` after `error` (a timeout passes ONLY as the primary condition).
 - **Timeouts**: unit `testTimeout` 10s. Integration per-case default **5s** (`UNREAL_MCP_TEST_CASE_TIMEOUT_MS`), per-call server **60s** (`..._CALL_TIMEOUT_MS`), client/progress **300s** (`..._CLIENT_TIMEOUT_MS`); cleanup cases override to 30s.
@@ -147,14 +147,15 @@ Every automation request is gated **before it reaches the editor queue**. The Ty
 - Treating `src/handlers/` and `src/tools/handlers/` as one: the former is MCP resource handlers, the latter is tool action logic.
 - Editing generated artifacts: hand-edits to any `*.generated.*`, `capabilities/generated/`, or plugin `MCP/Generated/` file are silently overwritten by the next generate and fail drift checks. Edit the records, regenerate.
 - Never place AGENTS files in `dist/`, `build/`, `coverage/`, `tests/reports/`, `tmp/`, plugin `Binaries/`, plugin `Intermediate/`, or uppercase staging mirrors (`Plugins/`).
-- **Folder-budget headroom is GONE in five places**: the ≤25 files-per-folder gate is already satisfied at exactly 25 by `Private/MCP/Transport/`, `Private/Domains/Sequence/`, `Private/Foundation/`, and `Private/MCP/Execute/` (`Private/MCP/Generated/`, `Private/Domains/GAS/`, `Private/Domains/AnimationAuthoring/` sit at 24). Adding ONE file to any of those breaks CI — split into a subdirectory instead.
+- **Folder-budget headroom is GONE in nine places** (counted 2026-09-19): the ≤25 source-files-per-folder gate is already satisfied at exactly 25 by `Private/MCP/Transport/`, `Private/MCP/Gateway/`, `Private/MCP/Execute/`, `Private/Foundation/`, `Private/Tests/`, `Private/Domains/Sequence/`, `Private/Domains/GAS/`, `Private/Domains/AnimationAuthoring/`, and `Private/Domains/LevelStructure/` (`Private/MCP/Primitives/`, `Private/MCP/Generated/` and `Private/Domains/ControlEditor/` sit at 24; re-counted 2026-09-22). Adding ONE file to any capped folder breaks CI — split into a subdirectory instead.
 - **Automated source-contract gates** (Vitest reads C++/C# text — these fail CI): 250 pure-line ceiling per plugin file (measured on *pure* lines, so a 380-line file with comments can still pass); ≤25 files per folder; no split artifacts (`Common`/`Part\d+`/`.incl`); every local `Mcp*` include must resolve; no `UPackage::SavePackage`; constant-time token compare only; no non-loopback bind without `bRequireCapabilityToken`; no browser-origin WS upgrade; no raw Python source in logs.
-- **Convention-only, NOT lint-enforced**: `no-explicit-any` and `no-console` are both `off` in `eslint.config.mjs`. `as any` / `@ts-ignore` / runtime `console.log` are still forbidden by project rule — nothing will catch them for you.
+- **Lint-enforced for `src/**` since 2026-09-22**: `no-explicit-any` and `no-console` are `error` in `eslint.config.mjs`, so `--max-warnings=0` catches them. `scripts/**/*.ts` and `tests/**/*.ts` are exempt (generators print to the console by design; fixtures use `any` deliberately), and `src/utils/logging/logger.ts` plus `src/server/server-factory.ts` are exempt from `no-console` because they ARE the sanctioned sinks. `@ts-ignore` remains convention-only — nothing will catch that one for you.
 - **Never `localeCompare`** for ordering: use byte-order (ASCII/UTF-16 code unit) comparison so generated shards agree byte-for-byte across machines (`src/utils/serialization/ordering.ts` exists for this).
 - **Never solicit a secret/token/credential field** during argument elicitation: `src/server/tool-registry-elicitation.ts` refuses any field matching its `SECRET_FIELD` regex.
+- **Do not add knip / ts-prune** (evaluated 2026-09-19, rejected). A default `knip` run over this tree reports ~200 findings and not one of them is real. Two repo-wide patterns defeat it structurally: the integration cases under `tests/mcp-tools/**` are loaded at RUNTIME by `tests/integration.mjs` (it flags all 40-odd as unused files), and every source-contract test consumes its subject with `readFileSync` rather than `import` — so `scripts/qa/adversarial.mjs` and `src/utils/commands/console-command-policy.generated.ts`, its two most plausible hits, are both live. The 146 "unused exports" are almost all types re-exported through the `src/types/handlers/` barrels, which is deliberate. Making it usable means a config that re-describes the layout, and that config is the thing that goes stale. Dead code is found here by reading, and `noUnusedLocals`/`noUnusedParameters` are already on.
 
 ## UNIQUE STYLES
-- 23 canonical parent tools hide hundreds of actions behind action enums to reduce client context.
+- 23 canonical parent tools hide hundreds of actions behind action enums to reduce client context; since 2026-09-07 sibling actions fold into 380 family records (`records/folds/`, selector parameter + `routing.dispatchBy`), and every former `{tool, action}` name stays callable as a folded legacy pair.
 - Dynamic tool management exists in both TS and native MCP; `manage_tools` and `inspect` are protected (cannot be disabled; `core` category is fixed).
 - The native plugin's MCP tool definitions are generated into a native registry from the canonical TS records (the TypeScript `consolidated-tool-definitions.ts` is itself a generated facade over the canonical parent metadata). Handwritten per-tool `MCP_REGISTER_TOOL` classes have been removed; the generated native registration replaces them, and only canonical names survive.
 - The bridge plugin is responsibility-split: `Core` routes, `Domains` implement, `Foundation` shares primitives, `Safety` wraps hazardous editor ops, `Transport` owns sockets.

@@ -13,7 +13,7 @@
  *
  * The prior 'P' (primary baseline) class has been removed. Primary/alias
  * position is now carried by the separate `role` field on each occurrence, so
- * the `classification` field stays strictly A-F for all 1,335 occurrences.
+ * the `classification` field stays strictly A-F for all 1,341 occurrences.
  */
 
 import type { Classification, Disposition, Role } from './types.js';
@@ -77,6 +77,29 @@ export function namespaceOf(canonicalId: string): string {
  *
  * Re-reviewed a fourth time for `asset.list_fab_downloads`. Also post-migration,
  * so the audited total is unaffected.
+ *
+ * Re-reviewed a fifth time for the revision-control setup path —
+ * `asset.source_control_enable`, `asset.source_control_init`,
+ * `asset.source_control_commit_all`. Post-migration as well, so the audited
+ * total holds at 1341.
+ *
+ * Re-reviewed a sixth time for MetaHuman Creator — `manage_character.metahuman_status`,
+ * `create_metahuman`, `rig_metahuman`, `build_metahuman`, `export_metahuman`. Also
+ * post-migration, so the audited total again holds at 1341.
+ *
+ * Re-reviewed a seventh time for `animation_physics.skin_mesh_to_skeleton`:
+ * clothing could be imported but never worn. A garment arrives as a static
+ * mesh, and parenting one to a character leaves it rigid while the body
+ * animates underneath, so sleeves intersect arms and the hem stays put.
+ * Skinning it to the same skeleton is the only thing that makes it move with
+ * the body. Post-migration as well, so the audited total still holds at 1341.
+ *
+ * Re-reviewed an eighth time for `animation_physics.delete_transition`: a state
+ * machine could gain transitions but never lose one, so a transition authored
+ * between the wrong two states was permanent. The only workaround was to leave
+ * it wired with a condition that can never be true, which is dead clutter that
+ * still costs an evaluation. Post-migration as well, so the audited total holds
+ * at 1341.
  */
 export const REVIEWED_METRICS = {
   occurrenceCount: 1341,

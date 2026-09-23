@@ -4,6 +4,7 @@ namespace McpAuthorizationCodes
 {
 const TCHAR* const ScopeNotGranted = TEXT("SCOPE_NOT_GRANTED");
 const TCHAR* const ConsentRequired = TEXT("CONSENT_REQUIRED");
+const TCHAR* const ConsentReused = TEXT("CONSENT_REUSED");
 const TCHAR* const PathNotPermitted = TEXT("PATH_NOT_PERMITTED");
 const TCHAR* const ProjectNotPermitted = TEXT("PROJECT_NOT_PERMITTED");
 const TCHAR* const QuotaExceeded = TEXT("QUOTA_EXCEEDED");
@@ -85,21 +86,36 @@ FMcpAuthorizationDecision CheckConsent(
 		return FMcpAuthorizationDecision::Allow();
 	}
 
+	// Say what would satisfy this, not just that it was refused. The message
+	// used to name the gap and point at describe, so a caller's first use of any
+	// consent-bearing capability cost a whole contract dump to learn two strings
+	// this function already holds. The grant is not a secret -- describe hands it
+	// to anyone who asks -- and the re-send still names the capability itself,
+	// which is the entire point of the gate. The TypeScript gateway already
+	// answers this way; this brings the native surface level with it.
 	auto Refuse = [&Demand, &Mode]()
 	{
+		const bool bKnown = !Demand.CapabilityId.IsEmpty();
+		FString Message = FString::Printf(
+			TEXT("Capability '%s' requires '%s' consent naming that exact capability."),
+			bKnown ? *Demand.CapabilityId : TEXT("this action"), *Mode);
+		if (bKnown)
+		{
+			Message += FString::Printf(
+				TEXT(" Re-send this same call with consent: ")
+				TEXT("{\"capability\":\"%s\",\"acknowledge\":\"%s\"} as a top-level ")
+				TEXT("sibling of params, not inside params."),
+				*Demand.CapabilityId, *Mode);
+		}
 		FMcpAuthorizationDecision Decision = FMcpAuthorizationDecision::Deny(
-			McpAuthorizationCodes::ConsentRequired,
-			FString::Printf(
-				TEXT("Capability '%s' requires '%s' consent naming that exact capability."),
-				Demand.CapabilityId.IsEmpty() ? TEXT("this action") : *Demand.CapabilityId,
-				*Mode));
+			McpAuthorizationCodes::ConsentRequired, Message);
 		Decision.ConsentScope = Mode;
 		return Decision;
 	};
 
 	// A grant authorizes only the capability it names. Consent is never inferred
 	// from loopback, a prior call, idempotency or preview.
-	if (!Grant.bConsentPresent || Grant.ConsentCapability != Demand.CapabilityId ||
+	if (!Grant.bConsentPresent || !Demand.AcceptsConsentName(Grant.ConsentCapability) ||
 		Demand.CapabilityId.IsEmpty())
 	{
 		return Refuse();
@@ -113,6 +129,54 @@ FMcpAuthorizationDecision CheckConsent(
 	// "explicit" is satisfied by an explicit or a stronger elevated acknowledgement.
 	const bool bSatisfied = Acknowledge == TEXT("explicit") || Acknowledge == TEXT("elevated");
 	return bSatisfied ? FMcpAuthorizationDecision::Allow() : Refuse();
+}
+
+FMcpConsentLedger& FMcpConsentLedger::Get()
+{
+	static FMcpConsentLedger Instance;
+	return Instance;
+}
+
+bool FMcpConsentLedger::TryConsume(const FString& Nonce, const FString& Capability)
+{
+	(void)Capability;
+	if (Nonce.IsEmpty())
+	{
+		// Legacy grants carry no nonce; capability-match enforcement upstream
+		// still applies, so there is nothing to burn.
+		return true;
+	}
+	FScopeLock Lock(&Mutex);
+	if (Consumed.Contains(Nonce))
+	{
+		return false;
+	}
+	// Bounded: prune oldest-first so a long-lived editor never grows this set
+	// without limit. Pruned nonces become re-presentable, which is the safe
+	// direction (fail-open toward a still-capability-checked call, never toward
+	// a capability the grant does not name).
+	if (ConsumptionOrder.Num() >= MaxEntries)
+	{
+		const FString Oldest = ConsumptionOrder[0];
+		ConsumptionOrder.RemoveAt(0);
+		Consumed.Remove(Oldest);
+	}
+	ConsumptionOrder.Add(Nonce);
+	Consumed.Add(Nonce);
+	return true;
+}
+
+void FMcpConsentLedger::Refund(const FString& Nonce)
+{
+	if (Nonce.IsEmpty())
+	{
+		return;
+	}
+	FScopeLock Lock(&Mutex);
+	if (Consumed.Remove(Nonce) > 0)
+	{
+		ConsumptionOrder.RemoveSingle(Nonce);
+	}
 }
 
 bool IsPathWithinPrefix(const FString& Path, const FString& Prefix)

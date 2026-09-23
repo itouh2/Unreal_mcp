@@ -11,7 +11,14 @@ import {
   MANAGE_SEQUENCE_RECORD_COUNT,
   MANAGE_SEQUENCE_RECORDS,
   MANAGE_SEQUENCE_SOURCES,
+  MANAGE_SEQUENCE_UNFOLDED_SOURCES,
 } from './index.js';
+
+// The shipped catalog folds sibling records into families; per-action facts
+// (effects, routing, normalization) are pinned on the authored, unfolded records.
+const UNFOLDED_RECORDS = MANAGE_SEQUENCE_UNFOLDED_SOURCES.map((source) => createCapabilityRecord(source));
+const FOLDED_RECORD_COUNT = 19;
+const LEGACY_PAIR_COUNT = 91;
 
 const CORE_ACTIONS = [
   'create', 'open', 'add_camera', 'add_actor', 'add_actors', 'remove_actors',
@@ -19,10 +26,10 @@ const CORE_ACTIONS = [
   'get_properties', 'set_properties', 'duplicate', 'rename', 'delete', 'list', 'get_metadata', 'set_metadata',
   'add_spawnable_from_class', 'add_track', 'add_section', 'set_display_rate', 'set_tick_resolution',
   'set_work_range', 'set_view_range', 'set_track_muted', 'set_track_solo', 'set_track_locked',
-  'list_tracks', 'remove_track', 'list_track_types',
+  'list_tracks', 'remove_track', 'list_track_types', 'list_track_keys', 'remove_keyframe',
 ] as const;
 
-const ALL_81_ACTIONS = [
+const ALL_83_ACTIONS = [
   ...CORE_ACTIONS,
   ...CINEMATICS_ACTIONS,
   ...MOVIE_RENDER_ACTIONS,
@@ -31,18 +38,19 @@ const ALL_81_ACTIONS = [
 ];
 
 function findByAction(action: string) {
-  const record = MANAGE_SEQUENCE_RECORDS.find(
+  const record = UNFOLDED_RECORDS.find(
     (r) => r.legacyIds[0].action === action,
   );
   if (!record) throw new Error(`Record not found for action: ${action}`);
   return record;
 }
 
-describe('manage_sequence exact-set: 81 records mapped 1:1 to tool actions', () => {
-  it('produces exactly 81 capability records', () => {
-    expect(MANAGE_SEQUENCE_RECORD_COUNT).toBe(81);
-    expect(MANAGE_SEQUENCE_SOURCES).toHaveLength(81);
-    expect(MANAGE_SEQUENCE_RECORDS).toHaveLength(81);
+describe('manage_sequence exact-set: 83 records mapped 1:1 to tool actions', () => {
+  it('folds 83 authored records into 19 capability records', () => {
+    expect(UNFOLDED_RECORDS).toHaveLength(83);
+    expect(MANAGE_SEQUENCE_RECORD_COUNT).toBe(FOLDED_RECORD_COUNT);
+    expect(MANAGE_SEQUENCE_SOURCES).toHaveLength(FOLDED_RECORD_COUNT);
+    expect(MANAGE_SEQUENCE_RECORDS).toHaveLength(FOLDED_RECORD_COUNT);
   });
 
   it('maps every manage_sequence tool action to exactly one record legacy ID', () => {
@@ -51,10 +59,10 @@ describe('manage_sequence exact-set: 81 records mapped 1:1 to tool actions', () 
         r.legacyIds.map((li) => `${li.tool}::${li.action}`),
       ),
     );
-    for (const action of ALL_81_ACTIONS) {
+    for (const action of ALL_83_ACTIONS) {
       expect(legacyKeys.has(`manage_sequence::${action}`)).toBe(true);
     }
-    expect(legacyKeys.size).toBe(81);
+    expect(legacyKeys.size).toBe(LEGACY_PAIR_COUNT);
   });
 
   it('the tool definition action enum matches the union of action sets exactly', () => {
@@ -64,21 +72,27 @@ describe('manage_sequence exact-set: 81 records mapped 1:1 to tool actions', () 
     if (!actionProp?.enum) {
       throw new TypeError('manage_sequence action enum is unavailable');
     }
+    // The enum advertises each folded family once; every authored action
+    // stays reachable as that family's legacy pair.
     const enumSet = new Set(actionProp.enum);
-    for (const action of ALL_81_ACTIONS) {
-      expect(enumSet.has(action)).toBe(true);
+    const pairs = new Set(MANAGE_SEQUENCE_RECORDS.flatMap((r) => r.legacyIds.map((li) => String(li.action))));
+    for (const action of ALL_83_ACTIONS) {
+      expect(pairs.has(action)).toBe(true);
     }
-    expect(enumSet.size).toBe(ALL_81_ACTIONS.length);
+    for (const action of enumSet) {
+      expect(pairs.has(action)).toBe(true);
+    }
+    expect(enumSet.size).toBe(FOLDED_RECORD_COUNT);
   });
 
-  it('has no duplicate canonical IDs, aliases, or legacy IDs across all 81 records', () => {
+  it('has no duplicate canonical IDs, aliases, or legacy IDs across all folded records', () => {
     const catalog = parseCapabilityCatalog([...MANAGE_SEQUENCE_RECORDS]);
-    expect(catalog).toHaveLength(81);
+    expect(catalog).toHaveLength(FOLDED_RECORD_COUNT);
   });
 });
 
 describe('manage_sequence async/output contracts', () => {
-  const longRunning = MANAGE_SEQUENCE_RECORDS.filter((r) => r.behavior.longRunning);
+  const longRunning = UNFOLDED_RECORDS.filter((r) => r.behavior.longRunning);
   const longRunningActions = new Set(longRunning.map((r) => r.legacyIds[0].action));
 
   it('flags only start_render, start_recording, start_demo_recording, and start_killcam as long-running', () => {
@@ -127,7 +141,7 @@ describe('manage_sequence availability and plugin gates', () => {
   });
 
   it('MRQ records require MovieRenderPipeline plugin', () => {
-    const mrqRecords = MANAGE_SEQUENCE_RECORDS.filter(
+    const mrqRecords = UNFOLDED_RECORDS.filter(
       (r) => r.discovery.family === 'mrq',
     );
     expect(mrqRecords).toHaveLength(8);
@@ -137,7 +151,7 @@ describe('manage_sequence availability and plugin gates', () => {
   });
 
   it('take records require Takes plugin', () => {
-    const takeRecords = MANAGE_SEQUENCE_RECORDS.filter(
+    const takeRecords = UNFOLDED_RECORDS.filter(
       (r) => r.discovery.family === 'take',
     );
     expect(takeRecords).toHaveLength(5);
@@ -147,7 +161,7 @@ describe('manage_sequence availability and plugin gates', () => {
   });
 
   it('media records require ElectraPlayer plugin', () => {
-    const mediaRecords = MANAGE_SEQUENCE_RECORDS.filter(
+    const mediaRecords = UNFOLDED_RECORDS.filter(
       (r) => r.discovery.family === 'media',
     );
     expect(mediaRecords).toHaveLength(8);
@@ -157,7 +171,7 @@ describe('manage_sequence availability and plugin gates', () => {
   });
 
   it('replay records require OnlineSubsystem plugin', () => {
-    const replayRecords = MANAGE_SEQUENCE_RECORDS.filter(
+    const replayRecords = UNFOLDED_RECORDS.filter(
       (r) => r.discovery.family === 'replay',
     );
     expect(replayRecords).toHaveLength(9);
@@ -196,7 +210,7 @@ describe('manage_sequence routing and cross-parent set_metadata', () => {
     const mrq = MANAGE_SEQUENCE_RECORDS.filter(
       (r) => r.discovery.family === 'mrq',
     );
-    expect(timeline.length + mrq.length).toBeLessThan(81);
+    expect(timeline.length + mrq.length).toBeLessThan(83);
     expect(timeline.every((r) => r.discovery.domain === 'sequence')).toBe(true);
     expect(mrq.every((r) => r.discovery.domain === 'movie_render')).toBe(true);
   });
@@ -223,7 +237,7 @@ describe('manage_sequence failure and cancellation semantics', () => {
   });
 
   it('destructive records (delete, remove_track) are not safe to retry', () => {
-    const destructive = MANAGE_SEQUENCE_RECORDS.filter(
+    const destructive = UNFOLDED_RECORDS.filter(
       (r) => r.behavior.effect === 'destructive',
     );
     for (const record of destructive) {
@@ -384,12 +398,12 @@ describe('manage_sequence hash parity: TS source, JSON round-trip, and recompute
     }
   });
 
-  it('JSON round-trip preserves all 81 records with identical hashes', () => {
+  it('JSON round-trip preserves all folded records with identical hashes', () => {
     const json = JSON.stringify(MANAGE_SEQUENCE_RECORDS);
     const restored = JSON.parse(json) as typeof MANAGE_SEQUENCE_RECORDS;
     const catalog = parseCapabilityCatalog([...restored]);
-    expect(catalog).toHaveLength(81);
-    for (let i = 0; i < 81; i++) {
+    expect(catalog).toHaveLength(FOLDED_RECORD_COUNT);
+    for (let i = 0; i < FOLDED_RECORD_COUNT; i++) {
       expect(catalog[i].hashes).toEqual(MANAGE_SEQUENCE_RECORDS[i].hashes);
     }
   });

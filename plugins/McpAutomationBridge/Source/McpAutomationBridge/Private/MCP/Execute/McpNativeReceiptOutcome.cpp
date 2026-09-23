@@ -1,6 +1,7 @@
+#include "MCP/Execute/McpNativeReceiptOutcome.h"
+#include "Foundation/HandlerUtils/McpHandlerUtilsJson.h"
 // McpNativeReceiptOutcome.cpp — see header for the parity contract.
 
-#include "MCP/Execute/McpNativeReceiptOutcome.h"
 
 namespace
 {
@@ -38,18 +39,45 @@ bool IsPathKind(const FString& Kind)
 }
 
 // Read a field from the result root, then its nested `data` payload (the native
-// completion carries the verdict separately from the payload), matching the TS
-// reader.
+// completion carries the verdict separately from the payload), then `details`
+// (the gateway folds undeclared handler fields into it) and finally the
+// handler's own nested `data.details`. Field order (root, data, details,
+// data.details) matches the TypeScript makeReader order exactly, so both
+// transports read the same winner.
 TSharedPtr<FJsonValue> ReadField(const TSharedPtr<FJsonObject>& Result, const TCHAR* Key)
 {
 	if (const TSharedPtr<FJsonValue> Rooted = Result->TryGetField(Key))
 	{
 		return Rooted;
 	}
-	const TSharedPtr<FJsonObject>* Data = nullptr;
-	if (Result->TryGetObjectField(TEXT("data"), Data) && Data)
+	TSharedPtr<FJsonObject> Data;
+	const TSharedPtr<FJsonObject>* DataField = nullptr;
+	if (Result->TryGetObjectField(TEXT("data"), DataField) && DataField)
 	{
-		return (*Data)->TryGetField(Key);
+		Data = *DataField;
+		if (const TSharedPtr<FJsonValue> Nested = Data->TryGetField(Key))
+		{
+			return Nested;
+		}
+	}
+	const TSharedPtr<FJsonObject>* Details = nullptr;
+	if (Result->TryGetObjectField(TEXT("details"), Details) && Details)
+	{
+		if (const TSharedPtr<FJsonValue> Nested = (*Details)->TryGetField(Key))
+		{
+			return Nested;
+		}
+	}
+	if (Data.IsValid())
+	{
+		const TSharedPtr<FJsonObject>* DataDetails = nullptr;
+		if (Data->TryGetObjectField(TEXT("details"), DataDetails) && DataDetails)
+		{
+			if (const TSharedPtr<FJsonValue> NestedDetails = (*DataDetails)->TryGetField(Key))
+			{
+				return NestedDetails;
+			}
+		}
 	}
 	return nullptr;
 }
@@ -58,7 +86,7 @@ FString OutcomeReadString(const TSharedPtr<FJsonObject>& Result, const TCHAR* Ke
 {
 	const TSharedPtr<FJsonValue> Value = ReadField(Result, Key);
 	FString Out;
-	if (Value.IsValid() && Value->TryGetString(Out))
+	if (Value.IsValid() && McpHandlerUtils::TryGetJsonValueString(Value, Out))
 	{
 		return Out;
 	}
@@ -74,13 +102,23 @@ TSharedPtr<FJsonValue> MakeHandle(const TCHAR* Kind, const TCHAR* Field, const F
 }
 
 const TCHAR* const ASSET_FIELDS[] = {
-	TEXT("assetPath"), TEXT("createdAssetPath"), TEXT("savedAssetPath"), TEXT("destinationPath")};
-const TCHAR* const ACTOR_FIELDS[] = {TEXT("actorPath"), TEXT("actorName"), TEXT("actorLabel")};
+	TEXT("assetPath"), TEXT("createdAssetPath"), TEXT("savedAssetPath"), TEXT("destinationPath"),
+	TEXT("widgetPath"), TEXT("deletedPath")};
+// The caller-facing identities first: a receipt handle is what the client
+// passes back to a follow-up capability, and the engine's internal object path
+// (/Temp/...:PersistentLevel.Actor_UAID_...) is not a stable handle. The path
+// is still published under `actorPath` in the payload.
+const TCHAR* const ACTOR_FIELDS[] = {TEXT("actorName"), TEXT("actorLabel"), TEXT("actorPath")};
 const TCHAR* const CHANGE_ARRAYS[] = {
-	TEXT("changes"), TEXT("changedEntities"), TEXT("changedAssets"), TEXT("affectedActors"), TEXT("modifiedPaths")};
+	TEXT("changes"), TEXT("changedEntities"), TEXT("changedAssets"), TEXT("affectedActors"),
+	TEXT("modifiedPaths"), TEXT("deleted")};
+// `widgetPath` was listed for handles but not here, so create_game_screen and
+// create_widget_template published a handle to a brand-new asset while leaving
+// changes[] empty - a caller diffing changes[] missed every widget it authored.
 const TCHAR* const CHANGE_SINGLES[] = {
 	TEXT("assetPath"), TEXT("createdAssetPath"), TEXT("savedAssetPath"),
-	TEXT("destinationPath"), TEXT("actorPath"), TEXT("actorName")};
+	TEXT("destinationPath"), TEXT("deletedPath"), TEXT("widgetPath"),
+	TEXT("actorName"), TEXT("actorPath")};
 }  // namespace
 
 TArray<FString> McpExtractReceiptChanges(const TSharedPtr<FJsonObject>& RawResult)
@@ -99,7 +137,7 @@ TArray<FString> McpExtractReceiptChanges(const TSharedPtr<FJsonObject>& RawResul
 			for (const TSharedPtr<FJsonValue>& Entry : *Array)
 			{
 				FString Text;
-				if (Entry->TryGetString(Text) && !Text.IsEmpty())
+				if (McpHandlerUtils::TryGetJsonValueString(Entry, Text) && !Text.IsEmpty())
 				{
 					Changes.AddUnique(Text);
 				}

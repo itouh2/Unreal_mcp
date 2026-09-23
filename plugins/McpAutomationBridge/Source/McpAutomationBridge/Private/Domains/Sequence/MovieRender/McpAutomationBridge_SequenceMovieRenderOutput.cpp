@@ -9,7 +9,9 @@
 
 #include "Foundation/HandlerUtils/McpHandlerUtils.h"
 #include "McpAutomationBridgeSubsystem.h"
+#include "LevelSequence.h"
 #include "Misc/FrameRate.h"
+#include "MovieScene.h"
 #include "MoviePipelineOutputSetting.h"
 #include MCP_MOVIE_PIPELINE_CONFIG_HEADER
 #include "MoviePipelineQueue.h"
@@ -27,6 +29,29 @@ bool TryGetSettingsInt(const TSharedPtr<FJsonObject> &Payload, const TCHAR *Name
   const TSharedPtr<FJsonObject> *Settings = nullptr;
   return Payload.IsValid() && Payload->TryGetObjectField(TEXT("settings"), Settings) &&
          Settings && Settings->IsValid() && (*Settings)->TryGetNumberField(Name, Out);
+}
+
+/**
+ * The sequence's first frame, in DISPLAY frames.
+ *
+ * MRQ warms up by evaluating frames BEFORE the first rendered one ("state to
+ * WarmingUp due to having N warm up frames" in the log). A custom range that
+ * begins on the sequence's own first frame leaves no runway for that, and MRQ
+ * then emits exactly ONE image and reports the job finished -- verified live:
+ * 0..120 produced 1 frame, 0..110 produced 1 frame, 100..110 produced 10.
+ */
+int32 SequencePlaybackStartDisplayFrame(const UMoviePipelineExecutorJob *Job) {
+  if (!Job) return 0;
+  const ULevelSequence *Sequence = Cast<ULevelSequence>(Job->Sequence.TryLoad());
+  if (!Sequence) return 0;
+  const UMovieScene *MovieScene = Sequence->GetMovieScene();
+  if (!MovieScene) return 0;
+  const FFrameNumber StartTick = MovieScene->GetPlaybackRange().GetLowerBoundValue();
+  return FFrameRate::TransformTime(FFrameTime(StartTick),
+                                   MovieScene->GetTickResolution(),
+                                   MovieScene->GetDisplayRate())
+      .FloorToFrame()
+      .Value;
 }
 
 bool ParseResolution(const FString &Text, FIntPoint &Out) {
@@ -159,6 +184,22 @@ UMoviePipelineOutputSetting *ApplyOutputSettings(
       OutCode = TEXT("INVALID_FRAME_RANGE");
       return nullptr;
     }
+    // Inset off the sequence's first frame so MRQ has warm-up runway. Without
+    // this the job renders a single image and still reports success, which is
+    // indistinguishable from a correct one-frame render.
+    const int32 PlaybackStart = SequencePlaybackStartDisplayFrame(Job);
+    if (StartFrame <= PlaybackStart) {
+      const int32 Requested = StartFrame;
+      StartFrame = PlaybackStart + 1;
+      EndFrame = FMath::Max(EndFrame, StartFrame + 1);
+      // Said in the receipt itself: a moved start is still a dropped frame,
+      // and the caller must not have to read customStartFrame back to learn it.
+      OutMessage = FString::Printf(
+          TEXT("Movie Render Queue output settings configured; startFrame moved from %d to %d "
+               "because MRQ renders a single image when a custom range begins on the sequence's "
+               "first frame, so frame %d will not be rendered."),
+          Requested, StartFrame, Requested);
+    }
     Output->bUseCustomPlaybackRange = true;
     Output->CustomStartFrame = StartFrame;
     Output->CustomEndFrame = EndFrame;
@@ -192,12 +233,16 @@ bool HandleConfigureOutputSettings(UMcpAutomationBridgeSubsystem *Subsystem,
       ResolveJob(Payload, Queue, Message, Code);
   if (!Job)
     return SendError(Subsystem, RequestId, Socket, Message, Code), true;
+  Message.Reset();
   if (!ApplyOutputSettings(Job, Payload, Message, Code))
     return SendError(Subsystem, RequestId, Socket, Message, Code), true;
   MCP_SET_MOVIE_PIPELINE_QUEUE_DIRTY(Queue, true);
+  // ApplyOutputSettings leaves a note in Message when it had to move the
+  // start frame; otherwise it is empty and the plain receipt is used.
   Subsystem->SendAutomationResponse(
       Socket, RequestId, true,
-      TEXT("Movie Render Queue output settings configured."),
+      Message.IsEmpty() ? FString(TEXT("Movie Render Queue output settings configured."))
+                        : Message,
       BuildJobResult(Job, Queue));
   return true;
 }

@@ -79,6 +79,8 @@ const testCases = [
   // === CORE ASSET ACTIONS ===
   { scenario: 'ACTION: list', toolName: 'manage_asset', arguments: { action: 'list', path: TEST_FOLDER, recursive: true }, expected: 'success' },
   { scenario: 'ACTION: import', toolName: 'manage_asset', arguments: { action: 'import', sourcePath: relativeImportSource, destinationPath: IMPORTED_MESH, overwrite: true, save: true }, expected: 'success' },
+  { scenario: 'ACTION: import with importAnimations on a mesh-only source', toolName: 'manage_asset', arguments: { action: 'import', sourcePath: relativeImportSource, destinationPath: asset(`SM_ImportedAnim_${ts}`), importAnimations: true, save: false }, expected: 'error' },
+  { scenario: 'ACTION: import refuses an unresolvable skeletonPath', toolName: 'manage_asset', arguments: { action: 'import', sourcePath: relativeImportSource, destinationPath: asset(`SM_ImportedSkel_${ts}`), skeletonPath: '/Game/DoesNotExist/SK_Missing', save: false }, expected: 'error|skeleton' },
   { scenario: 'SECURITY: import rejects absolute host path', toolName: 'manage_asset', arguments: { action: 'import', sourcePath: '/etc/passwd', destinationPath: asset(`T_AbsoluteImport_${ts}`) }, expected: 'error|security violation' },
   { scenario: 'SECURITY: import rejects project traversal', toolName: 'manage_asset', arguments: { action: 'import', sourcePath: '../outside.obj', destinationPath: asset(`T_TraversalImport_${ts}`) }, expected: 'error|security violation' },
   { scenario: 'ACTION: duplicate', toolName: 'manage_asset', arguments: { action: 'duplicate', sourcePath: DUPLICATE_SOURCE, destinationPath: DUPLICATE_DEST }, expected: 'success' },
@@ -129,6 +131,9 @@ const testCases = [
   { scenario: 'ACTION: bulk_delete', toolName: 'manage_asset', arguments: { action: 'bulk_delete', assetPaths: [BULK_DELETE_SOURCE], showConfirmation: false, fixupRedirectors: false }, expected: 'success' },
   { scenario: 'ACTION: source_control_checkout', toolName: 'manage_asset', arguments: { action: 'source_control_checkout', assetPaths: [BASE_MATERIAL] }, expected: { condition: 'success', errorPattern: 'SOURCE_CONTROL_DISABLED' } },
   { scenario: 'ACTION: source_control_submit', toolName: 'manage_asset', arguments: { action: 'source_control_submit', assetPaths: [BASE_MATERIAL] }, expected: { condition: 'success', errorPattern: 'SOURCE_CONTROL_DISABLED' } },
+  { scenario: 'ACTION: source_control_enable names a provider', toolName: 'manage_asset', arguments: { action: 'source_control_enable', provider: 'None' }, expected: { condition: 'success', errorPattern: 'SOURCE_CONTROL_ENABLE_FAILED' } },
+  { scenario: 'ACTION: source_control_commit_all on a project with no repository', toolName: 'manage_asset', arguments: { action: 'source_control_commit_all', description: 'Parameter coverage snapshot' }, expected: { condition: 'success', errorPattern: 'NO_REPOSITORY' } },
+  { scenario: 'ACTION: source_control_init identity options', toolName: 'manage_asset', arguments: { action: 'source_control_init', description: 'Parameter coverage init', userName: 'Coverage Bot', userEmail: 'coverage@example.com' }, expected: { condition: 'success', errorPattern: 'GIT_INIT_FAILED' } },
 
   // === MATERIAL GRAPH ACTIONS ===
   { scenario: 'ADD: add_material_node constant', toolName: 'manage_asset', arguments: { action: 'add_material_node', materialPath: BASE_MATERIAL, type: 'Constant', x: -200, y: 0 }, expected: 'success|already exists', captureResult: { key: 'constantNodeId', fromField: 'nodeId' } },
@@ -338,7 +343,12 @@ const testCases = [
     { scenario: 'STRUCT ERROR: add member missing name', toolName: 'manage_asset', arguments: { action: 'add_struct_member', structPath: '${captured:structPath}', memberType: 'Int' }, expected: 'error', assertions: [{ path: 'structuredContent.error', includes: 'MISSING_PARAMETER', label: 'missing member name reported' }] },
     { scenario: 'STRUCT: delete_struct (duplicated)', toolName: 'manage_asset', arguments: { action: 'delete_struct', structPath: '${captured:dupStructPath}' }, expected: 'success', assertions: [{ path: 'structuredContent.result.deleted', equals: true, label: 'duplicated struct deleted flag' }] },
     { scenario: 'STRUCT: delete_struct (renamed)', toolName: 'manage_asset', arguments: { action: 'delete_struct', structPath: '${captured:renamedStructPath}' }, expected: 'success', assertions: [{ path: 'structuredContent.result.deleted', equals: true, label: 'renamed struct deleted flag' }] },
-    { scenario: 'STRUCT: delete_struct', toolName: 'manage_asset', arguments: { action: 'delete_struct', structPath: '${captured:structPath}' }, expected: 'success', assertions: [{ path: 'structuredContent.result.deleted', equals: true, label: 'struct deleted flag' }] },
+    // The pre-rename path: renamed away above, and the renamed asset already
+    // deleted, so nothing resolves here. The native handler answers success with
+    // deleted:false ("Struct deleted (or did not exist)",
+    // Structs/...AssetOpsDelete.cpp), so this covers that branch. It previously
+    // asserted deleted:true, which could not hold at this point in the sequence.
+    { scenario: 'STRUCT: delete_struct on an already-removed path reports deleted:false', toolName: 'manage_asset', arguments: { action: 'delete_struct', structPath: '${captured:structPath}' }, expected: 'success', assertions: [{ path: 'structuredContent.result.deleted', equals: false, label: 'absent struct reports deleted:false' }] },
 
     // === CLEANUP ===
     { scenario: 'Cleanup: delete test folder', toolName: 'manage_asset', arguments: { action: 'delete', path: TEST_FOLDER, force: true }, expected: 'success|not found' },

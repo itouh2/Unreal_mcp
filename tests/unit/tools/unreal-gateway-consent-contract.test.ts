@@ -2,6 +2,10 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import Ajv from 'ajv';
+// Ajv's ESM and CJS builds expose the class differently; `new Ajv()` only
+// works because the test transform papers over it. Mirrors the interop in
+// src/utils/responses/response-validator.ts.
+const AjvCtor = (Ajv as typeof Ajv & { default?: typeof Ajv.default }).default ?? Ajv.default;
 import { describe, expect, it } from 'vitest';
 
 import { handleUnrealGatewayCall, type GatewayContext } from '../../../src/server/tool-registry-gateway.js';
@@ -22,10 +26,10 @@ const nativeGatewayDefinitionPath = resolve(
 );
 
 // A real destructive capability whose policy is `consent: 'elevated'`.
-const CAPABILITY_ID = 'asset.delete_asset';
+const CAPABILITY_ID = 'asset.delete';
 
 function validateGatewayArgs(args: unknown): { valid: boolean; errors: string } {
-  const ajv = new Ajv({ strict: false, allErrors: true });
+  const ajv = new AjvCtor({ strict: false, allErrors: true });
   const validate = ajv.compile(unrealGatewayToolDefinition.inputSchema);
   const valid = validate(args) === true;
   return { valid, errors: JSON.stringify(validate.errors ?? []) };
@@ -186,7 +190,7 @@ describe('Task 40 — consent driven through the real `unreal` tool arguments', 
         tool: 'manage_asset',
         action: 'delete_asset',
         params: { assetPath: '/Game/X' },
-        consent: { capability: 'asset.rename_asset', acknowledge: 'elevated' }
+        consent: { capability: 'asset.rename', acknowledge: 'elevated' }
       },
       makeContext(['admin'])
     );

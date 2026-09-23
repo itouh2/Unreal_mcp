@@ -1,9 +1,11 @@
 /**
  * system_control capability record catalog.
  *
- * Exactly 55 canonical CapabilityRecord entries mapped 1:1 to the 55
- * system_control actions in system-control-tool.ts (36 explicit enum actions
- * plus the 19 PERFORMANCE_ACTIONS spread into the enum). Each record is
+ * 57 authored CapabilityRecordSource entries covering the 57 system_control
+ * actions in system-control-tool.ts (38 explicit enum actions plus the 19
+ * PERFORMANCE_ACTIONS spread into the enum), folded by SYSTEM_CONTROL_FOLDS
+ * into the 21 shipped records (SYSTEM_CONTROL_FOLDED_RECORD_COUNT in
+ * system-control-test-helpers.ts). Each record is
  * grounded in the TypeScript handler map, the orchestrator routing in
  * consolidated-handler-registration.ts, command/path security utilities, and
  * the native HandleSystemControlAction accept list.
@@ -11,11 +13,11 @@
  * Record order is the authored family-file concatenation below; this module
  * does not re-derive an action order.
  *
- * Families (11):
+ * Authored families (12):
  * - console (8): show_fps, profile, set_quality, execute_command,
  *   console_command, set_cvar, set_resolution, set_fullscreen
  * - performance (19): PERFORMANCE_ACTIONS
- * - build (2): run_ubt, run_tests
+ * - build (4): run_ubt, run_tests, package_project, package_status
  * - insights (10): trace session lifecycle + snapshot/analyze
  * - logs (3): subscribe, unsubscribe, spawn_category
  * - python (1): execute_python
@@ -26,7 +28,9 @@
  * - viewport (1): screenshot
  * - render (1): lumen_update_scene
  *
- * Total: 8 + 19 + 2 + 10 + 3 + 1 + 3 + 3 + 3 + 1 + 1 + 1 = 55
+ * Total: 8 + 19 + 4 + 10 + 3 + 1 + 3 + 3 + 3 + 1 + 1 + 1 = 57
+ * (by source file: console 8, insights 10, performance-a 10 + performance-b 9,
+ * plugins 3, system-ops 12, widget-audio-viewport 5.)
  *
  * Routing: 50 actions use local TS dispatch (dispatchMode 'local') to a
  * specific bridge action; 5 (set_project_setting, execute_python,
@@ -42,8 +46,11 @@ import { PERFORMANCE_B_RECORDS } from './performance-b.js';
 import { PLUGIN_RECORDS } from './plugins.js';
 import { SYSTEM_OPS_RECORDS } from './system-ops.js';
 import { WIDGET_AUDIO_VIEWPORT_RECORDS } from './widget-audio-viewport.js';
+import { applyFolds } from '../shared/fold.js';
+import { SYSTEM_CONTROL_FOLDS } from '../folds/system-control.folds.js';
 
-const SOURCES: readonly CapabilityRecordSource[] = [
+/** The authored records before folding; per-action contract tests pin these. */
+export const SYSTEM_CONTROL_UNFOLDED_SOURCES: readonly CapabilityRecordSource[] = [
   ...CONSOLE_RECORDS,
   ...PERFORMANCE_A_RECORDS,
   ...PERFORMANCE_B_RECORDS,
@@ -52,6 +59,8 @@ const SOURCES: readonly CapabilityRecordSource[] = [
   ...INSIGHTS_RECORDS,
   ...WIDGET_AUDIO_VIEWPORT_RECORDS,
 ];
+
+const SOURCES: readonly CapabilityRecordSource[] = applyFolds(SYSTEM_CONTROL_UNFOLDED_SOURCES, SYSTEM_CONTROL_FOLDS, 'system_control');
 
 export const SYSTEM_CONTROL_SOURCES: readonly CapabilityRecordSource[] = SOURCES;
 

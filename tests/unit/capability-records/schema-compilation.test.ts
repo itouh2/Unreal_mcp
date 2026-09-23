@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { ALL_CAPABILITY_RECORDS } from '../../../src/tools/catalog/capabilities/records/aggregate.js';
+import {
+  ALL_CAPABILITY_RECORDS,
+  ALL_CAPABILITY_RECORD_COUNT,
+} from '../../../src/tools/catalog/capabilities/records/aggregate.js';
 import { Draft202012ObjectSchemaSchema } from '../../../src/tools/catalog/capabilities/json-schema.js';
 import {
   applyDeclaredDefaults,
@@ -7,13 +10,13 @@ import {
 } from '../../../src/server/gateway/gateway-execute-validate.js';
 import { isRecord as isRecordObject } from '../../../src/utils/validation/type-guards.js';
 
-const EXPECTED_RECORDS = 1401;
+const EXPECTED_RECORDS = ALL_CAPABILITY_RECORD_COUNT;
 const EXPECTED_SCHEMAS = EXPECTED_RECORDS * 2;
 
 const plain = (value: unknown): unknown => JSON.parse(JSON.stringify(value));
 
 describe('Task 29 - every schema compiles under the production validation boundary', () => {
-  it('all 2,670 input and output schemas parse under the shipped Zod schema contract', () => {
+  it('every input and output schema parses under the shipped Zod schema contract', () => {
     const failures: string[] = [];
     let compiled = 0;
 

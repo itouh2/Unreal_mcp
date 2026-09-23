@@ -1,3 +1,4 @@
+#include "Foundation/HandlerUtils/McpHandlerUtilsJson.h"
 #include "Domains/ControlActor/McpAutomationBridge_ControlActorSupport.h"
 #include "Foundation/BridgeHelpers/Properties/McpAutomationBridgeHelpersNestedPropertyPath.h"
 
@@ -85,7 +86,7 @@ bool UMcpAutomationBridgeSubsystem::HandleControlActorSetComponentProperties(
   if (MobilityVal) {
     if (USceneComponent *SC = Cast<USceneComponent>(TargetComponent)) {
       FString EnumVal;
-      if ((*MobilityVal)->TryGetString(EnumVal)) {
+      if (McpHandlerUtils::TryGetJsonValueString(*MobilityVal, EnumVal)) {
         int64 Val =
             StaticEnum<EComponentMobility::Type>()->GetValueByNameString(
                 EnumVal);
@@ -135,7 +136,7 @@ bool UMcpAutomationBridgeSubsystem::HandleControlActorSetComponentProperties(
               Cast<UStaticMeshComponent>(TargetComponent)) {
         FString MeshPath;
         const bool bClearMesh = Pair.Value->Type == EJson::Null;
-        if (bClearMesh || Pair.Value->TryGetString(MeshPath)) {
+        if (bClearMesh || McpHandlerUtils::TryGetJsonValueString(Pair.Value, MeshPath)) {
           UStaticMesh *NewMesh = nullptr;
           if (!MeshPath.IsEmpty()) {
             NewMesh = LoadObject<UStaticMesh>(nullptr, *MeshPath);
@@ -242,71 +243,6 @@ bool UMcpAutomationBridgeSubsystem::HandleControlActorSetComponentProperties(
   }
 
 	SendAutomationResponse(Socket, RequestId, true, TEXT("Component properties updated"), Data);
-  return true;
-#else
-  return false;
-#endif
-}
-bool UMcpAutomationBridgeSubsystem::HandleControlActorGetComponentProperty(
-    const FString &RequestId, const TSharedPtr<FJsonObject> &Payload,
-    TSharedPtr<FMcpBridgeWebSocket> Socket) {
-#if WITH_EDITOR
-  FString ActorName, ComponentName, PropertyName;
-  Payload->TryGetStringField(TEXT("actorName"), ActorName);
-  Payload->TryGetStringField(TEXT("componentName"), ComponentName);
-  Payload->TryGetStringField(TEXT("propertyName"), PropertyName);
-  if (PropertyName.IsEmpty()) {
-    Payload->TryGetStringField(TEXT("propertyPath"), PropertyName);
-  }
-
-  if (ActorName.IsEmpty() || ComponentName.IsEmpty() || PropertyName.IsEmpty()) {
-    SendAutomationError(Socket, RequestId, TEXT("actorName, componentName, and propertyName are required"), TEXT("MISSING_PARAM"));
-    return true;
-  }
-
-  AActor* Actor = FindActorByName(ActorName);
-  if (!Actor) {
-    SendAutomationError(Socket, RequestId, FString::Printf(TEXT("Actor not found: %s"), *ActorName), TEXT("ACTOR_NOT_FOUND"));
-    return true;
-  }
-
-  // CRITICAL FIX: Use FindComponentByName helper which supports fuzzy matching
-  // This handles cases where component names have numeric suffixes (e.g., "StaticMeshComponent0")
-  UActorComponent* Component = FindComponentByName(Actor, ComponentName);
-  if (!Component) {
-    SendAutomationError(Socket, RequestId,
-        FString::Printf(TEXT("Component not found: %s on actor: %s"), *ComponentName, *ActorName),
-        TEXT("COMPONENT_NOT_FOUND"));
-    return true;
-  }
-
-  // BB-022/023: resolve through the shared nested-path boundary so dotted
-  // paths (e.g. BodyInstance.CollisionEnabled) resolve, not just single names.
-  void* ContainerPtr = nullptr;
-  FString ResolveError;
-  FProperty* Property = ResolveNestedPropertyPath(Component, PropertyName, ContainerPtr, ResolveError);
-  if (!Property) {
-    SendAutomationError(Socket, RequestId,
-        FString::Printf(TEXT("Property not found: %s on component: %s"), *PropertyName, *ComponentName),
-        TEXT("PROPERTY_NOT_FOUND"));
-    return true;
-  }
-
-  TSharedPtr<FJsonObject> Data = McpHandlerUtils::CreateResultObject();
-  Data->SetStringField(TEXT("actorName"), ActorName);
-  Data->SetStringField(TEXT("componentName"), ComponentName);
-  Data->SetStringField(TEXT("propertyName"), PropertyName);
-  Data->SetStringField(TEXT("propertyType"), Property->GetClass()->GetName());
-
-  // Read from the resolved container (== Component for single-name paths).
-  TSharedPtr<FJsonValue> PropertyValue = ExportPropertyToJsonValue(ContainerPtr, Property);
-  if (PropertyValue.IsValid()) {
-    Data->SetField(TEXT("value"), PropertyValue);
-  } else {
-    Data->SetStringField(TEXT("value"), TEXT("<unsupported property type>"));
-  }
-
-  SendStandardSuccessResponse(this, Socket, RequestId, TEXT("Property retrieved"), Data);
   return true;
 #else
   return false;

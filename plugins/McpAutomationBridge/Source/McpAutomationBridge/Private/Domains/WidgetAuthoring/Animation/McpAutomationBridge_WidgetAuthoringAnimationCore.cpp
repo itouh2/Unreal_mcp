@@ -144,8 +144,9 @@ bool HandleWidgetAuthoringAnimationCore(
             return true;
         }
 
-        // The animation track binding is set up - MovieScene integration would add the actual track
-        // For now, we create the binding reference
+        // This creates the possessable binding (the widget's row in the UMG animation panel).
+        // No property track is created here -- propertyName only picks which track
+        // add_animation_keyframe will author, so the reply must not claim it exists yet.
         UMovieScene* MovieScene = Animation->GetMovieScene();
         if (!MovieScene)
         {
@@ -171,11 +172,16 @@ bool HandleWidgetAuthoringAnimationCore(
         ResultJson->SetStringField(TEXT("slotName"), SlotName);
         ResultJson->SetStringField(TEXT("propertyName"), PropertyName);
         ResultJson->SetStringField(TEXT("bindingGuid"), BindingGuid.ToString());
+        ResultJson->SetBoolField(TEXT("bindingCreated"), true);
+        ResultJson->SetBoolField(TEXT("propertyTrackCreated"), false);
 
         FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(WidgetBP);
         McpSafeAssetSave(WidgetBP);
 
-        Subsystem.SendAutomationResponse(RequestingSocket, RequestId, true, TEXT("Animation track added"), ResultJson);
+        Subsystem.SendAutomationResponse(RequestingSocket, RequestId, true,
+            FString::Printf(TEXT("Bound '%s' into animation '%s'. No %s track exists yet -- add_animation_keyframe creates the property track on its first key."),
+                            *SlotName, *AnimationName, *PropertyName),
+            ResultJson);
         return true;
     }
 
@@ -211,17 +217,21 @@ bool HandleWidgetAuthoringAnimationCore(
             return true;
         }
 
-        // UWidgetAnimation loop settings are typically controlled at playback time via PlayAnimation()
-        // We can store metadata or modify MovieScene settings
-        ResultJson->SetBoolField(TEXT("success"), true);
+        // UMG widget animations have no persisted loop setting: looping is a PlayAnimation()
+        // NumLoopsToPlay argument at runtime. This branch used to answer "Animation loop settings
+        // configured" with success:true while storing nothing, and then marked the asset modified and
+        // saved it for that non-change. Report what actually happened, and leave the asset untouched.
+        ResultJson->SetBoolField(TEXT("success"), false);
         ResultJson->SetStringField(TEXT("animationName"), AnimationName);
-        ResultJson->SetBoolField(TEXT("loop"), bLoop);
-        ResultJson->SetNumberField(TEXT("loopCount"), LoopCount);
-        ResultJson->SetStringField(TEXT("note"), TEXT("Loop settings configured. Apply via PlayAnimation() with NumLoopsToPlay parameter at runtime."));
+        ResultJson->SetBoolField(TEXT("requestedLoop"), bLoop);
+        ResultJson->SetNumberField(TEXT("requestedLoopCount"), LoopCount);
+        ResultJson->SetBoolField(TEXT("applied"), false);
+        ResultJson->SetStringField(TEXT("note"), TEXT("Nothing was stored and the widget asset was left unchanged. Loop behaviour is passed to PlayAnimation() as NumLoopsToPlay at runtime."));
 
-        WidgetAuthoringHelpers::MarkWidgetBlueprintModifiedAndSave(WidgetBP);
-
-        Subsystem.SendAutomationResponse(RequestingSocket, RequestId, true, TEXT("Animation loop settings configured"), ResultJson);
+        Subsystem.SendAutomationResponse(RequestingSocket, RequestId, false,
+            FString::Printf(TEXT("A widget animation has no stored loop setting, so no loop configuration exists to apply on '%s'. Pass NumLoopsToPlay to PlayAnimation() at runtime instead. Requested loop=%s, loopCount=%d."),
+                            *AnimationName, bLoop ? TEXT("true") : TEXT("false"), LoopCount),
+            ResultJson, TEXT("NOT_APPLICABLE"));
         return true;
     }
 

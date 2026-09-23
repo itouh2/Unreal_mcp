@@ -1,7 +1,7 @@
 // Task 24 — exact, bounded TypeScript `search` and `describe`.
 //
-// Discovery is served from the Task 23 generated canonical registry (1,335
-// records) through the Task 13 retrieval ranker. The parent-tool manifest union
+// Discovery is served from the Task 23 generated canonical registry through
+// the Task 13 retrieval ranker. The parent-tool manifest union
 // is no longer a contract source: describing an action returns THAT action's
 // exact schema, never the union of every action on its parent tool.
 //
@@ -25,8 +25,8 @@ const ASSET_IMPORT = 'asset.import';
 // Content hash re-pinned when asset.import gained retrieval `topics` ('import fbx',
 // 'import mesh', ...) and again when it declared the asset.import_asset alias; the schema
 // hash is untouched because topics and aliases are discovery data.
-const ASSET_IMPORT_SCHEMA_HASH = '8145032abab044ee8e4ea3960cc422e219c02ceed47171dd60a12b9fbbf71478';
-const ASSET_IMPORT_CONTENT_HASH = 'f3cbf1e57f61d06098c09cdf3cfa9253c8c9e5de2d41ab8339db40ba6f1e1168';
+const ASSET_IMPORT_SCHEMA_HASH = '8e8a28d4a81cccdc81320e142fbe70225d66c4225515cf02a0667fbdd5b8428a';
+const ASSET_IMPORT_CONTENT_HASH = 'e378cc5cfad595d9e5d397db6663be83500217938fca43a899e834e3381913c8';
 
 type Row = Record<string, unknown>;
 
@@ -268,20 +268,24 @@ describe('describe returns one capability contract with its EXACT action schema'
     expect(isRecord(input)).toBe(true);
     expect(Object.keys(input.properties as Row).sort()).toEqual([
       'destinationPath',
+      'importAnimations',
       'overwrite',
       'save',
+      'skeletonPath',
       'sourcePath'
     ]);
     expect(input.required).toEqual(['sourcePath', 'destinationPath']);
     expect(input.additionalProperties).toBe(false);
   });
 
-  it('projects the same four parameters into the compact list', () => {
+  it('projects the same six parameters into the compact list', () => {
     const parameters = result.parameters as Row[];
     expect(parameters.map((row) => row.name).sort()).toEqual([
       'destinationPath',
+      'importAnimations',
       'overwrite',
       'save',
+      'skeletonPath',
       'sourcePath'
     ]);
     const sourcePath = parameters.find((row) => row.name === 'sourcePath');
@@ -291,8 +295,8 @@ describe('describe returns one capability contract with its EXACT action schema'
 
   it('never leaks a union-sized parameter catalog', () => {
     // The pre-Task-24 union catalog for manage_asset carried 161 parameters.
-    expect((result.parameters as Row[]).length).toBe(4);
-    expect(result.parameterCount).toBe(4);
+    expect((result.parameters as Row[]).length).toBe(6);
+    expect(result.parameterCount).toBe(6);
   });
 
   it('publishes the output contract and the per-record hashes', () => {
@@ -350,8 +354,10 @@ describe('describe drills into exactly one parameter', () => {
     expect(result.errorCode).toBe('UNKNOWN_PARAM');
     expect(result.availableParameters).toEqual([
       'destinationPath',
+      'importAnimations',
       'overwrite',
       'save',
+      'skeletonPath',
       'sourcePath'
     ]);
   });
@@ -389,7 +395,7 @@ describe('describe accepts the legacy tool+action pair as a migration view', () 
     expect(result.success).toBe(true);
     expect(result.scope).toBe('capability');
     expect(result.resolvedFromAlias).toBe('blueprint.create_widget');
-    expect(result.capability).toBe('blueprint.create_widget_blueprint');
+    expect(result.capability).toBe('blueprint.edit_widget_blueprint');
   });
 });
 

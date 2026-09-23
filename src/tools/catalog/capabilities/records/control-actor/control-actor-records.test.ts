@@ -1,8 +1,9 @@
 /**
  * Focused tests for the control_actor capability-record catalog.
  *
- * Proves: exactly 46 records mapped 1:1 to the control_actor tool action
- * enum, unique canonical/legacy IDs, schema closure, representative
+ * Proves: 47 authored records folding to 22 shipped records whose legacy
+ * pairs cover the control_actor tool action enum exactly, unique
+ * canonical/legacy IDs, schema closure, representative
  * read/write/destructive behavior, alias normalization grounded in
  * normalizeActorAction, native dispatch parity, and hash determinism.
  */
@@ -13,7 +14,14 @@ import {
   CONTROL_ACTOR_RECORD_COUNT,
   CONTROL_ACTOR_RECORDS,
   CONTROL_ACTOR_SOURCES,
+  CONTROL_ACTOR_UNFOLDED_SOURCES,
 } from './index.js';
+
+// The shipped catalog folds sibling records into families; per-action facts
+// (effects, aliases, normalization) are pinned on the authored, unfolded records.
+const UNFOLDED_RECORDS = CONTROL_ACTOR_UNFOLDED_SOURCES.map((source) => createCapabilityRecord(source));
+const FOLDED_RECORD_COUNT = 22;
+const LEGACY_PAIR_COUNT = 49;
 
 const controlActorToolDefinition = consolidatedToolDefinitions.find((t) => t.name === 'control_actor') as NonNullable<typeof consolidatedToolDefinitions[number]>;
 const PROPS = controlActorToolDefinition.inputSchema.properties as Record<
@@ -24,21 +32,22 @@ const ACTION_PROP = PROPS.action;
 if (!ACTION_PROP?.enum) {
   throw new TypeError('control_actor action enum is unavailable');
 }
-const ALL_46_ACTIONS = [...ACTION_PROP.enum] as string[];
+const ALL_ACTIONS = [...ACTION_PROP.enum] as string[];
 
 function findByAction(action: string) {
-  const record = CONTROL_ACTOR_RECORDS.find(
+  const record = UNFOLDED_RECORDS.find(
     (r) => r.legacyIds[0].action === action,
   );
   if (!record) throw new Error(`Record not found for action: ${action}`);
   return record;
 }
 
-describe('control_actor exact-set: 46 records mapped 1:1 to tool actions', () => {
-  it('produces exactly 46 capability records', () => {
-    expect(CONTROL_ACTOR_RECORD_COUNT).toBe(46);
-    expect(CONTROL_ACTOR_SOURCES).toHaveLength(46);
-    expect(CONTROL_ACTOR_RECORDS).toHaveLength(46);
+describe('control_actor exact-set: 47 records mapped 1:1 to tool actions', () => {
+  it('folds 47 authored records into 22 capability records', () => {
+    expect(UNFOLDED_RECORDS).toHaveLength(47);
+    expect(CONTROL_ACTOR_RECORD_COUNT).toBe(FOLDED_RECORD_COUNT);
+    expect(CONTROL_ACTOR_SOURCES).toHaveLength(FOLDED_RECORD_COUNT);
+    expect(CONTROL_ACTOR_RECORDS).toHaveLength(FOLDED_RECORD_COUNT);
   });
 
   it('maps every control_actor tool action to exactly one record legacy ID', () => {
@@ -47,26 +56,30 @@ describe('control_actor exact-set: 46 records mapped 1:1 to tool actions', () =>
         r.legacyIds.map((li) => `${li.tool}::${li.action}`),
       ),
     );
-    for (const action of ALL_46_ACTIONS) {
+    for (const action of ALL_ACTIONS) {
       expect(legacyKeys.has(`control_actor::${action}`)).toBe(true);
     }
-    expect(legacyKeys.size).toBe(46);
+    // Every authored action is still a callable pair; folds with a new primary add theirs.
+    for (const record of UNFOLDED_RECORDS) {
+      expect(legacyKeys.has(`control_actor::${record.legacyIds[0].action}`)).toBe(true);
+    }
+    expect(legacyKeys.size).toBe(LEGACY_PAIR_COUNT);
   });
 
   it('the tool definition action enum matches the record actions exactly', () => {
     const recordActions = new Set(
       CONTROL_ACTOR_RECORDS.map((r) => `${r.legacyIds[0].action}`),
     );
-    const enumSet = new Set(ALL_46_ACTIONS);
+    const enumSet = new Set(ALL_ACTIONS);
     expect(recordActions.size).toBe(enumSet.size);
-    for (const action of ALL_46_ACTIONS) {
+    for (const action of ALL_ACTIONS) {
       expect(recordActions.has(action)).toBe(true);
     }
   });
 
-  it('has no duplicate canonical IDs, aliases, or legacy IDs across all 46 records', () => {
+  it('has no duplicate canonical IDs, aliases, or legacy IDs across all folded records', () => {
     const catalog = parseCapabilityCatalog([...CONTROL_ACTOR_RECORDS]);
-    expect(catalog).toHaveLength(46);
+    expect(catalog).toHaveLength(FOLDED_RECORD_COUNT);
   });
 
   it('every record routes through the control_actor parent tool with tool dispatch mode', () => {
@@ -78,9 +91,9 @@ describe('control_actor exact-set: 46 records mapped 1:1 to tool actions', () =>
 
   it('records cover exactly the canonical action enum (order-independent, deterministic)', () => {
     const recordActions = CONTROL_ACTOR_RECORDS.map((r) => `${r.legacyIds[0].action}`);
-    expect([...recordActions].sort()).toEqual([...ALL_46_ACTIONS].sort());
+    expect([...recordActions].sort()).toEqual([...ALL_ACTIONS].sort());
     // The derived enum is deterministic: a second derivation is byte-identical.
-    expect([...ALL_46_ACTIONS].sort()).toEqual([...ALL_46_ACTIONS].sort());
+    expect([...ALL_ACTIONS].sort()).toEqual([...ALL_ACTIONS].sort());
   });
 });
 
@@ -194,7 +207,7 @@ describe('control_actor alias normalization grounded in normalizeActorAction', (
 
   it('retains canonical records under the inventory C classification', () => {
     const aliasActions = new Set(ALIAS_TO_CANONICAL.map(([alias]) => alias));
-    for (const record of CONTROL_ACTOR_RECORDS) {
+    for (const record of UNFOLDED_RECORDS) {
       const action = record.legacyIds[0].action;
       if (aliasActions.has(action)) continue;
       expect(record.normalization.class).toBe('C_SAME_VERB_DIFFERENT_TARGET');
@@ -248,12 +261,12 @@ describe('control_actor hash parity: TS source, JSON round-trip, and recompute',
     }
   });
 
-  it('JSON round-trip preserves all 46 records with identical hashes', () => {
+  it('JSON round-trip preserves all folded records with identical hashes', () => {
     const json = JSON.stringify(CONTROL_ACTOR_RECORDS);
     const restored = JSON.parse(json) as typeof CONTROL_ACTOR_RECORDS;
     const catalog = parseCapabilityCatalog([...restored]);
-    expect(catalog).toHaveLength(46);
-    for (let i = 0; i < 46; i++) {
+    expect(catalog).toHaveLength(FOLDED_RECORD_COUNT);
+    for (let i = 0; i < FOLDED_RECORD_COUNT; i++) {
       expect(catalog[i].hashes).toEqual(CONTROL_ACTOR_RECORDS[i].hashes);
     }
   });

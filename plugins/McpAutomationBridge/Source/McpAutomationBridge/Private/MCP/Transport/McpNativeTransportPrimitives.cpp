@@ -1,3 +1,4 @@
+#include "Foundation/HandlerUtils/McpHandlerUtilsJson.h"
 #include "MCP/Transport/McpNativeTransportPrivate.h"
 #include "MCP/Execute/McpNativeGatewayAuthorization.h"
 #include "MCP/Resources/McpResourceCatalog.h"
@@ -157,13 +158,13 @@ bool FMcpNativeTransport::HandlePrimitiveMethod(
 				McpResourceRead::UnavailableMessage(Uri), Data));
 			return true;
 		}
-			const McpResourceRead::FReadBody ReadBody =
-				McpResourceRead::BuildReadBody(Uri, McpInitialResourceRevision);
-			auto Content = MakeShared<FJsonObject>();
-			Content->SetStringField(TEXT("uri"), Uri);
-			Content->SetStringField(TEXT("mimeType"), McpResourceCatalog::JsonMimeType());
-			Content->SetNumberField(TEXT("revision"), ReadBody.Revision);
-			Content->SetStringField(TEXT("text"), ReadBody.Text);
+		const McpResourceRead::FReadBody ReadBody =
+			McpResourceRead::BuildReadBody(Uri, McpInitialResourceRevision);
+		auto Content = MakeShared<FJsonObject>();
+		Content->SetStringField(TEXT("uri"), Uri);
+		Content->SetStringField(TEXT("mimeType"), McpResourceCatalog::JsonMimeType());
+		Content->SetNumberField(TEXT("revision"), ReadBody.Revision);
+		Content->SetStringField(TEXT("text"), ReadBody.Text);
 		TArray<TSharedPtr<FJsonValue>> Contents;
 		Contents.Add(MakeShared<FJsonValueObject>(Content));
 		auto Result = MakeShared<FJsonObject>();
@@ -212,7 +213,7 @@ bool FMcpNativeTransport::HandlePrimitiveMethod(
 			for (const TPair<FString, TSharedPtr<FJsonValue>> Pair : (*ArgsObj)->Values)
 			{
 				FString Val;
-				if (Pair.Value.IsValid() && Pair.Value->TryGetString(Val))
+				if (Pair.Value.IsValid() && McpHandlerUtils::TryGetJsonValueString(Pair.Value, Val))
 				{
 					Args.Add(Pair.Key, Val);
 				}

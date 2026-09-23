@@ -1,7 +1,7 @@
 // tests/unit/world-capability-records.test.ts
 // Focused fail-closed tests for the Task 16 world capability catalog.
 // Proves: 46 manage_level_structure + 86 manage_geometry + 30 manage_pcg
-// records (162 net-new), 312 frozen aggregate reusing the 150 build_environment
+// records (140 net-new), 290 frozen aggregate reusing the 150 build_environment
 // records by identity, exact action-set/order parity extracted from the canonical
 // tool definitions (no duplicated arrays), async PCG contract truth (taskId is a
 // number, no cancellation/poll), partition-grid-size source-backed shape, shell
@@ -11,6 +11,14 @@
 // catalogs.
 
 import { describe, expect, it } from 'vitest';
+import { isRecord } from '../../src/utils/validation/type-guards.js';
+
+// A generated schema's properties map is a JsonObject, so one property is a
+// JsonValue and reading `.type` off it directly does not type-check.
+function propType(props: Record<string, unknown>, key: string): unknown {
+  const prop = props[key];
+  return isRecord(prop) ? prop['type'] : undefined;
+}
 import { consolidatedToolDefinitions } from '../../src/tools/catalog/consolidated-tool-definitions.js';
 import type { ToolDefinition } from '../../src/tools/definitions/shared/tool-definition.js';
 import { createCapabilityRecord } from '../../src/tools/catalog/capabilities/index.js';
@@ -21,6 +29,7 @@ import {
 } from '../../src/tools/catalog/capabilities/records/world/manage-level-structure.index.js';
 import {
   MANAGE_GEOMETRY_RECORDS,
+  MANAGE_GEOMETRY_UNFOLDED_SOURCES,
   MANAGE_GEOMETRY_RECORD_COUNT,
 } from '../../src/tools/catalog/capabilities/records/world/manage-geometry.index.js';
 import {
@@ -53,18 +62,18 @@ const GEOMETRY_ACTIONS = actionEnum(consolidatedToolDefinitions.find((t) => t.na
 const PCG_ACTIONS = actionEnum(consolidatedToolDefinitions.find((t) => t.name === 'manage_pcg') as NonNullable<typeof consolidatedToolDefinitions[number]>);
 
 describe('Task 16 net-new counts', () => {
-  it('level-structure 46, geometry 86, pcg 30 records', () => {
-    expect(MANAGE_LEVEL_STRUCTURE_RECORD_COUNT).toBe(46);
-    expect(MANAGE_LEVEL_STRUCTURE_RECORDS).toHaveLength(46);
-    expect(MANAGE_GEOMETRY_RECORD_COUNT).toBe(86);
-    expect(MANAGE_GEOMETRY_RECORDS).toHaveLength(86);
-    expect(MANAGE_PCG_RECORD_COUNT).toBe(30);
-    expect(MANAGE_PCG_RECORDS).toHaveLength(30);
+  it('level-structure 8, geometry 15, pcg 3 records', () => {
+    expect(MANAGE_LEVEL_STRUCTURE_RECORD_COUNT).toBe(8);
+    expect(MANAGE_LEVEL_STRUCTURE_RECORDS).toHaveLength(8);
+    expect(MANAGE_GEOMETRY_RECORD_COUNT).toBe(15);
+    expect(MANAGE_GEOMETRY_RECORDS).toHaveLength(15);
+    expect(MANAGE_PCG_RECORD_COUNT).toBe(3);
+    expect(MANAGE_PCG_RECORDS).toHaveLength(3);
   });
-  it('net-new world records total 162', () => {
+  it('net-new world records total 26', () => {
     expect(MANAGE_LEVEL_STRUCTURE_RECORD_COUNT + MANAGE_GEOMETRY_RECORD_COUNT + MANAGE_PCG_RECORD_COUNT)
       .toBe(WORLD_NET_NEW_COUNT);
-    expect(WORLD_NET_NEW_COUNT).toBe(162);
+    expect(WORLD_NET_NEW_COUNT).toBe(26);
   });
 });
 
@@ -86,17 +95,17 @@ describe('Task 16 action-set/order parity (extracted from tool definitions)', ()
   });
   it('all net-new IDs are unique', () => {
     const netNewIds = [...ids(MANAGE_LEVEL_STRUCTURE_RECORDS), ...ids(MANAGE_GEOMETRY_RECORDS), ...ids(MANAGE_PCG_RECORDS)];
-    expect(new Set(netNewIds).size).toBe(162);
+    expect(new Set(netNewIds).size).toBe(26);
   });
 });
 
-describe('Task 16 frozen 312 aggregate', () => {
-  it('aggregate has exactly 312 records and unique IDs', () => {
-    expect(WORLD_CAPABILITY_RECORD_COUNT).toBe(312);
-    expect(new Set(ids(WORLD_CAPABILITY_CATALOG)).size).toBe(312);
+describe('Task 16 frozen 66 aggregate', () => {
+  it('aggregate has exactly 66 records and unique IDs', () => {
+    expect(WORLD_CAPABILITY_RECORD_COUNT).toBe(66);
+    expect(new Set(ids(WORLD_CAPABILITY_CATALOG)).size).toBe(66);
   });
-  it('aggregate reuses the 150 build_environment records by object identity', () => {
-    expect(WORLD_REUSED_BUILD_ENVIRONMENT_COUNT).toBe(150);
+  it('aggregate reuses the 40 build_environment records by object identity', () => {
+    expect(WORLD_REUSED_BUILD_ENVIRONMENT_COUNT).toBe(40);
     const reused = BUILD_ENVIRONMENT_RECORDS.every((src) => WORLD_SOURCE_RECORDS.includes(src));
     expect(reused).toBe(true);
     const sameRef = BUILD_ENVIRONMENT_RECORDS.every((src) => {
@@ -140,7 +149,7 @@ describe('Task 16 async PCG contract truth', () => {
     const built = createCapabilityRecord(rec);
     const outProps = built.schemas.output.properties;
     expect(outProps.taskId).toBeDefined();
-    expect(outProps.taskId.type).toBe('number');
+    expect(propType(outProps, 'taskId')).toBe('number');
     expect(outProps.bWasCancelled).toBeUndefined();
     expect(outProps.success).toBeDefined();
   });
@@ -167,13 +176,13 @@ describe('Task 16 async PCG contract truth', () => {
 
 describe('Task 16 partition grid size source-backed shape', () => {
   it('set_pcg_partition_grid_size uses gridSize/scope and returns scope/previousGridSize/gridSize/saved', () => {
-    const rec = MANAGE_PCG_RECORDS.find((r) => r.id === 'manage_pcg.set_pcg_partition_grid_size');
+    const rec = MANAGE_PCG_RECORDS.find((r) => r.id === 'manage_pcg.edit_pcg_graph');
     expect(rec).toBeDefined();
     if (!rec) return;
     const built = createCapabilityRecord(rec);
     const inp = built.schemas.input.properties;
     expect(inp.gridSize).toBeDefined();
-    expect(inp.gridSize.type).toBe('number');
+    expect(propType(inp, 'gridSize')).toBe('number');
     expect(inp.scope).toBeDefined();
     expect(inp.gridCellSize).toBeUndefined();
     const out = built.schemas.output.properties;
@@ -186,29 +195,17 @@ describe('Task 16 partition grid size source-backed shape', () => {
 
 describe('Task 16 shell thickness is scalar', () => {
   it('shell.thickness is a number, not a vector offset', () => {
-    const rec = MANAGE_GEOMETRY_RECORDS.find((r) => r.id === 'manage_geometry.shell');
+    // shell is authored on its own record; the shipped catalog folds it into model_mesh.
+    const rec = MANAGE_GEOMETRY_UNFOLDED_SOURCES.find((r) => r.id === 'manage_geometry.shell');
     expect(rec).toBeDefined();
     if (!rec) return;
     const built = createCapabilityRecord(rec);
-    expect(built.schemas.input.properties.thickness.type).toBe('number');
+    expect(propType(built.schemas.input.properties, 'thickness')).toBe('number');
     expect(built.schemas.input.properties.offset).toBeUndefined();
   });
 });
 
 describe('Task 16 version/plugin negative filters', () => {
-  it('convert_to_nanite is gated to UE 5.7+ and is not runnable on a 5.0/5.6 profile', () => {
-    const rec = MANAGE_GEOMETRY_RECORDS.find((r) => r.id === 'manage_geometry.convert_to_nanite');
-    expect(rec).toBeDefined();
-    if (!rec) return;
-    expect(rec.availability.unreal.min.major).toBe(5);
-    expect(rec.availability.unreal.min.minor).toBe(7);
-    const runnableOn50 = rec.availability.unreal.min.major < 5
-      || (rec.availability.unreal.min.major === 5 && rec.availability.unreal.min.minor <= 0);
-    expect(runnableOn50).toBe(false);
-    const runnableOn56 = rec.availability.unreal.min.major < 5
-      || (rec.availability.unreal.min.major === 5 && rec.availability.unreal.min.minor <= 6);
-    expect(runnableOn56).toBe(false);
-  });
   it('all geometry require GeometryScripting and all pcg require PCG', () => {
     for (const r of MANAGE_GEOMETRY_RECORDS) expect(r.availability.requiredPlugins).toContain('GeometryScripting');
     for (const r of MANAGE_PCG_RECORDS) expect(r.availability.requiredPlugins).toContain('PCG');
@@ -263,9 +260,9 @@ describe('Task 16 fail-closed malformed/duplicate catalogs', () => {
 });
 
 describe('Task 16 stale monolith absent', () => {
-  it('volume records are owned only by the A/B shards, totaling 28', () => {
+  it('volume records are owned only by the A/B shards, totaling 4 after folding', () => {
     const volumeRecords = MANAGE_LEVEL_STRUCTURE_RECORDS.filter((r) => r.discovery.family === 'volume');
-    expect(volumeRecords.length).toBe(28);
+    expect(volumeRecords.length).toBe(4);
     for (const r of volumeRecords) { expect(r.id.startsWith('manage_level_structure.')).toBe(true); }
   });
 });

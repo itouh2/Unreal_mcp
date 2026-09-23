@@ -21,7 +21,7 @@ export const UNREAL_GATEWAY_DESCRIPTION =
 // keeps them equal). Longer than the tool description because a client injects
 // it once per session, not once per tool listing.
 export const UNREAL_GATEWAY_INSTRUCTIONS = [
-  'Unreal Engine MCP server. The only tool is `unreal`; it wraps 1,400+ editor capabilities behind four operations: search, describe, execute, configure.',
+  'Unreal Engine MCP server. The only tool is `unreal`; it wraps 380 capabilities covering 1,500+ editor actions behind four operations: search, describe, execute, configure.',
   '',
   'Workflow for every task:',
   '1. search: {"operation":"search","query":"spawn actor"}. Use 2-4 plain words (verb + object), not a sentence. Each result row has a one-line summary, an effect (read, write or destructive) and a nextCall. Pick the row whose summary matches the task. If none fits, retry with different words, narrow with a filter (domain, tool, effect), or browse by calling describe with no selector and following each row\'s nextCall one level down.',
@@ -51,7 +51,7 @@ export const unrealGatewayToolDefinition: ToolDefinition = {
       effect: { type: 'string', enum: ['read', 'write', 'destructive'], description: 'Filter search results by declared behavior effect.' },
       tool: { type: 'string', description: 'Exact parent tool name copied from a search row (parentTool) or a describe response. Always paired with action; never guessed.' },
       action: { type: 'string', description: 'Exact action name copied from a search row or describe response. For configure, this is a manage_tools action.' },
-      param: { type: 'string', description: 'Exact parameter name to inspect on one capability. Use with describe plus capability, or plus tool and action; returns that single parameter\x27s schema.' },
+      param: { type: 'string', description: 'Exact parameter name to inspect on one capability. Use with describe plus tool and action; returns that single parameter\x27s schema plus the consent grant, when the capability needs one.' },
       params: { type: 'object', additionalProperties: true, description: 'Parameters for execute or configure: an object whose keys are exactly the parameter names describe listed for this action, with the same casing. Never include action or subAction here.' },
       consent: {
         type: 'object',

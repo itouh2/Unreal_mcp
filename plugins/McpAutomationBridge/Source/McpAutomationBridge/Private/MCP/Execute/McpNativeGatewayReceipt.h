@@ -25,6 +25,10 @@ struct FMcpSemanticError
 	FString Pointer;
 	FString Option;
 	FString Field;
+	// Unreal's own error code when the handler refused the call, mirroring the
+	// TypeScript execution variant's `handlerCode`: the fixed algebra label stays
+	// on Code, this names the specific reason.
+	FString HandlerCode;
 	// Task 39: a real boolean carried on the typed error (kinds capability,
 	// dispatch and execution), replacing the earlier Field="retryable" string
 	// hack so retryability is a true boolean matching the TypeScript algebra.
@@ -56,6 +60,14 @@ struct FMcpReceiptContext
 {
 	FString CorrelationId;
 	FString RequestId;
+
+	/** The id the subsystem queue and SendAutomationResponse use for this call.
+	 *  RequestId above is the CLIENT's JSON-RPC id ("num:8") and is what every
+	 *  receipt reports; the queue keys on a GUID minted per dispatch. Anything
+	 *  that has to pair a pre-dispatch decision with the response -- the consent
+	 *  burn ledger does -- must key on THIS one or it will never find its entry.
+	 */
+	FString QueueRequestId;
 	FString IdempotencyId;
 	FString IdempotencySlot;
 	double StartTimeSeconds = 0.0;

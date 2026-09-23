@@ -17,6 +17,7 @@ tests/
 |-- native-mcp-parity-audit.mjs     # TS versus native canonical tool/action parity
 |-- parameter-combination-audit.mjs # audit CLI entrypoint
 |-- parameter-audit-*.mjs           # CLI, schema extraction, suite capture, coverage, context
+|-- fold-twins.mjs                  # one twin case per folded family, applied by the runner and the audit capture
 |-- unit/                           # Vitest behavior, security, routing, and source contracts
 `-- reports/                        # generated JSON only; never add AGENTS or hand-authored files
 ```
@@ -33,9 +34,11 @@ The mock smoke test is `scripts/smoke-test.ts`, not under this directory. It imp
 | Bridge port wait | 5s/port | `UNREAL_MCP_WAIT_PORT_MS` (client-level wait is 10s) |
 | Inter-case throttle | 100ms | `UNREAL_MCP_TEST_THROTTLE_MS` |
 
-Other runner env: `MCP_AUTOMATION_WS_HOST` (127.0.0.1), `MCP_AUTOMATION_WS_PORTS` (8090,8091), `UNREAL_MCP_SERVER_CMD/ARGS/CWD`, `UNREAL_MCP_FORCE_DIST`, `UNREAL_MCP_AUTO_BUILD` / `UNREAL_MCP_NO_AUTO_BUILD`, `UNREAL_MCP_TEST_LOG_RESPONSES`.
+Other runner env: `MCP_AUTOMATION_WS_HOST` (127.0.0.1), `MCP_AUTOMATION_WS_PORTS` (8090,8091), `UNREAL_MCP_SERVER_CMD/ARGS/CWD`, `UNREAL_MCP_FORCE_DIST`, `UNREAL_MCP_AUTO_BUILD` / `UNREAL_MCP_NO_AUTO_BUILD`, `UNREAL_MCP_ALLOW_TS_FALLBACK`, `UNREAL_MCP_TEST_LOG_RESPONSES`.
 
 The runner AUTO-BUILDS: if `dist/cli.js` is missing, or source is newer than dist, it runs `npm run build` unless `UNREAL_MCP_NO_AUTO_BUILD=1`. It still needs a live editor.
+
+A build that is attempted and FAILS now aborts the run. It used to fall through to `ts-node-esm src/cli.ts`, so a full green could be reported while `dist/` — the artifact the package ships — was broken. Set `UNREAL_MCP_ALLOW_TS_FALLBACK=1` to run source anyway and accept that `dist/` is unverified. Choosing source deliberately (stale dist with `UNREAL_MCP_NO_AUTO_BUILD=1`) is unchanged.
 
 ## WHERE TO LOOK
 | Task | Location | Notes |
@@ -61,9 +64,11 @@ npm run test:params        # parity, then static + strict + optional-strict para
 - Use `{ scenario, toolName, arguments, expected }`; optional fields include `assertions`, `captureResult`, and `timeoutMs`.
 - Export no custom harness: end each suite with `runToolTests('<suite-name>', cases)`.
 - Keep the standard relative `runToolTests` import shape; the static audit replaces that import while evaluating suite definitions.
+- Cases keep naming the pre-fold actions. At run time `runToolTests` derives one twin per folded family (`fold-twins.mjs`): the first case naming a folded member is re-run as the family's primary plus its selector value, right after its source case. The audit captures the same twins, so every advertised primary and selector is covered without hand-written duplicates.
 - Use unique actor/asset names, usually timestamped, and add explicit cleanup for created state.
 - Captures use `{ key, fromField }`; array captures may add `where: { path, equals|includes }` and `selectField`. Later arguments reference `${captured:key}`.
-- Assertions address response paths such as `structuredContent.result.assetPath`; use `equals` for exact values, `includes` for string fragments, or `approximately` with a nonnegative `tolerance` for floating-point values.
+- Assertions address response paths such as `structuredContent.result.assetPath`. The operators `evaluateAssertions` implements are exactly: `equals`, `approximately` (with a nonnegative `tolerance`), `includes`, `notIncludes`, `length`, `minLength`, `includesObject`, and `gte` (numeric, the counterpart of `minLength`).
+- An assertion naming no recognised operator is REFUSED rather than passed. It used to fall through every check and report success, which is how two `gte` assertions sat here asserting nothing; `ASSERTION_OPERATORS` in `test-runner-response-utils.mjs` is the list, and adding an operator means adding it there.
 
 ## EXPECTATION GRAMMAR
 - Strings split on literal ` or ` or `|`; the first token is the primary intent.
@@ -78,6 +83,7 @@ npm run test:params        # parity, then static + strict + optional-strict para
 - Parameter schema extraction uses the TypeScript compiler API; suite coverage is captured from `mcp-tools/` plus `integration.mjs`.
 - Missing or extra actions always fail the parameter audit. `--strict` also fails undeclared test parameters.
 - `--optional-strict` fails optional schema parameters absent from static coverage; `npm run test:params` enables all strict static gates.
+- A folded family's former names count as declared actions (`readFoldedActionsByTool`), never as extra actions.
 - Live audit mode consumes the latest `<suite>-test-results-*.json`; only successful live responses prove optional-parameter coverage.
 - Treat `reports/` as disposable evidence. Diagnose failures from the newest JSON, but never edit reports to satisfy a gate.
 

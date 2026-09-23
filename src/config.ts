@@ -1,21 +1,52 @@
-import dotenv from 'dotenv';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { z } from 'zod';
 
 import { Logger } from './utils/logging/logger.js';
 import { isRecord } from './utils/validation/type-guards.js';
 
-// Suppress dotenv output to avoid corrupting MCP stdout stream.
+// `process.loadEnvFile()` (Node >=20.12, and this package requires >=20.19) is
+// the stdlib replacement for dotenv: same "never override an already-set
+// variable" precedence, and it writes nothing to stdout, so the MCP JSON-RPC
+// stream stays clean without the write-suppression dance dotenv needed. It
+// throws ENOENT when no .env is present, which is the normal case in CI.
 // Unit tests assert schema defaults and must not inherit developer-local .env values.
+//
+// Candidates, in order, first hit wins:
+//   MCP_ENV_FILE   an explicit path, for anyone who needs to say exactly which
+//                  file this is. Nothing else is consulted when it is set.
+//   package root   derived from this module's own location: <root>/dist/config.js
+//                  or <root>/src/config.ts both give <root>. This is the file a
+//                  checkout means by ".env" no matter where the client launched.
+//   process.cwd()  what loadEnvFile() uses with no argument, and the only
+//                  practical location for an npm-installed server, whose package
+//                  root sits inside node_modules and is wiped on reinstall.
+//
+// cwd is LAST rather than gone: it is the pre-existing behaviour and dropping it
+// silently ignored a user's project-local .env. It is last because a stray .env
+// in whatever directory a client happened to launch from should not outrank the
+// server's own -- for this file, that difference is someone else's bridge token.
 const shouldLoadDotenv = process.env.NODE_ENV !== 'test' && process.env.VITEST !== 'true' && process.env.VITEST_WORKER_ID === undefined;
 if (shouldLoadDotenv) {
-  const originalWrite = process.stdout.write;
-  const quietWrite: typeof process.stdout.write = () => true;
-
-  process.stdout.write = quietWrite;
+  // Every step is inside the try, including the import.meta.url resolution:
+  // importing this module must not throw on any filesystem or URL condition,
+  // and fileURLToPath throws outright on a non-file specifier.
   try {
-    dotenv.config();
-  } finally {
-    process.stdout.write = originalWrite;
+    const explicit = process.env.MCP_ENV_FILE?.trim();
+    const candidates = explicit
+      ? [explicit]
+      : [resolve(dirname(fileURLToPath(import.meta.url)), '..', '.env'), resolve(process.cwd(), '.env')];
+    for (const candidate of candidates) {
+      try {
+        process.loadEnvFile(candidate);
+        break;
+      } catch {
+        // Absent or unreadable: fall through to the next candidate.
+      }
+    }
+  } catch {
+    // No candidate resolved. Env vars from the parent process win anyway.
   }
 }
 

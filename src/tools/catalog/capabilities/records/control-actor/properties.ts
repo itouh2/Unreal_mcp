@@ -32,6 +32,8 @@ export const P = {
   componentType: str('Component class to add.'),
   componentName: str('Target component name on the actor.'),
   propertyName: str('Component property name to read or write.'),
+  propertyPath: str('Dotted nested property path (e.g. BodyInstance.CollisionEnabled), accepted by the read handler in place of propertyName.'),
+  templateBlueprintPath: str('Canonical /Game Blueprint asset path. Reads the component template on the Blueprint CDO instead of a live actor, so a Blueprint with no instance in the level can still be inspected. Supply this or actorName.'),
   properties: {
     type: 'object',
     description: 'Component property key-value pairs.',
@@ -90,7 +92,8 @@ export const P = {
     description: 'Actor components.',
   },
   count: num('Number of actors returned.'),
-  totalCount: num('Total actors matched before pagination.'),
+  totalCount: num('Listable actors matching the filter, before the limit is applied.'),
+  excludedCount: num('Actors present in the world but never listable here: templates, transient actors, the builder brush and WorldSettings. Explains why this total is below the actorCount get_editor_state reports for the same world.'),
   isPieWorld: bool('Whether the list was produced while a Play-In-Editor (PIE) session is active.'),
   worldName: str('Name of the active world (or PIE world) the actors were listed from.'),
   actorPath: str('Resolved actor path.'),

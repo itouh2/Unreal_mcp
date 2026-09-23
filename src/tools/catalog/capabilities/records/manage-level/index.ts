@@ -1,11 +1,12 @@
 /**
  * manage_level capability record catalog.
  *
- * Exactly 25 canonical CapabilityRecord entries mapped 1:1 to the 25
- * manage_level actions in manage-level-tool.ts. Each record is grounded in
+ * 25 authored CapabilityRecordSource entries covering the 25 manage_level
+ * actions in manage-level-tool.ts, folded by MANAGE_LEVEL_FOLDS into the 17
+ * shipped records. Each record is grounded in
  * the TypeScript level handlers (src/tools/handlers/level/runtime/), native
  * Level domain dispatch (Private/Domains/Level/McpAutomationBridge_LevelHandlers.cpp),
- * and the normalization inventory (24 manage_level occurrences, all
+ * and the normalization inventory (25 manage_level occurrences, all
  * classification C, disposition keep, no aliases).
  *
  * Families:
@@ -26,12 +27,17 @@ import { type CapabilityRecord, type CapabilityRecordSource, createCapabilityRec
 
 import { LIFECYCLE_RECORDS } from './lifecycle.data.js';
 import { OPERATIONS_RECORDS } from './operations.data.js';
+import { applyFolds } from '../shared/fold.js';
+import { MANAGE_LEVEL_FOLDS } from '../folds/manage-level.folds.js';
 
 /**
  * Record order is the authored data-file concatenation; this module does not
  * re-derive an action order.
  */
-const SOURCES: readonly CapabilityRecordSource[] = [...LIFECYCLE_RECORDS, ...OPERATIONS_RECORDS];
+/** The authored records before folding; per-action contract tests pin these. */
+export const MANAGE_LEVEL_UNFOLDED_SOURCES: readonly CapabilityRecordSource[] = [...LIFECYCLE_RECORDS, ...OPERATIONS_RECORDS];
+
+const SOURCES: readonly CapabilityRecordSource[] = applyFolds(MANAGE_LEVEL_UNFOLDED_SOURCES, MANAGE_LEVEL_FOLDS, 'manage_level');
 
 export const MANAGE_LEVEL_SOURCES: readonly CapabilityRecordSource[] = SOURCES;
 

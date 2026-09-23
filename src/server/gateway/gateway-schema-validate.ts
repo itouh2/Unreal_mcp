@@ -51,11 +51,80 @@ export const VIOLATION_GATEWAY_CODES: Readonly<Record<ViolationReason, string>> 
   'unsupported-keyword': 'UNSUPPORTED_SCHEMA_KEYWORD'
 };
 
+const MAX_LISTED_PARAMETERS = 24;
+
+/** camelCase -> lowercase word tokens: 'propertyValue' -> ['property', 'value']. */
+function parameterNameTokens(name: string): string[] {
+  return name
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((token) => token.length > 0);
+}
+
+/**
+ * "Undeclared parameter 'x'" named the one spelling that does NOT work and
+ * nothing that does, so every wrong guess cost a describe round trip for a list
+ * the validator already had in hand.
+ *
+ * Substring matching alone missed the common miss — a synonym, not a typo —
+ * so 'defaultValue' drew no "did you mean" for 'propertyValue', and the
+ * alphabetical truncation then dropped 'propertyValue' into "and 9 more" while
+ * spending the 24 slots on names starting with 'a'. Score by shared camelCase
+ * token as well as substring, and list the scoring names first, so the names
+ * that survive truncation are the plausible ones. Ordering and tie-breaking are
+ * mirrored byte-for-byte by the native validator.
+ */
+export function describeUndeclaredParameter(
+  key: string,
+  properties: Record<string, unknown> | undefined
+): string {
+  const declared = properties === undefined ? [] : Object.keys(properties).sort();
+  if (declared.length === 0) {
+    return `Undeclared parameter '${key}' (this action declares no parameters)`;
+  }
+  const lowerKey = key.toLowerCase();
+  const keyTokens = new Set(parameterNameTokens(key));
+  const score = (name: string): number => {
+    const lower = name.toLowerCase();
+    const substring = lower.includes(lowerKey) || lowerKey.includes(lower) ? 2 : 0;
+    const shared = parameterNameTokens(name).some((token) => keyTokens.has(token)) ? 1 : 0;
+    return substring + shared;
+  };
+  const near = declared
+    .filter((name) => score(name) > 0)
+    .sort((a, b) => (score(b) - score(a)) || (a.length - b.length) || (a < b ? -1 : a > b ? 1 : 0));
+  const hint = near.length > 0 ? `did you mean '${near[0]}'; ` : '';
+  const ranked = [...near, ...declared.filter((name) => score(name) === 0)];
+  const listed = ranked.slice(0, MAX_LISTED_PARAMETERS);
+  const more = ranked.length > listed.length ? ` and ${ranked.length - listed.length} more` : '';
+  return `Undeclared parameter '${key}' (${hint}allowed: ${listed.join(', ')}${more})`;
+}
+
 export type SchemaViolation = {
   readonly reason: ViolationReason;
   readonly pointer: string;
   readonly message: string;
 };
+
+/**
+ * A missing enum parameter is the one case where the caller cannot guess: the
+ * refusal named the field and nothing about what it accepts, so `bindingKind`
+ * cost a describe round trip for a list already in the schema.
+ */
+export function describeMissingParameter(
+  name: string,
+  properties: Record<string, unknown> | undefined
+): string {
+  const propertySchema = properties === undefined ? undefined : properties[name];
+  if (isRecord(propertySchema) && Array.isArray(propertySchema.enum)) {
+    const allowed = propertySchema.enum.filter((entry): entry is string => typeof entry === 'string');
+    if (allowed.length > 0) {
+      return `Missing required parameter '${name}' (one of: ${allowed.join(', ')})`;
+    }
+  }
+  return `Missing required parameter '${name}'`;
+}
 
 function typeMatches(value: unknown, declared: string): boolean {
   switch (declared) {
@@ -140,7 +209,7 @@ function validateObject(
         return {
           reason: 'missing-required',
           pointer: `${pointer}/${name}`,
-          message: `Missing required parameter '${name}'`
+          message: describeMissingParameter(name, properties)
         };
       }
     }
@@ -172,7 +241,7 @@ function validateObject(
         return {
           reason: 'undeclared',
           pointer: `${pointer}/${key}`,
-          message: `Undeclared parameter '${key}'`
+          message: describeUndeclaredParameter(key, properties)
         };
       }
     }

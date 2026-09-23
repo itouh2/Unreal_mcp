@@ -10,6 +10,7 @@
 #include "Domains/Sequence/MovieRender/McpAutomationBridge_SequenceMovieRenderResourceLimits.h"
 
 #include "Foundation/HandlerUtils/McpHandlerUtils.h"
+#include "Misc/ScopeExit.h"
 #include "MoviePipelineExecutor.h"
 #include "MoviePipelineInProcessExecutor.h"
 #include "MoviePipelineQueue.h"
@@ -97,6 +98,27 @@ bool HandleStartRender(UMcpAutomationBridgeSubsystem *Subsystem,
       ResolveJob(Payload, Queue, Message, Code);
   if (!Job)
     return SendError(Subsystem, RequestId, Socket, Message, Code), true;
+  // `onlyJob` was read by the queue variant and ignored here, so starting a
+  // render with onlyJob:true still ran every enabled job in the queue -- the
+  // log shows "starting job [3/3] ... finished 3 jobs" and stale jobs re-render
+  // over their old output. The flag now means the same thing on both variants,
+  // and it enables the named job rather than refusing one the caller just
+  // singled out.
+  // The toggles are a per-render override, not an edit to the queue asset:
+  // undone by the scope guard if the start fails, and by the render teardown
+  // (DiscardPreparedRenderStart) once the job has run.
+  TArray<TPair<TWeakObjectPtr<UMoviePipelineExecutorJob>, bool>> OnlyJobPrevious;
+  if (McpHandlerUtils::GetOptionalBool(Payload, TEXT("onlyJob"), false)) {
+    for (UMoviePipelineExecutorJob *Other : Queue->GetJobs())
+      if (Other) {
+        OnlyJobPrevious.Emplace(Other, Other->IsEnabled());
+        Other->SetIsEnabled(Other == Job);
+      }
+    Job->SetConsumed(false);
+  }
+  // Empty once moved into the wait state below, so a started render is left
+  // to the teardown and only a failed start is undone here.
+  ON_SCOPE_EXIT { RestoreJobEnabledStates(OnlyJobPrevious); };
   if (!Job->IsEnabled())
     return SendError(Subsystem, RequestId, Socket,
                      TEXT("Selected Movie Render Queue job is not queued."),
@@ -199,6 +221,8 @@ bool HandleStartRender(UMcpAutomationBridgeSubsystem *Subsystem,
       return SendError(Subsystem, RequestId, Socket, Message, Code), true;
     }
   }
+  // From here the teardown owns the restore.
+  State->OnlyJobPreviousEnabled = MoveTemp(OnlyJobPrevious);
   QueueSubsystem->RenderQueueWithExecutorInstance(Executor);
   State->OutputPathCheckHandle = FTSTicker::GetCoreTicker().AddTicker(
       FTickerDelegate::CreateLambda(

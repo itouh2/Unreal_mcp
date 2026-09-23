@@ -1,9 +1,9 @@
-// Task 26 â€” generated execute fixtures across every canonical action.
+// Task 26 — generated execute fixtures across every canonical action.
 //
 // The acceptance criterion is "run one minimal valid request per action and
 // rule-invalid fixtures". Both fixture families are DERIVED from each record's
 // own generated schema (tests/unit/tools/support/capability-fixtures.ts),
-// so this suite stays exhaustive across all 1,383 actions without a hand list
+// so this suite stays exhaustive across every action without a hand list
 // that would rot the moment the catalog is regenerated.
 //
 // Each case is asserted inside a loop and failures are collected with their
@@ -27,6 +27,7 @@ import {
   minimalValidParams,
   type InvalidVariant
 } from './support/capability-fixtures.js';
+import { ALL_CAPABILITY_RECORD_COUNT } from '../../../src/tools/catalog/capabilities/records/aggregate.js';
 
 const dispatched: Array<{ tool: string; args: Record<string, unknown> }> = [];
 
@@ -95,9 +96,9 @@ afterEach(() => {
 
 describe('generated fixtures: the catalog under test', () => {
   it('covers every generated capability record', () => {
-    expect(records).toHaveLength(1401);
+    expect(records).toHaveLength(ALL_CAPABILITY_RECORD_COUNT);
     expect(runnable.length + retired.length).toBe(records.length);
-    expect(runnable.length).toBeGreaterThan(1300);
+    expect(runnable.length).toBeGreaterThan(300);
   });
 });
 

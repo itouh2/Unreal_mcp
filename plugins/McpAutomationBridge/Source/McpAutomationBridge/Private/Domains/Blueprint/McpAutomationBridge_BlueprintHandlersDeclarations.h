@@ -17,11 +17,6 @@ void DiagnosticPatternChecks(const FBlueprintActionContext &Context);
 FString ResolveBlueprintRequestedPath(
     const TSharedPtr<FJsonObject> &LocalPayload);
 UBlueprint *ResolveScsBlueprint(const TSharedPtr<FJsonObject> &Payload);
-bool FMcpAutomationBridge_AttachValuePin(UK2Node_VariableSet *VarSet,
-                                         UEdGraph *Graph,
-                                         const UEdGraphSchema_K2 *Schema,
-                                         bool &bOutLinked);
-bool FMcpAutomationBridge_EnsureExecLinked(UEdGraph *Graph);
 void FMcpAutomationBridge_AddUserDefinedPin(UK2Node *Node,
                                             const FString &PinName,
                                             const FString &PinType,
@@ -30,6 +25,13 @@ UFunction *FMcpAutomationBridge_ResolveFunction(UBlueprint *Blueprint,
                                                 const FString &FunctionName);
 FProperty *FMcpAutomationBridge_FindProperty(UBlueprint *Blueprint,
                                              const FString &PropertyName);
+UEdGraphNode *MakeVariableNodeForMcp(UBlueprint *BP, UEdGraph *TargetGraph,
+                                     const FString &NodeTypeLower,
+                                     const FString &VariableName,
+                                     const FString &MemberClass,
+                                     FString &OutErrorMessage,
+                                     FString &OutErrorCode,
+                                     TSharedPtr<FJsonObject> &OutErrorResult);
 FString FMcpAutomationBridge_JsonValueToString(
     const TSharedPtr<FJsonValue> &Value);
 FName FMcpAutomationBridge_ResolveMetadataKey(const FString &RawKey);

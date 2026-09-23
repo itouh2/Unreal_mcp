@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import net from 'node:net';
 import { expectedCondition as conditionFromExpectation, splitExpectedConditions } from './expectation-utils.mjs';
 import { evaluateAssertions, selectCaptureValues, withServerTimeout } from './test-runner-response-utils.mjs';
+import { withFoldTwins } from './fold-twins.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -44,7 +45,7 @@ const serverEnv = Object.assign({}, process.env);
 
 const DEFAULT_RESPONSE_LOG_MAX_CHARS = 6000; // default max chars
 const RESPONSE_LOGGING_ENABLED = process.env.UNREAL_MCP_TEST_LOG_RESPONSES !== '0';
-const GATEWAY_CONTROL_FIELDS = ['action', 'subAction', 'params'];
+const GATEWAY_CONTROL_FIELDS = ['action', 'subAction', 'params', 'consent'];
 const GATEWAY_OPTION_FIELDS = [
   'idempotencyKey',
   'expectedCatalogRevision',
@@ -360,11 +361,6 @@ function isBridgeDisconnectedSignal(value) {
   const text = collectResponseText(value).toLowerCase();
   if (!text) return false;
   return bridgeDisconnectedIndicators.some((indicator) => text.includes(indicator));
-}
-
-function formatResultLine(testCase, status, detail, durationMs) {
-  const durationText = typeof durationMs === 'number' ? ` (${durationMs.toFixed(1)} ms)` : '';
-  return `[${status.toUpperCase()}] ${testCase.scenario}${durationText}${detail ? ` => ${detail}` : ''}`;
 }
 
 async function persistResults(toolName, results) {
@@ -775,6 +771,12 @@ export function createToolCaller(client, { useProgressTimeouts = false } = {}) {
       const gatewayCall = callOptions.name === 'unreal'
         ? callOptions
         : toGatewayCall(callOptions.name, callOptions.arguments ?? {});
+      // Consent is an execute envelope sibling carried at the CASE level (never
+      // inside `arguments`), so the parameter audit never mistakes it for an
+      // action param. Attach it to whichever form produced the gateway request.
+      if (isRecord(callOptions.consent)) {
+        gatewayCall.arguments = { ...gatewayCall.arguments, consent: callOptions.consent };
+      }
       const outgoing = withServerTimeout(gatewayCall, serverTimeoutMs);
       const callTarget = outgoing.name === 'unreal' && typeof outgoing.arguments?.tool === 'string'
         ? `${outgoing.name}:${outgoing.arguments.tool}`
@@ -876,6 +878,28 @@ async function getLatestMtime(dir) {
   return latest;
 }
 
+// A failed build used to fall through to running src/ with ts-node, so `npm
+// test` could report a full green while dist/ was broken or absent -- the
+// artifact the package actually ships. A build that was attempted and FAILED
+// is a defect, so it stops the run unless the caller says otherwise. Choosing
+// source deliberately (stale dist, UNREAL_MCP_NO_AUTO_BUILD) is unaffected:
+// that path never calls this.
+function onBuildFailure(buildErr) {
+  if (process.env.UNREAL_MCP_ALLOW_TS_FALLBACK === '1') {
+    console.warn('Build failed — UNREAL_MCP_ALLOW_TS_FALLBACK=1, running TypeScript source instead:', String(buildErr));
+    return;
+  }
+  const fatal = new Error(
+    `Build failed, so dist/ was not tested: ${String(buildErr)}
+` +
+    'Fix the build, or set UNREAL_MCP_ALLOW_TS_FALLBACK=1 to run TypeScript source and accept that dist/ is unverified.',
+  );
+  // The stat/mtime try block encloses the build call, so without this marker
+  // its catch would swallow the refusal and fall back regardless.
+  fatal.isBuildFailure = true;
+  throw fatal;
+}
+
 async function runNpmBuild() {
   const { spawn } = await import('node:child_process');
   await new Promise((resolve, reject) => {
@@ -921,7 +945,7 @@ async function resolveServerLaunch() {
             console.log('Build succeeded — using dist/ for live tests');
             useDist = true;
           } catch (buildErr) {
-            console.warn('Automatic build failed or could not stat files — falling back to TypeScript source for live tests:', String(buildErr));
+            onBuildFailure(buildErr);
             useDist = false;
           }
         } else {
@@ -934,7 +958,8 @@ async function resolveServerLaunch() {
         console.log('Using built dist for live tests');
       }
     } catch (buildErr) {
-      console.warn('Automatic build failed or could not stat files — falling back to TypeScript source for live tests:', String(buildErr));
+      if (buildErr?.isBuildFailure === true) throw buildErr;
+      console.warn('Could not stat dist/src — falling back to TypeScript source for live tests:', String(buildErr));
       useDist = false;
       console.log('Preferring TypeScript source for tests to pick up local changes (set UNREAL_MCP_FORCE_DIST=1 to force dist)');
     }
@@ -945,7 +970,7 @@ async function resolveServerLaunch() {
       useDist = true;
       console.log('Build succeeded — using dist/ for live tests');
     } catch (buildErr) {
-      console.warn('Automatic build failed — falling back to running TypeScript source with ts-node-esm:', String(buildErr));
+      onBuildFailure(buildErr);
       useDist = false;
     }
   }
@@ -1029,7 +1054,10 @@ export function resolveCapturedValues(value, capturedValues, onMissingCapture = 
 /**
  * Main test runner function
  */
-export async function runToolTests(toolName, testCases) {
+export async function runToolTests(toolName, suiteCases) {
+  // Every folded family's advertised primary runs once, derived from the first
+  // case that exercises one of the names it folded (tests/fold-twins.mjs).
+  const testCases = withFoldTwins(suiteCases);
   console.log(`Total test cases: ${testCases.length}`);
   console.log('='.repeat(60));
   console.log('');
@@ -1538,10 +1566,29 @@ export async function runToolTests(toolName, testCases) {
     // Rate limit: 600 req/min = 10 req/sec, so add 100ms delay between tests
     const TEST_THROTTLE_MS = Number(process.env.UNREAL_MCP_TEST_THROTTLE_MS ?? 100);
 
+    // Destructive operations (subdivide, bevel, shell, ...) can create millions of
+    // triangles, eventually causing OOM crashes, so geometry is reset periodically.
+    const GEOMETRY_RESET_INTERVAL = 5; // Reset every 5 destructive geometry tests
+
+    // Operations that cause exponential triangle growth - reset BEFORE each of these.
+    const HIGH_IMPACT_OPS = ['poke', 'subdivide', 'triangulate', 'array_radial', 'array_linear'];
+
+    const geometryActionOf = (candidate) =>
+      (candidate?.toolName === 'manage_geometry' ? candidate.arguments?.action || '' : '');
+
     for (let i = 0; i < testCases.length; i++) {
       const testCase = testCases[i];
       const testCaseTimeoutMs = getTestCaseTimeoutMs(testCase);
       const startTime = performance.now();
+
+      // Reset BEFORE the high-impact op runs. This used to sit at the bottom of the
+      // loop, which reset only once the op had already exploded the mesh it was
+      // meant to protect.
+      const upcomingGeometryAction = geometryActionOf(testCase);
+      if (HIGH_IMPACT_OPS.some(op => upcomingGeometryAction.includes(op))) {
+        console.log('  🔄 Resetting geometry before high-impact operation: ' + upcomingGeometryAction);
+        await resetGeometryActors();
+      }
 
       try {
         // Log test start to Unreal Engine console without echoing scenario text.
@@ -1566,7 +1613,14 @@ export async function runToolTests(toolName, testCases) {
             `Missing captured test values: ${Array.from(new Set(missingCaptures)).join(', ')}`
           );
         }
-        const response = await callToolOnce({ name: testCase.toolName, arguments: resolvedArgs }, testCaseTimeoutMs);
+        const response = await callToolOnce(
+          {
+            name: testCase.toolName,
+            arguments: resolvedArgs,
+            ...(testCase.consent === undefined ? {} : { consent: testCase.consent })
+          },
+          testCaseTimeoutMs
+        );
 
         const endTime = performance.now();
         const durationMs = endTime - startTime;
@@ -1734,30 +1788,17 @@ export async function runToolTests(toolName, testCases) {
         await new Promise(resolve => setTimeout(resolve, TEST_THROTTLE_MS));
       }
 
-      // GEOMETRY RESET: Reset geometry actors between manage_geometry tests to prevent
-      // polygon explosion from accumulating. Destructive operations (subdivide, bevel, shell,
-      // etc.) can create millions of triangles, eventually causing OOM crashes.
-      // We reset every N destructive geometry tests to balance performance vs memory safety.
-      const GEOMETRY_RESET_INTERVAL = 5; // Reset every 5 destructive geometry tests (reduced from 10)
-
-      // High-impact operations that cause exponential triangle growth - ALWAYS reset before these
-      const HIGH_IMPACT_OPS = ['poke', 'subdivide', 'triangulate', 'array_radial', 'array_linear'];
-
-      const isGeometryTest = testCase.toolName === 'manage_geometry';
-      const testAction = testCase.arguments?.action || '';
-      const isDestructiveGeometryOp = isGeometryTest && [
+      // Periodic cleanup after the destructive ops that only grow the mesh slowly.
+      // The high-impact ops are handled at the top of the loop instead.
+      const ranGeometryAction = geometryActionOf(testCase);
+      const wasDestructiveGeometryOp = [
         'subdivide', 'extrude', 'inset', 'outset', 'bevel', 'offset_faces', 'shell', 'chamfer',
         'boolean_union', 'boolean_subtract', 'boolean_intersection', 'remesh_uniform', 'poke',
         'array_linear', 'array_radial', 'cylindrify', 'spherify', 'bend', 'twist', 'taper',
         'noise_deform', 'smooth', 'relax', 'stretch', 'triangulate'
-      ].some(op => testAction.includes(op));
+      ].some(op => ranGeometryAction.includes(op));
 
-      // Always reset BEFORE high-impact operations to prevent POLYGON_LIMIT_EXCEEDED
-      const isHighImpactOp = isGeometryTest && HIGH_IMPACT_OPS.some(op => testAction.includes(op));
-      if (isHighImpactOp) {
-        console.log('  🔄 Resetting geometry before high-impact operation: ' + testAction);
-        await resetGeometryActors();
-      } else if (isDestructiveGeometryOp) {
+      if (wasDestructiveGeometryOp && !HIGH_IMPACT_OPS.some(op => ranGeometryAction.includes(op))) {
         geometryResetCounter++;
         if (geometryResetCounter % GEOMETRY_RESET_INTERVAL === 0) {
           console.log('  🔄 Resetting geometry actors to prevent polygon accumulation...');
@@ -1793,128 +1834,6 @@ export async function runToolTests(toolName, testCases) {
         await transport.close();
       } catch {
         // ignore
-      }
-    }
-  }
-}
-
-export class TestRunner {
-  constructor(suiteName) {
-    this.suiteName = suiteName || 'Test Suite';
-    this.steps = [];
-  }
-
-  addStep(name, fn) {
-    this.steps.push({ name, fn });
-  }
-
-  async run() {
-    if (this.steps.length === 0) {
-      console.warn(`No steps registered for ${this.suiteName}`);
-      return;
-    }
-
-    console.log('\n' + '='.repeat(60));
-    console.log(`${this.suiteName}`);
-    console.log('='.repeat(60));
-    console.log(`Total steps: ${this.steps.length}`);
-    console.log('');
-
-    let transport;
-    let client;
-    const results = [];
-
-    try {
-      const waitMs = parseInt(process.env.UNREAL_MCP_WAIT_PORT_MS ?? '5000', 10);
-      ({ transport, client } = await createConnectedClient('unreal-mcp-step-runner', waitMs));
-
-      const callToolOnce = createToolCaller(client);
-
-      const tools = {
-        async executeTool(toolName, args, options = {}) {
-          const timeoutMs = typeof options.timeoutMs === 'number' ? options.timeoutMs : undefined;
-          const response = await callToolOnce({ name: toolName, arguments: args }, timeoutMs);
-          if (isBridgeDisconnectedSignal(response)) {
-            throw new Error('Unreal Engine is not connected');
-          }
-          const { structuredContent } = normalizeResponseForEvaluation(response);
-
-          if (structuredContent && typeof structuredContent === 'object') {
-            return structuredContent;
-          }
-
-          return {
-            success: !response.isError,
-            message: undefined,
-            error: undefined
-          };
-        }
-      };
-
-      for (const step of this.steps) {
-        const startTime = performance.now();
-
-        try {
-          // Log step start to Unreal Engine console without echoing scenario text.
-          await callToolOnce({
-            name: 'system_control',
-            arguments: { action: 'console_command', command: 'Log Starting MCP test step' }
-          }, 5000).catch(() => { });
-        } catch (e) { /* ignore */ }
-
-        try {
-          const ok = await step.fn(tools);
-          const durationMs = performance.now() - startTime;
-          const status = ok ? 'passed' : 'failed';
-          console.log(formatResultLine({ scenario: step.name }, status, ok ? '' : 'Step returned false', durationMs));
-          results.push({
-            scenario: step.name,
-            toolName: null,
-            arguments: null,
-            status,
-            durationMs,
-            detail: ok ? undefined : 'Step returned false'
-          });
-        } catch (err) {
-          const durationMs = performance.now() - startTime;
-          const detail = err?.message || String(err);
-          console.log(formatResultLine({ scenario: step.name }, 'failed', detail, durationMs));
-          results.push({
-            scenario: step.name,
-            toolName: null,
-            arguments: null,
-            status: 'failed',
-            durationMs,
-            detail
-          });
-          if (isBridgeDisconnectedSignal(detail)) {
-            console.log('🛑 Automation bridge is not connected; aborting remaining steps to avoid wasting time.');
-            break;
-          }
-        }
-      }
-
-      const resultsPath = await persistResults(this.suiteName, results);
-      summarize(this.suiteName, results, resultsPath);
-
-      const hasFailures = results.some((result) => result.status === 'failed');
-      process.exitCode = hasFailures ? 1 : 0;
-    } catch (error) {
-      console.error('Step-based test runner failed:', error);
-      process.exitCode = 1;
-      throw error;
-    } finally {
-      if (client) {
-        try {
-          await client.close();
-        } catch {
-        }
-      }
-      if (transport) {
-        try {
-          await transport.close();
-        } catch {
-        }
       }
     }
   }

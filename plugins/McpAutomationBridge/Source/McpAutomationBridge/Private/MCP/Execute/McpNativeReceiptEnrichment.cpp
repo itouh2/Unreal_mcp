@@ -1,6 +1,7 @@
+#include "MCP/Execute/McpNativeReceiptEnrichment.h"
+#include "Foundation/HandlerUtils/McpHandlerUtilsJson.h"
 // McpNativeReceiptEnrichment.cpp — see header for the parity contract.
 
-#include "MCP/Execute/McpNativeReceiptEnrichment.h"
 #include "MCP/Gateway/McpNativeGatewayCanonicalJson.h"
 #include "Misc/SecureHash.h"
 #include "MCP/Execute/McpNativeReceiptRedaction.h"
@@ -86,7 +87,7 @@ FString McpCanonicalizeRequestId(const TSharedPtr<FJsonValue>& Id)
 	if (Id->Type == EJson::String)
 	{
 		FString Text;
-		Id->TryGetString(Text);
+		McpHandlerUtils::TryGetJsonValueString(Id, Text);
 		return TEXT("str:") + Text;
 	}
 	if (Id->Type == EJson::Number)
@@ -99,6 +100,46 @@ FString McpCanonicalizeRequestId(const TSharedPtr<FJsonValue>& Id)
 		return FString::Printf(TEXT("num:%g"), Number);
 	}
 	return FString();
+}
+
+// receipt.warnings was filled from DeprecationWarnings() alone, so everything a
+// handler actually warned about -- captured engine errors, Niagara stack errors,
+// "the handler still reports success" disclosures -- sat in data.details.warnings
+// where no caller checking the receipt would look. Harvest those too.
+static void McpCollectResultWarnings(const TSharedPtr<FJsonObject>& Source,
+                                     TArray<FString>& Out)
+{
+	if (!Source.IsValid())
+	{
+		return;
+	}
+	static const TCHAR* const WarningFields[] = {TEXT("warnings"), TEXT("stackErrors")};
+	for (const TCHAR* Field : WarningFields)
+	{
+		const TArray<TSharedPtr<FJsonValue>>* Values = nullptr;
+		if (!Source->TryGetArrayField(Field, Values) || !Values)
+		{
+			continue;
+		}
+		const bool bIsError = FCString::Strcmp(Field, TEXT("stackErrors")) == 0;
+		for (const TSharedPtr<FJsonValue>& Value : *Values)
+		{
+			if (!Value.IsValid())
+			{
+				continue;
+			}
+			const FString Text = Value->AsString();
+			if (!Text.IsEmpty())
+			{
+				Out.AddUnique(bIsError ? FString::Printf(TEXT("stack error: %s"), *Text) : Text);
+			}
+		}
+	}
+	const TSharedPtr<FJsonObject>* Details = nullptr;
+	if (Source->TryGetObjectField(TEXT("details"), Details) && Details)
+	{
+		McpCollectResultWarnings(*Details, Out);
+	}
 }
 
 TSharedPtr<FJsonObject> McpBuildCanonicalReceipt(
@@ -125,14 +166,27 @@ TSharedPtr<FJsonObject> McpBuildCanonicalReceipt(
 	{
 		Receipt->SetArrayField(TEXT("handles"),
 			McpBoundJsonArray(McpExtractReceiptHandles(RawResult)));
+		// changes[] is derived from assetPath/actorPath in the result, which read
+		// capabilities also carry -- so inspect_graph, get_blueprint, get_scs and
+		// friends all reported the object they had merely looked at as changed.
+		// changes[] is the mutation record: only a writing capability may fill it.
+		const FMcpCapabilityRecord* EffectRecord =
+			FMcpCanonicalRecordIndex::Get().FindById(CapabilityId);
+		const bool bMutates = !EffectRecord || !EffectRecord->Effect.Equals(TEXT("read"), ESearchCase::IgnoreCase);
 		TArray<TSharedPtr<FJsonValue>> Changes;
-		for (const FString& Change : McpExtractReceiptChanges(RawResult))
+		if (bMutates)
 		{
-			Changes.Add(MakeShared<FJsonValueString>(McpRedactText(Change)));
+			for (const FString& Change : McpExtractReceiptChanges(RawResult))
+			{
+				Changes.Add(MakeShared<FJsonValueString>(McpRedactText(Change)));
+			}
 		}
 		Receipt->SetArrayField(TEXT("changes"), McpBoundJsonArray(MoveTemp(Changes)));
+		TArray<FString> WarningTexts = DeprecationWarnings(CapabilityId);
+		McpCollectResultWarnings(RawResult, WarningTexts);
+		McpCollectResultWarnings(Data, WarningTexts);
 		TArray<TSharedPtr<FJsonValue>> Warnings;
-		for (const FString& Warning : DeprecationWarnings(CapabilityId))
+		for (const FString& Warning : WarningTexts)
 		{
 			Warnings.Add(MakeShared<FJsonValueString>(McpRedactText(Warning)));
 		}

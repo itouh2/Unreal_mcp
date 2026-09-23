@@ -15,12 +15,116 @@
 #include "EdGraph/EdGraphPin.h"
 #include "Engine/Blueprint.h"
 #include "K2Node.h"
+#include "Kismet/BlueprintFunctionLibrary.h"
 #include "Kismet2/BlueprintEditorUtils.h"
+#include "UObject/UObjectIterator.h"
 #include "Foundation/GraphLayout/McpGraphNodeExtent.h"
 #endif
 
 namespace McpBlueprintGraphHandlers
 {
+#if WITH_EDITOR
+// "Pin not found." named neither the pin looked for nor what would have
+// worked, so every miss cost a separate inspect_graph round trip. The pins are
+// already in hand at each of those sites; this names them.
+static inline FString DescribeNodePins(UEdGraphNode* Node)
+{
+    if (!Node)
+    {
+        return TEXT("<node not found>");
+    }
+    TArray<FString> Names;
+    for (UEdGraphPin* Pin : Node->Pins)
+    {
+        if (Pin)
+        {
+            Names.Add(FString::Printf(TEXT("%s (%s)"), *Pin->GetName(),
+                Pin->Direction == EGPD_Output ? TEXT("out") : TEXT("in")));
+        }
+    }
+    return Names.Num() > 0 ? FString::Join(Names, TEXT(", ")) : TEXT("<none>");
+}
+
+// "Function 'X' not found" named nothing that WOULD work, so every miss cost a
+// round trip of guessing. Two things are worth saying: the reflected names that
+// look like what was asked for, and - the case that bites hardest - that the
+// name is a PROPERTY, which is a VariableGet/VariableSet node, not a function.
+static inline FString SuggestMemberFix(UClass* Class, const FString& Wanted)
+{
+    if (!Class || Wanted.IsEmpty())
+    {
+        return FString();
+    }
+    FString Bare = Wanted;
+    if (Bare.StartsWith(TEXT("Set")) || Bare.StartsWith(TEXT("Get")))
+    {
+        Bare = Bare.RightChop(3);
+    }
+    for (TFieldIterator<FProperty> PropIt(Class); PropIt; ++PropIt)
+    {
+        const FString PropName = PropIt->GetName();
+        if (PropName.Equals(Wanted, ESearchCase::IgnoreCase) ||
+            PropName.Equals(Bare, ESearchCase::IgnoreCase) ||
+            PropName.Equals(TEXT("b") + Bare, ESearchCase::IgnoreCase))
+        {
+            return FString::Printf(
+                TEXT(" '%s' is a PROPERTY on %s, not a function - create it with "
+                     "nodeType VariableGet or VariableSet and memberName '%s'."),
+                *PropName, *Class->GetName(), *PropName);
+        }
+    }
+    const FString WantedLower = Wanted.ToLower();
+    TArray<FString> Close;
+    for (TFieldIterator<UFunction> FuncIt(Class); FuncIt; ++FuncIt)
+    {
+        const FString Name = FuncIt->GetName();
+        const FString Lower = Name.ToLower();
+        if (Lower.Contains(WantedLower) ||
+            (Bare.Len() >= 4 && Lower.Contains(Bare.ToLower())))
+        {
+            Close.AddUnique(Name);
+        }
+    }
+    if (Close.Num() == 0)
+    {
+        // Nothing on the class asked about, but the name may be exactly right
+        // and living on a DIFFERENT Blueprint function library -- the engine
+        // splits closely related helpers across libraries with no hint in the
+        // naming (RemoveAllWidgets is on UWidgetLayoutLibrary while every
+        // neighbouring widget helper is on UWidgetBlueprintLibrary). A bare
+        // "Function not found" sends the caller hunting the wrong class, so
+        // name the one that actually declares it.
+        const FName WantedName(*Wanted);
+        for (TObjectIterator<UClass> ClassIt; ClassIt; ++ClassIt)
+        {
+            UClass* Candidate = *ClassIt;
+            if (Candidate == Class ||
+                !Candidate->IsChildOf(UBlueprintFunctionLibrary::StaticClass()))
+            {
+                continue;
+            }
+            const UFunction* Found = Candidate->FindFunctionByName(WantedName);
+            if (Found && Found->HasAnyFunctionFlags(FUNC_BlueprintCallable))
+            {
+                return FString::Printf(
+                    TEXT(" '%s' is not on %s, but %s declares it - retry with "
+                         "memberClass '%s'."),
+                    *Wanted, *Class->GetName(), *Candidate->GetName(),
+                    *Candidate->GetPathName());
+            }
+        }
+        return FString();
+    }
+    Close.Sort();
+    if (Close.Num() > 8)
+    {
+        Close.SetNum(8);
+    }
+    return FString::Printf(TEXT(" Closest reflected names on %s: %s."),
+                           *Class->GetName(), *FString::Join(Close, TEXT(", ")));
+}
+#endif
+
 struct FActionContext
 {
     UMcpAutomationBridgeSubsystem* Subsystem = nullptr;
@@ -34,6 +138,10 @@ struct FActionContext
 #endif
 
     void SendError(const FString& Message, const FString& ErrorCode) const;
+    void SendErrorWithDetails(
+        const FString& Message,
+        const FString& ErrorCode,
+        const TSharedPtr<FJsonObject>& Details) const;
     void SendResponse(
         const FString& Message,
         const TSharedPtr<FJsonObject>& Result) const;
@@ -60,6 +168,27 @@ struct FActionContext
         NewNode->NodePosX = X;
         NewNode->NodePosY = Y;
         NodeCreator.Finalize();
+        // Refuse stacked placements: the node is already in the graph at this
+        // point (FGraphNodeCreator adds it on CreateNode), so pull it back out
+        // on overlap and fail with coordinates instead of silently stacking.
+        {
+            float NewWidth = 0.0f;
+            float NewHeight = 0.0f;
+            McpGraphLayout::EstimateNodeExtent(*NewNode, NewWidth, NewHeight);
+            TArray<McpGraphLayout::FGraphNodeOccupant> Overlapping;
+            if (McpGraphLayout::CheckGraphNodeOverlap(
+                    TargetGraph, X, Y, NewWidth, NewHeight, Overlapping,
+                    McpGraphLayout::NodeOverlapPadding, NewNode))
+            {
+                TargetGraph->RemoveNode(NewNode);
+                FString OverlapMessage;
+                TSharedPtr<FJsonObject> OverlapDetails =
+                    McpGraphLayout::BuildNodeOverlapDetails(
+                        X, Y, NewWidth, NewHeight, Overlapping, OverlapMessage);
+                SendErrorWithDetails(OverlapMessage, TEXT("NODE_OVERLAP"), OverlapDetails);
+                return;
+            }
+        }
         FBlueprintEditorUtils::MarkBlueprintAsModified(Blueprint);
         SaveLoadedAssetThrottled(Blueprint);
 
@@ -99,6 +228,11 @@ bool HandlePinMutationAction(FActionContext& Context);
 bool SetPinDefaultValue(FActionContext& Context);
 FString PickFirstNonEmpty(const TSharedPtr<FJsonObject>& Payload, const TArray<const TCHAR*>& Keys);
 bool HandleNodeMutationAction(FActionContext& Context);
+// Sets a reflected node field (e.g. an AnimGraph player's Sequence/BlendSpace)
+// by name, loading an asset path for object properties.
+bool McpTrySetNodeAssetPropertyForMcp(UEdGraphNode* TargetNode,
+                                      const FString& PropertyName,
+                                      const FString& Value);
 bool HandleNodeQueryAction(FActionContext& Context);
 bool HandleNodeDetailAction(FActionContext& Context);
 
@@ -147,6 +281,11 @@ bool TryCreateEnhancedInputNode(
     float X,
     float Y);
 bool TryCreateConstructObjectNode(
+    FActionContext& Context,
+    UClass* NodeClass,
+    float X,
+    float Y);
+bool TryCreateSubsystemNode(
     FActionContext& Context,
     UClass* NodeClass,
     float X,

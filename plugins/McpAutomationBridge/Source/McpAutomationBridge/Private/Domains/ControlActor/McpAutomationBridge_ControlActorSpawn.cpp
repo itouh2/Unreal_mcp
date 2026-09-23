@@ -1,4 +1,5 @@
 #include "Domains/ControlActor/McpAutomationBridge_ControlActorSupport.h"
+#include "Misc/PackageName.h"
 
 bool UMcpAutomationBridgeSubsystem::HandleControlActorSpawn(
     const FString &RequestId, const TSharedPtr<FJsonObject> &Payload,
@@ -9,6 +10,22 @@ bool UMcpAutomationBridgeSubsystem::HandleControlActorSpawn(
   if (ClassPath.IsEmpty()) {
     // Schema-documented alias.
     Payload->TryGetStringField(TEXT("actorClass"), ClassPath);
+  }
+  if (ClassPath.IsEmpty()) {
+    // The contract publishes blueprintPath (and a spawnKind of "blueprint"),
+    // but this handler only ever read classPath/actorClass -- so the documented
+    // Blueprint spawn failed with "spawn requires classPath". A Blueprint
+    // asset path spawns through its generated class, so append _C when the
+    // caller passed the asset rather than the class.
+    FString BlueprintPath;
+    Payload->TryGetStringField(TEXT("blueprintPath"), BlueprintPath);
+    if (!BlueprintPath.IsEmpty()) {
+      ClassPath = BlueprintPath.EndsWith(TEXT("_C"))
+                      ? BlueprintPath
+                      : BlueprintPath + TEXT(".") +
+                            FPackageName::GetShortName(BlueprintPath) +
+                            TEXT("_C");
+    }
   }
   FString ActorName;
   Payload->TryGetStringField(TEXT("actorName"), ActorName);
@@ -107,10 +124,23 @@ bool UMcpAutomationBridgeSubsystem::HandleControlActorSpawn(
   }
 
   if (!ResolvedClass && !bSpawnStaticMeshActor && !bSpawnSkeletalMeshActor) {
+    // Distinguish "nothing was asked for" from "what was asked for didn't resolve".
+    // Previously an empty spawn payload produced "Class not found: ." — a message
+    // that reads like a resolution failure while hiding that no class was given.
+    if (ClassPath.IsEmpty() && MeshPath.IsEmpty()) {
+      SendStandardErrorResponse(
+          this, Socket, RequestId, TEXT("MISSING_REQUIRED_PARAMETER"),
+          TEXT("spawn requires classPath (or actorClass), or a meshPath. "
+               "Example: {\"classPath\": \"/Script/Engine.PointLight\", "
+               "\"actorName\": \"MyLight\", \"location\": [0, 0, 100]}"));
+      return true;
+    }
     const FString ErrorMsg =
-        FString::Printf(TEXT("Class not found: %s. Verify plugin is enabled if "
-                             "using a plugin class."),
-                        *ClassPath);
+        ClassPath.IsEmpty()
+            ? FString::Printf(TEXT("Mesh path could not be resolved: %s"), *MeshPath)
+            : FString::Printf(TEXT("Class not found: %s. Verify plugin is enabled if "
+                                   "using a plugin class."),
+                              *ClassPath);
     SendStandardErrorResponse(this, Socket, RequestId, TEXT("CLASS_NOT_FOUND"),
                               ErrorMsg);
     return true;
@@ -275,6 +305,7 @@ bool UMcpAutomationBridgeSubsystem::HandleControlActorSpawn(
   Data->SetArrayField(TEXT("scale"), MakeVectorArray(Spawned->GetActorScale3D()));
 
 	McpHandlerUtils::AddVerification(Data, Spawned);
+	McpPlacement::DescribePlacement(Spawned, Data);
 
 	SendAutomationResponse(Socket, RequestId, true, TEXT("Actor spawned"), Data);
   return true;

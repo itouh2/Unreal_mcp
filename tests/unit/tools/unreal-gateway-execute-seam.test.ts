@@ -36,7 +36,7 @@ vi.mock('../../../src/tools/orchestration/consolidated-tool-handlers.js', () => 
   })
 }));
 
-function makeContext(connected = true): GatewayContext {
+function makeContext(connected = true, bridgeTarget?: string): GatewayContext {
   const tools: ITools = {
     systemTools: {
       executeConsoleCommand: async () => ({ success: false }),
@@ -44,6 +44,13 @@ function makeContext(connected = true): GatewayContext {
     },
     assetResources: { list: async () => ({}) }
   };
+  if (bridgeTarget !== undefined) {
+    tools.automationBridge = {
+      isConnected: () => connected,
+      sendAutomationRequest: async () => ({}),
+      getClientUrl: () => bridgeTarget
+    };
+  }
   return {
     tools,
     logger: new Logger('gateway-execute-seam', 'error'),
@@ -109,12 +116,16 @@ describe('execute seam: guided error envelopes are preserved verbatim', () => {
     expect(result.nextCall).toEqual({ operation: 'describe', tool: 'manage_tools', action: 'get_status' });
   });
 
-  it('INVALID_PARAMS (action override) stays bare — no suggestions, no nextCall', async () => {
-    const result = await execute({ tool: 'manage_tools', action: 'get_status', params: { action: 'hack' } });
-    expect(result.errorCode).toBe('INVALID_PARAMS');
-    expect(result.message).toBe('params must not override action or subAction. Supply the selected action at the gateway level.');
-    expect(result.suggestions).toBeUndefined();
-    expect(result.nextCall).toBeUndefined();
+  it('rejects params that conflict with the gateway action, and strips a matching one', async () => {
+    const conflict = await execute({ tool: 'manage_tools', action: 'get_status', params: { action: 'hack' } });
+    expect(conflict.errorCode).toBe('INVALID_PARAMS');
+    expect(conflict.message).toBe('params must not override action or subAction. Supply the selected action at the gateway level.');
+    expect(conflict.suggestions).toBeUndefined();
+    expect(conflict.nextCall).toBeUndefined();
+
+    const echoed = await execute({ tool: 'manage_tools', action: 'list_tools', params: { action: 'list_tools' } });
+    expect(echoed).toMatchObject({ success: true });
+    expect(dispatched).toHaveLength(1);
   });
 
   it('subAction override takes the same bare INVALID_PARAMS branch', async () => {
@@ -129,7 +140,7 @@ describe('execute seam: guided error envelopes are preserved verbatim', () => {
     // Task 26 supersession: the canonical validator names the offending key and
     // the capability, matching the native wording (McpNativeGatewaySchemaValidation
     // "Undeclared parameter '%s'") that the pre-canonical tool-union text did not.
-    expect(result.message).toContain("Undeclared parameter 'bogus' for manage_tools.get_status");
+    expect(result.message).toContain("Undeclared parameter 'bogus' (allowed: action) for manage_tools.get_status");
     expect(Array.isArray(result.allowedParameters)).toBe(true);
     expect(isRecord(result.nextCall)).toBe(true);
     expect((result.nextCall as Record<string, unknown>).operation).toBe('describe');
@@ -142,6 +153,16 @@ describe('execute seam: guided error envelopes are preserved verbatim', () => {
     expect(result.message).toBe('Unreal Engine is not connected.');
     expect(result.tool).toBe('manage_tools');
     expect(result.action).toBe('get_status');
+    expect(result.nextCall).toEqual({ operation: 'search' });
+  });
+
+  it('NOT_CONNECTED names the bridge target when the server knows it', async () => {
+    const result = await handleUnrealGatewayCall(
+      { operation: 'execute', tool: 'manage_tools', action: 'get_status', params: {} },
+      makeContext(false, 'ws://127.0.0.1:8090')
+    );
+    expect(result.errorCode).toBe('NOT_CONNECTED');
+    expect(result.message).toBe('Unreal Engine is not connected: no bridge listener responded at ws://127.0.0.1:8090.');
     expect(result.nextCall).toEqual({ operation: 'search' });
   });
 });

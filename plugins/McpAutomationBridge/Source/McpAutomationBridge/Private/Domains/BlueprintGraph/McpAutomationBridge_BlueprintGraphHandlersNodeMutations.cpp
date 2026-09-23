@@ -22,6 +22,28 @@ static bool DeleteNode(FActionContext& Context)
         return true;
     }
 
+    // `pinName` only means something to the break_pin_links fold, which the
+    // caller selects with deleteScope "pin_links". Sent without it, the request
+    // says "operate on this pin" and the default scope says "delete the whole
+    // node" -- and the node wins, silently. That cost a working Branch node and
+    // the death branch hanging off it. A destructive default must not resolve a
+    // contradiction in its own favour: refuse and name the scope that does what
+    // the pin was clearly meant to do.
+    FString ScopedPinName;
+    if (Context.Payload->TryGetStringField(TEXT("pinName"), ScopedPinName) &&
+        !ScopedPinName.IsEmpty())
+    {
+        Context.SendError(
+            FString::Printf(
+                TEXT("'pinName' ('%s') was sent with deleteScope 'node', which deletes "
+                     "the ENTIRE node and ignores the pin. Re-send with "
+                     "deleteScope: \"pin_links\" to break that pin's links instead, or "
+                     "drop 'pinName' to confirm you meant to delete the whole node."),
+                *ScopedPinName),
+            TEXT("CONTRADICTORY_SCOPE"));
+        return true;
+    }
+
     // Honor the node's own deletability (the same gate the editor UI uses).
     // Removing structural roots like K2Node_FunctionEntry leaves the function
     // graph orphaned; a later compile then hits an engine check() and fatally
@@ -222,11 +244,24 @@ static bool SetNodeProperty(FActionContext& Context)
         bHandled = true;
     }
 
+    // Anything else may still be a reflected field on the node or on its
+    // FAnimNode_* payload -- that is how an AnimGraph player is told which
+    // Sequence or BlendSpace to play.
+    if (!bHandled)
+        bHandled = McpTrySetNodeAssetPropertyForMcp(TargetNode, PropertyName, Value);
+
     if (!bHandled)
     {
+        // Name the supported set: every other rejection in this tool lists its
+        // allowed values, and without them a caller cannot tell whether the
+        // property is spelled wrong or simply not settable here.
         Context.SendError(
             FString::Printf(
-                TEXT("Unsupported node property '%s'"),
+                TEXT("Unsupported node property '%s' (supported: comment, ")
+                TEXT("NodePosX/X, NodePosY/Y, bCommentBubbleVisible, ")
+                TEXT("bCommentBubblePinned, EnabledState, bDisabled, plus any ")
+                TEXT("reflected node field such as an AnimGraph player's ")
+                TEXT("Sequence or BlendSpace, set by asset path)."),
                 *PropertyName),
             TEXT("PROPERTY_NOT_SUPPORTED"));
         return true;

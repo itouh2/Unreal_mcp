@@ -37,8 +37,10 @@ bool HandleWidgetAuthoringGridPanels(
         }
 
         FString SlotName = GetJsonStringField(Payload, TEXT("slotName"), TEXT("GridPanel"));
-        int32 ColumnCount = static_cast<int32>(GetJsonNumberField(Payload, TEXT("columnCount"), 2));
-        int32 RowCount = static_cast<int32>(GetJsonNumberField(Payload, TEXT("rowCount"), 2));
+        // columnCount/rowCount are in the contract but a UGridPanel has no such
+        // properties -- its extent comes from the Row/Column each child slot
+        // claims. They were read into locals and dropped; say so instead.
+        const bool bSentGridSize = Payload->HasField(TEXT("columnCount")) || Payload->HasField(TEXT("rowCount"));
 
         UWidgetBlueprint* WidgetBP = LoadWidgetBlueprint(WidgetPath);
         if (!WidgetBP)
@@ -58,8 +60,8 @@ bool HandleWidgetAuthoringGridPanels(
         RegisterWidgetGuid(WidgetBP, GridPanel);
 
         // CRITICAL: Use SafeAddWidgetToTree to properly handle root replacement and GUID cleanup
-        FString ParentSlot = GetJsonStringField(Payload, TEXT("parentSlot"));
-        if (!SafeAddWidgetToTree(WidgetBP, GridPanel, ParentSlot))
+        FString ParentSlot = ResolveParentSlotName(Payload);
+        if (!SafeAddWidgetToTree(WidgetBP, GridPanel, ParentSlot, Payload))
         {
             UnregisterWidgetGuid(WidgetBP, GridPanel);
             WidgetBP->WidgetTree->RemoveWidget(GridPanel);
@@ -80,6 +82,11 @@ bool HandleWidgetAuthoringGridPanels(
         ResultJson->SetBoolField(TEXT("success"), true);
         ResultJson->SetStringField(TEXT("message"), TEXT("Added grid panel"));
         ResultJson->SetStringField(TEXT("slotName"), SlotName);
+        if (bSentGridSize)
+        {
+            ResultJson->SetBoolField(TEXT("gridSizeApplied"), false);
+            ResultJson->SetStringField(TEXT("gridSizeNote"), TEXT("columnCount/rowCount were ignored: a GridPanel sizes itself from the Row and Column its children claim. Set those on each child's slot."));
+        }
 
         McpHandlerUtils::AddVerification(ResultJson, WidgetBP);
         Subsystem.SendAutomationResponse(RequestingSocket, RequestId, true, TEXT("Added grid panel"), ResultJson);
@@ -137,8 +144,8 @@ bool HandleWidgetAuthoringGridPanels(
             UniformGrid->SetMinDesiredSlotHeight(static_cast<float>(GetJsonNumberField(Payload, TEXT("minDesiredSlotHeight"), 0.0)));
         }
 
-        FString ParentSlot = GetJsonStringField(Payload, TEXT("parentSlot"));
-        if (!SafeAddWidgetToTree(WidgetBP, UniformGrid, ParentSlot))
+        FString ParentSlot = ResolveParentSlotName(Payload);
+        if (!SafeAddWidgetToTree(WidgetBP, UniformGrid, ParentSlot, Payload))
         {
             UnregisterWidgetGuid(WidgetBP, UniformGrid);
             WidgetBP->WidgetTree->RemoveWidget(UniformGrid);
@@ -212,8 +219,8 @@ bool HandleWidgetAuthoringGridPanels(
         }
 #endif
 
-        FString ParentSlot = GetJsonStringField(Payload, TEXT("parentSlot"));
-        if (!SafeAddWidgetToTree(WidgetBP, WrapBox, ParentSlot))
+        FString ParentSlot = ResolveParentSlotName(Payload);
+        if (!SafeAddWidgetToTree(WidgetBP, WrapBox, ParentSlot, Payload))
         {
             UnregisterWidgetGuid(WidgetBP, WrapBox);
             WidgetBP->WidgetTree->RemoveWidget(WrapBox);

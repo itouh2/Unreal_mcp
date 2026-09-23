@@ -1,6 +1,6 @@
 // tests/unit/manage-asset-pilot-generate.test.ts
 // Generates the pilot catalog.json and pilot manifest artifacts from the
-// 169 manage_asset records, then writes the evidence JSON. This test both
+// 172 manage_asset records, then writes the evidence JSON. This test both
 // verifies the pilot pipeline end-to-end and produces the evidence artifact.
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -9,14 +9,20 @@ import { describe, expect, it } from 'vitest';
 import { hashManifestContent } from '../../scripts/gateway-manifest/hash.js';
 import { pilotJson, pilotTsText } from '../../scripts/gateway-manifest/pilot.js';
 import { validatePilotCatalog } from '../../scripts/gateway-manifest/validate.js';
-import { MANAGE_ASSET_EXPECTED_IDS, MANAGE_ASSET_RECORDS } from '../../src/tools/catalog/capabilities/records/manage-asset/index.js';
+import { createCapabilityRecord } from '../../src/tools/catalog/capabilities/index.js';
+import { MANAGE_ASSET_UNFOLDED_SOURCES } from '../../src/tools/catalog/capabilities/records/manage-asset/index.js';
+
+// The shipped catalog folds sibling records into families; per-record facts
+// below are pinned on the authored, unfolded records.
+const MANAGE_ASSET_RECORDS = MANAGE_ASSET_UNFOLDED_SOURCES.map((source) => createCapabilityRecord(source));
+const MANAGE_ASSET_EXPECTED_IDS: readonly string[] = MANAGE_ASSET_UNFOLDED_SOURCES.map((source) => String(source.id));
 
 describe('manage-asset pilot generation and evidence', () => {
-  it('validates the 169-record catalog against the pilot schema', () => {
+  it('validates the 172-record catalog against the pilot schema', () => {
     const result = validatePilotCatalog(MANAGE_ASSET_RECORDS, MANAGE_ASSET_EXPECTED_IDS);
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.records.length).toBe(169);
+      expect(result.records.length).toBe(172);
     }
   });
 

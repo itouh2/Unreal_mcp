@@ -33,7 +33,7 @@
 //     argument validation (McpPromptArgumentValidation.cpp). The independent prompt
 //     model lives in ./prompts-completions-native-prompts.ts.
 //   * COMPLETION POOLS — completion/complete now injects the real capability pool
-//     (McpCapabilityCompletionPool), the class-alias project-handle pool
+//     (McpCapabilityCompletionPool), the content-root project-handle pool
 //     (McpProjectHandleCompletionPool), and the session enabled-capability set
 //     (McpEnabledCapabilityIds) from McpCompletionPools.cpp, so capability and
 //     project-handle slots return ranked candidates instead of NO_MATCH.
@@ -301,23 +301,29 @@ function nativeSafeEmpty(code: NativeCompletionGuidanceCode): NativeCompletionOu
   return { completion: NATIVE_EMPTY_COMPLETION, guidanceCode: code };
 }
 
-// McpCompletionPools.cpp — the class-alias project-handle pool (the ACTOR_CLASS_ALIASES keys).
+// McpCompletionPools.cpp — the project-handle pool: McpResourceUri::ContentRoots(),
+// sorted. It served the ACTOR_CLASS_ALIASES keys until those were found to fail
+// the mount-root rule the object/asset templates enforce on every read.
 const NATIVE_PROJECT_HANDLE_POOL: readonly NativeCompletionCandidate[] = [
-  'Actor', 'BlockingVolume', 'Camera', 'CameraActor', 'Character', 'DirectionalLight',
-  'Pawn', 'PlayerStart', 'PointLight', 'RectLight', 'SkeletalMeshActor', 'Spline',
-  'SplineActor', 'SpotLight', 'StaticMeshActor', 'TriggerBox', 'TriggerSphere',
+  '/Engine', '/Game', '/Niagara', '/Script', '/Temp',
 ].map((value) => ({ value, kind: 'project-handle' as const }));
 
-// McpCompletionPools.cpp — a representative canonical (id, parent) sample. Native
-// builds the capability pool as {id (capability), parentTool + '.' + the id after
-// its first dot (legacy-id)} per record, each tagged with the canonical id.
-const NATIVE_CANONICAL_SAMPLE: readonly { readonly id: string; readonly parent: string }[] = [
-  { id: 'asset.list', parent: 'manage_asset' },
+// McpCompletionPools.cpp — a representative canonical sample. Native builds the
+// capability pool as {id (capability)} plus every declared alias and every
+// {tool}.{action} legacy pair (legacy-id) per record, each tagged with the
+// canonical id; a folded family therefore completes under its old names too.
+const NATIVE_CANONICAL_SAMPLE: readonly {
+  readonly id: string;
+  readonly parent: string;
+  readonly aliases?: readonly string[];
+  readonly legacyActions?: readonly string[];
+}[] = [
+  { id: 'asset.list', parent: 'manage_asset', aliases: ['asset.list_content_sources', 'asset.list_instances'], legacyActions: ['list', 'list_content_sources', 'list_instances'] },
   { id: 'asset.import', parent: 'manage_asset' },
-  { id: 'asset.exists', parent: 'manage_asset' },
-  { id: 'asset.validate', parent: 'manage_asset' },
-  { id: 'blueprint.get', parent: 'manage_blueprint' },
-  { id: 'control_actor.spawn_actor', parent: 'control_actor' },
+  { id: 'asset.query_asset', parent: 'manage_asset', aliases: ['asset.exists', 'asset.search_assets'], legacyActions: ['query_asset', 'exists', 'search_assets'] },
+  { id: 'asset.inspect_asset', parent: 'manage_asset', aliases: ['asset.validate'], legacyActions: ['inspect_asset', 'validate'] },
+  { id: 'blueprint.get_blueprint', parent: 'manage_blueprint', aliases: ['blueprint.get'], legacyActions: ['get_blueprint', 'get'] },
+  { id: 'control_actor.spawn', parent: 'control_actor', aliases: ['control_actor.spawn_blueprint', 'control_actor.spawn_actor'], legacyActions: ['spawn', 'spawn_blueprint', 'spawn_actor'] },
 ];
 
 const NATIVE_CAPABILITY_POOL: readonly NativeCompletionCandidate[] = (() => {
@@ -329,10 +335,11 @@ const NATIVE_CAPABILITY_POOL: readonly NativeCompletionCandidate[] = (() => {
       out.push({ value, kind, capabilityId });
     }
   };
-  for (const { id, parent } of NATIVE_CANONICAL_SAMPLE) {
+  for (const { id, parent, aliases, legacyActions } of NATIVE_CANONICAL_SAMPLE) {
     add(id, 'capability', id);
+    for (const alias of aliases ?? []) add(alias, 'legacy-id', id);
     const dot = id.indexOf('.');
-    if (dot >= 0) add(`${parent}.${id.slice(dot + 1)}`, 'legacy-id', id);
+    for (const action of legacyActions ?? (dot >= 0 ? [id.slice(dot + 1)] : [])) add(`${parent}.${action}`, 'legacy-id', id);
   }
   return out;
 })();
@@ -414,8 +421,10 @@ export function readNativeSource(relative: string): string {
 /** Parse the six native prompt ids straight out of McpPromptCatalog.cpp. */
 export function parseNativePromptIdsFromSource(): string[] {
   const source = readNativeSource('Primitives/McpPromptCatalog.cpp');
-  const block = source.slice(source.indexOf('McpWorkflowPromptIds'));
-  const ids = [...block.matchAll(/TEXT\("([a-z-]+)"\)/g)].map((m) => m[1]);
-  // The Ids array lists each of the six once, in order.
-  return ids.slice(0, 6);
+  // Bound the scan to the Ids initializer. Scanning to end-of-file and taking a
+  // fixed slice(0, 6) instead would silently drop a SEVENTH native prompt, so the
+  // grounding assertion could never see an added id.
+  const start = source.indexOf('Ids = {', source.indexOf('McpWorkflowPromptIds'));
+  const block = source.slice(start, source.indexOf('};', start));
+  return [...block.matchAll(/TEXT\("([a-z-]+)"\)/g)].map((m) => m[1]);
 }

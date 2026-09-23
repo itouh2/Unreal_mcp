@@ -11,6 +11,14 @@ TSharedPtr<FJsonObject> HandleBlueprintStateTransitionActions(const FString& Sub
         FString BlueprintPath = NormalizeAnimPath(GetJsonStringField(Params, TEXT("blueprintPath"), TEXT("")));
         FString StateMachineName = GetJsonStringField(Params, TEXT("stateMachineName"), TEXT(""));
         FString StateName = GetJsonStringField(Params, TEXT("stateName"), TEXT(""));
+        // describe advertises both spellings and names this field machineName in
+        // add_state's own output, so a caller who sends machineName was reaching
+        // an unnamed state machine -- which matches every machine in the graph.
+        if (StateMachineName.IsEmpty())
+        {
+            StateMachineName = GetJsonStringField(Params, TEXT("machineName"), TEXT(""));
+        }
+        const TArray<FString> AnimPaths = ReadStateAnimationPaths(Params);
         int32 NodePosX = static_cast<int32>(GetJsonNumberField(Params, TEXT("positionX"), 200));
         int32 NodePosY = static_cast<int32>(GetJsonNumberField(Params, TEXT("positionY"), 0));
         bool bSave = GetJsonBoolField(Params, TEXT("save"), true);
@@ -43,6 +51,7 @@ TSharedPtr<FJsonObject> HandleBlueprintStateTransitionActions(const FString& Sub
         TArray<UAnimGraphNode_StateMachine*> MatchingStateMachines = FindStateMachineNodes(AnimGraph, StateMachineName);
         if (MatchingStateMachines.Num() == 0)
         {
+            AddStateMachineInventory(AnimGraph, Response);
             ANIM_ERROR_RESPONSE(FString::Printf(TEXT("State machine '%s' not found"), *StateMachineName), TEXT("SM_NOT_FOUND"));
         }
 
@@ -66,6 +75,10 @@ TSharedPtr<FJsonObject> HandleBlueprintStateTransitionActions(const FString& Sub
                 Response->SetStringField(TEXT("requestedName"), StateName);
                 Response->SetStringField(TEXT("stateMachine"), StateMachineName);
                 Response->SetBoolField(TEXT("existingAsset"), true);
+                EnsureStateMachineEntry(CandidateGraph, ExistingState, Response);
+                ApplyStateAnimations(ExistingState, AnimPaths, Response);
+                FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(AnimBP);
+                SaveAnimAsset(AnimBP, bSave);
                 ANIM_SUCCESS_RESPONSE(FString::Printf(TEXT("State '%s' already exists in state machine '%s'"), *ExistingState->GetStateName(), *StateMachineName));
                 return Response;
             }
@@ -131,6 +144,8 @@ TSharedPtr<FJsonObject> HandleBlueprintStateTransitionActions(const FString& Sub
         // Get the actual state name that was assigned (may differ from requested due to validation)
         FString ActualStateName = StateNode->GetStateName();
 
+        EnsureStateMachineEntry(SMGraph, StateNode, Response);
+        ApplyStateAnimations(StateNode, AnimPaths, Response);
         FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(AnimBP);
         SaveAnimAsset(AnimBP, bSave);
 
@@ -150,9 +165,12 @@ TSharedPtr<FJsonObject> HandleBlueprintStateTransitionActions(const FString& Sub
     {
         FString BlueprintPath = NormalizeAnimPath(GetJsonStringField(Params, TEXT("blueprintPath"), TEXT("")));
         FString StateMachineName = GetJsonStringField(Params, TEXT("stateMachineName"), TEXT(""));
+        if (StateMachineName.IsEmpty())
+        {
+            StateMachineName = GetJsonStringField(Params, TEXT("machineName"), TEXT(""));
+        }
         FString FromState = GetJsonStringField(Params, TEXT("fromState"), TEXT(""));
         FString ToState = GetJsonStringField(Params, TEXT("toState"), TEXT(""));
-        float CrossfadeDuration = static_cast<float>(GetJsonNumberField(Params, TEXT("crossfadeDuration"), 0.2));
         bool bSave = GetJsonBoolField(Params, TEXT("save"), true);
 
         if (FromState.IsEmpty() || ToState.IsEmpty())
@@ -183,6 +201,7 @@ TSharedPtr<FJsonObject> HandleBlueprintStateTransitionActions(const FString& Sub
         TArray<UAnimGraphNode_StateMachine*> MatchingStateMachines = FindStateMachineNodes(AnimGraph, StateMachineName);
         if (MatchingStateMachines.Num() == 0)
         {
+            AddStateMachineInventory(AnimGraph, Response);
             ANIM_ERROR_RESPONSE(FString::Printf(TEXT("State machine '%s' not found"), *StateMachineName), TEXT("SM_NOT_FOUND"));
         }
 
@@ -216,9 +235,25 @@ TSharedPtr<FJsonObject> HandleBlueprintStateTransitionActions(const FString& Sub
                 {
                     Response->SetStringField(TEXT("fromState"), FromState);
                     Response->SetStringField(TEXT("toState"), ToState);
-                    Response->SetNumberField(TEXT("crossfadeDuration"), ExistingTransition->CrossfadeDuration);
                     Response->SetBoolField(TEXT("existingAsset"), true);
-                    ANIM_SUCCESS_RESPONSE(FString::Printf(TEXT("Transition from '%s' to '%s' already exists"), *FromState, *ToState));
+                    FString SettingsError, SettingsCode;
+                    bool bChanged = false;
+                    if (!ApplyTransitionSettings(ExistingTransition, AnimBP, Params, Response,
+                                                 SettingsError, SettingsCode, bChanged))
+                    {
+                        ANIM_ERROR_RESPONSE(SettingsError, SettingsCode);
+                    }
+                    // Marking and saving unconditionally turned the documented
+                    // idempotent existence check into a structural recompile,
+                    // a reinstancing of every live AnimInstance and a package
+                    // write -- during PIE, the compile-during-PIE hazard.
+                    if (bChanged)
+                    {
+                        FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(AnimBP);
+                        SaveAnimAsset(AnimBP, bSave);
+                    }
+                    Response->SetBoolField(TEXT("settingsApplied"), bChanged);
+                    ANIM_SUCCESS_RESPONSE(FString::Printf(TEXT("Transition from '%s' to '%s' already exists%s"), *FromState, *ToState, bChanged ? TEXT("; settings applied") : TEXT("; no settings supplied, nothing changed")));
                     return Response;
                 }
 
@@ -226,6 +261,10 @@ TSharedPtr<FJsonObject> HandleBlueprintStateTransitionActions(const FString& Sub
             }
         }
 
+        if (!bFoundSourceStateAnywhere || !bFoundTargetStateAnywhere)
+        {
+            AddStateInventory(AnimGraph, StateMachineName, Response);
+        }
         if (!bFoundSourceStateAnywhere)
         {
             ANIM_ERROR_RESPONSE(FString::Printf(TEXT("Source state '%s' not found"), *FromState), TEXT("SOURCE_STATE_NOT_FOUND"));
@@ -240,17 +279,17 @@ TSharedPtr<FJsonObject> HandleBlueprintStateTransitionActions(const FString& Sub
             ANIM_ERROR_RESPONSE(TEXT("Invalid state machine graph"), TEXT("INVALID_GRAPH"));
         }
 
-        // Find the source and target states in the selected graph
+        // SMGraph is only set on the branch where BOTH states resolved in it, so
+        // this cannot fail today. It is still checked: CreateConnections
+        // dereferences both arguments, so a future change to FindStateNode's
+        // matching or to how SMGraph is chosen would turn a silent null into an
+        // editor crash instead of an error receipt.
         UAnimStateNode* FromNode = FindStateNode(SMGraph, FromState);
         UAnimStateNode* ToNode = FindStateNode(SMGraph, ToState);
-
-        if (!FromNode)
+        if (!FromNode || !ToNode)
         {
-            ANIM_ERROR_RESPONSE(FString::Printf(TEXT("Source state '%s' not found"), *FromState), TEXT("SOURCE_STATE_NOT_FOUND"));
-        }
-        if (!ToNode)
-        {
-            ANIM_ERROR_RESPONSE(FString::Printf(TEXT("Target state '%s' not found"), *ToState), TEXT("TARGET_STATE_NOT_FOUND"));
+            AddStateInventory(AnimGraph, StateMachineName, Response);
+            ANIM_ERROR_RESPONSE(FString::Printf(TEXT("State '%s' not found in the resolved state machine graph"), FromNode ? *ToState : *FromState), FromNode ? TEXT("TARGET_STATE_NOT_FOUND") : TEXT("SOURCE_STATE_NOT_FOUND"));
         }
 
         // Create the Transition Node
@@ -261,16 +300,26 @@ TSharedPtr<FJsonObject> HandleBlueprintStateTransitionActions(const FString& Sub
         // Establish the connection between states
         TransNode->CreateConnections(FromNode, ToNode);
 
-        // Configure transition properties
-        TransNode->CrossfadeDuration = CrossfadeDuration;
+        // CrossfadeDuration is deliberately not set here: a fresh
+        // UAnimStateTransitionNode arrives at 0.2 s from its own constructor,
+        // and ApplyTransitionSettings overwrites it only when the caller
+        // supplied a value. Defaulting it in two places with two conventions
+        // (0.2 here, -1.0-means-untouched there) was one edit from diverging.
         TransNode->BlendMode = EAlphaBlendOption::Linear;
+
+        FString SettingsError, SettingsCode;
+        bool bSettingsChanged = false;
+        if (!ApplyTransitionSettings(TransNode, AnimBP, Params, Response, SettingsError, SettingsCode,
+                                     bSettingsChanged))
+        {
+            ANIM_ERROR_RESPONSE(SettingsError, SettingsCode);
+        }
 
         FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(AnimBP);
         SaveAnimAsset(AnimBP, bSave);
 
         Response->SetStringField(TEXT("fromState"), FromState);
         Response->SetStringField(TEXT("toState"), ToState);
-        Response->SetNumberField(TEXT("crossfadeDuration"), CrossfadeDuration);
         ANIM_SUCCESS_RESPONSE(FString::Printf(TEXT("Transition from '%s' to '%s' created"), *FromState, *ToState));
 #else
         // AnimGraph headers not available - return error instead of fake success

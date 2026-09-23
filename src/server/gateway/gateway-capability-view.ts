@@ -1,4 +1,4 @@
-﻿// src/server/gateway/gateway-capability-view.ts
+// src/server/gateway/gateway-capability-view.ts
 // Response projections for one canonical capability record.
 //
 // `search` rows stay compact (no schema bodies) while `describe` returns the
@@ -35,7 +35,8 @@ export function capabilityConsentGrant(
 export function primaryLegacyId(
   record: CapabilityRecord
 ): CapabilityRecord['legacyIds'][number] | undefined {
-  return record.legacyIds.find((entry) => entry.tool === record.routing.parentTool)
+  return record.legacyIds.find((entry) => entry.tool === record.routing.parentTool && entry.folded === undefined)
+    ?? record.legacyIds.find((entry) => entry.tool === record.routing.parentTool)
     ?? record.legacyIds[0];
 }
 

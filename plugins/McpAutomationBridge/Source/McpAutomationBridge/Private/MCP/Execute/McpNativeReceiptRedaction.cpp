@@ -1,6 +1,7 @@
+#include "MCP/Execute/McpNativeReceiptRedaction.h"
+#include "Foundation/HandlerUtils/McpHandlerUtilsJson.h"
 // McpNativeReceiptRedaction.cpp — see header for the parity contract.
 
-#include "MCP/Execute/McpNativeReceiptRedaction.h"
 #include "Serialization/JsonSerializer.h"
 #include "Serialization/JsonWriter.h"
 #include "Policies/CondensedJsonPrintPolicy.h"
@@ -121,7 +122,7 @@ TSharedPtr<FJsonValue> MaskValue(const TSharedPtr<FJsonValue>& Value, int32 Dept
 	if (Value->Type == EJson::String)
 	{
 		FString Text;
-		Value->TryGetString(Text);
+		McpHandlerUtils::TryGetJsonValueString(Value, Text);
 		return MakeShared<FJsonValueString>(McpMaskSecrets(Text));
 	}
 	if (Value->Type == EJson::Object)

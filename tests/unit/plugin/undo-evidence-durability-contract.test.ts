@@ -295,20 +295,33 @@ const GRAPH_DIR = 'plugins/McpAutomationBridge/Source/McpAutomationBridge/Privat
  * defects or a broken parser would look like a pass.
  */
 const HISTORICAL_FALSE_UNDO_CLAIMS = [
-  { id: 'blueprint.delete_node', file: `${GRAPH_DIR}/McpAutomationBridge_BlueprintGraphHandlersNodeMutations.cpp`, line: 40, direct: true },
-  { id: 'blueprint.create_reroute_node', file: `${GRAPH_DIR}/McpAutomationBridge_BlueprintGraphHandlersNodeMutations.cpp`, line: 63, direct: true },
+  // All three shifted down by the CONTRADICTORY_SCOPE refusal added at the top of
+  // DeleteNode: `pinName` with the default deleteScope 'node' used to delete the
+  // whole node and ignore the pin, which cost a live Branch node. The refusal runs
+  // above the transaction so a contradictory request leaves no empty undo entry.
+  { id: 'blueprint.delete_node', file: `${GRAPH_DIR}/McpAutomationBridge_BlueprintGraphHandlersNodeMutations.cpp`, line: 62, direct: true },
+  { id: 'blueprint.create_reroute_node', file: `${GRAPH_DIR}/McpAutomationBridge_BlueprintGraphHandlersNodeMutations.cpp`, line: 85, direct: true },
   // Shifted down by the posX/posY fallback added to CreateRerouteNode above it.
   // Shifted again by the nodeGuid echo added to CreateRerouteNode (dogfood #186).
-  { id: 'blueprint.set_node_property', file: `${GRAPH_DIR}/McpAutomationBridge_BlueprintGraphHandlersNodeMutations.cpp`, line: 110, direct: true },
+  { id: 'blueprint.set_node_property', file: `${GRAPH_DIR}/McpAutomationBridge_BlueprintGraphHandlersNodeMutations.cpp`, line: 132, direct: true },
   { id: 'blueprint.connect_pins', file: `${GRAPH_DIR}/McpAutomationBridge_BlueprintGraphHandlersPinMutations.cpp`, line: 37, direct: true },
-  { id: 'blueprint.break_pin_links', file: `${GRAPH_DIR}/McpAutomationBridge_BlueprintGraphHandlersPinMutations.cpp`, line: 196, direct: true },
+  // Shifted down by the pin-not-found errors, which now list the node's actual
+  // pins instead of saying only "Pin not found." (live-sweep ID-014), and again
+  // by the connection evidence connect_pins now reports (live-sweep ID-011).
+  { id: 'blueprint.break_pin_links', file: `${GRAPH_DIR}/McpAutomationBridge_BlueprintGraphHandlersPinMutations.cpp`, line: 211, direct: true },
   // Split out of the PinMutations translation unit under the 250-pure-line gate.
   // Shifted down by the propertyValue/object-pin handling: the contract spelling
   // fallback, the JSON literal renderer, and object resolution now all run above
   // the transaction so an unresolvable path leaves no empty undo entry.
-  { id: 'blueprint.set_pin_default_value', file: `${GRAPH_DIR}/PinMutations/McpAutomationBridge_BlueprintGraphPinSetDefaultValue.cpp`, line: 175, direct: true },
+  // Shifted down by the same pin-not-found error change (live-sweep ID-014), and
+  // again by the typed-literal/text-pin handling and the applied-value read-back
+  // that refuses a silently dropped default (PIN_VALUE_REJECTED) -- all of which
+  // run above the transaction so a rejected value leaves no empty undo entry.
+  { id: 'blueprint.set_pin_default_value', file: `${GRAPH_DIR}/PinMutations/McpAutomationBridge_BlueprintGraphPinSetDefaultValue.cpp`, line: 194, direct: true },
   // The one that hid: the save is several frames below the transaction.
-  { id: 'blueprint.create_node', file: `${GRAPH_DIR}/McpAutomationBridge_BlueprintGraphHandlersNodeCreation.cpp`, line: 85, direct: false }
+  // Shifted down by the MACRO_NAME_REQUIRED refusal in TryCreateMacroNode above
+  // it, which stops nodeType "MacroInstance" building a macro node with no macro.
+  { id: 'blueprint.create_node', file: `${GRAPH_DIR}/McpAutomationBridge_BlueprintGraphHandlersNodeCreation.cpp`, line: 104, direct: false }
 ] as const;
 
 describe('UNDO_EVIDENCE durability contract (Task 43)', () => {

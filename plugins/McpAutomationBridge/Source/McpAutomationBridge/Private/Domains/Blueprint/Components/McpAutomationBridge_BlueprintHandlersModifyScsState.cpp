@@ -42,10 +42,43 @@ bool PrepareModifyScsPayload(const FBlueprintActionContext &Context,
       }
     }
   }
+  // The published contract lists componentName/meshPath/materialPath/properties
+  // on this action, but only operations[] was ever read -- so a caller following
+  // the contract was refused for omitting an array the contract never mentions.
+  // Promote a single-component payload into a one-op batch instead. The op is a
+  // copy of the payload minus the batch-level keys: enumerating the fields to
+  // forward is exactly how attachTo and applyAndSave got dropped before.
+  if (!LocalPayload->HasField(TEXT("operations"))) {
+    FString SingleComponent;
+    if (LocalPayload->TryGetStringField(TEXT("componentName"), SingleComponent) &&
+        !SingleComponent.TrimStartAndEnd().IsEmpty()) {
+      TSharedPtr<FJsonObject> Op = MakeShared<FJsonObject>(*LocalPayload);
+      static const TCHAR *const BatchKeys[] = {
+          TEXT("blueprintPath"), TEXT("name"),   TEXT("blueprintCandidates"),
+          TEXT("compile"),       TEXT("save"),   TEXT("applyAndSave"),
+          TEXT("action"),        TEXT("edit")};
+      for (const TCHAR *Key : BatchKeys) {
+        Op->RemoveField(Key);
+      }
+      const bool bIsAdd = Op->HasField(TEXT("componentClass")) ||
+                          Op->HasField(TEXT("componentType"));
+      Op->SetStringField(TEXT("type"), bIsAdd ? TEXT("add_component")
+                                              : TEXT("modify_component"));
+      TArray<TSharedPtr<FJsonValue>> Synthesized;
+      Synthesized.Add(MakeShared<FJsonValueObject>(Op));
+      LocalPayload->SetArrayField(TEXT("operations"), Synthesized);
+      State.LocalWarnings.Add(FString::Printf(
+          TEXT("No operations array; ran the single-component payload as one "
+               "%s op on '%s'."),
+          bIsAdd ? TEXT("add_component") : TEXT("modify_component"),
+          *SingleComponent));
+    }
+  }
   if (!LocalPayload->TryGetArrayField(TEXT("operations"), State.OperationsArray) ||
       State.OperationsArray == nullptr) {
     Bridge.SendAutomationError(RequestingSocket, RequestId,
-        TEXT("blueprint_modify_scs requires an operations array."),
+        TEXT("blueprint_modify_scs requires an operations array, or a single "
+             "componentName (plus componentClass to add) to run as one op."),
         TEXT("INVALID_OPERATIONS"));
     return false;
   }
@@ -62,6 +95,15 @@ bool PrepareModifyScsPayload(const FBlueprintActionContext &Context,
                                TEXT("save must be a boolean."),
                                TEXT("INVALID_SAVE_FLAG"));
     return false;
+  }
+  // The published contract calls this applyAndSave ("Whether to save the
+  // Blueprint after applying SCS changes") and the gateway accepts it, but only
+  // `save`/`compile` were ever read here - so a caller following the contract
+  // got saved:false and lost the whole batch on the next editor restart.
+  bool bApplyAndSave = false;
+  if (LocalPayload->TryGetBoolField(TEXT("applyAndSave"), bApplyAndSave)) {
+    State.bSave = bApplyAndSave;
+    State.bCompile = State.bCompile || bApplyAndSave;
   }
   return true;
 }

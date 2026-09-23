@@ -1,8 +1,9 @@
 /**
  * manage_sequence capability record catalog.
  *
- * Exactly 81 canonical CapabilityRecord entries mapped 1:1 to the 81
- * manage_sequence actions in manage-sequence-tool.ts. Each record is grounded
+ * 81 authored CapabilityRecordSource entries covering the 81 manage_sequence
+ * actions in manage-sequence-tool.ts, folded by MANAGE_SEQUENCE_FOLDS into the
+ * 19 shipped records carrying 89 callable legacy pairs. Each record is grounded
  * in the TypeScript handler bodies, native C++ Sequence domain dispatch,
  * and the audio/sequence/system closeout evidence.
  *
@@ -29,8 +30,11 @@ import { TIMELINE_LIFECYCLE_RECORDS } from './timeline-lifecycle.js';
 import { TIMELINE_PLAYBACK_RECORDS } from './timeline-playback.js';
 import { TIMELINE_STATE_RANGE_RECORDS } from './timeline-state-ranges.js';
 import { TIMELINE_TRACKS_RECORDS } from './timeline-tracks.js';
+import { applyFolds } from '../shared/fold.js';
+import { MANAGE_SEQUENCE_FOLDS } from '../folds/manage-sequence.folds.js';
 
-const SOURCES: readonly CapabilityRecordSource[] = [
+/** The authored records before folding; per-action contract tests pin these. */
+export const MANAGE_SEQUENCE_UNFOLDED_SOURCES: readonly CapabilityRecordSource[] = [
   ...TIMELINE_LIFECYCLE_RECORDS,
   ...TIMELINE_PLAYBACK_RECORDS,
   ...TIMELINE_BINDINGS_RECORDS,
@@ -44,6 +48,8 @@ const SOURCES: readonly CapabilityRecordSource[] = [
   ...TAKE_RECORDS,
   ...REPLAY_RECORDS,
 ];
+
+const SOURCES: readonly CapabilityRecordSource[] = applyFolds(MANAGE_SEQUENCE_UNFOLDED_SOURCES, MANAGE_SEQUENCE_FOLDS, 'manage_sequence');
 
 export const MANAGE_SEQUENCE_SOURCES: readonly CapabilityRecordSource[] = SOURCES;
 

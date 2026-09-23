@@ -4,7 +4,9 @@
  * description/category duplication.
  */
 import { describe, expect, it } from 'vitest';
-import { MANAGE_SEQUENCE_RECORDS } from './index.js';
+// The shipped catalog folds sibling records into families; per-action facts
+// (effects, routing, normalization) are pinned on the authored, unfolded records.
+import { MANAGE_SEQUENCE_UNFOLDED_SOURCES as MANAGE_SEQUENCE_RECORDS } from './index.js';
 import { getParentToolMetadata } from '../parent-metadata.js';
 
 const PARENT = getParentToolMetadata('manage_sequence');
@@ -32,8 +34,8 @@ describe('manage_sequence carries canonical parent metadata', () => {
     expect(record.parent.category).toBe('utility');
   });
 
-  it('stamps parent metadata on all 81 records', () => {
-    expect(MANAGE_SEQUENCE_RECORDS).toHaveLength(81);
+  it('stamps parent metadata on all 83 records', () => {
+    expect(MANAGE_SEQUENCE_RECORDS).toHaveLength(83);
     for (const record of MANAGE_SEQUENCE_RECORDS) {
       expect(record.parent).toEqual(PARENT);
     }

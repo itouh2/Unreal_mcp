@@ -41,12 +41,12 @@ const testCases = [
   { scenario: 'CONFIG: configure_level_bounds', toolName: 'manage_level_structure', arguments: { action: 'configure_level_bounds', bAutoCalculateBounds: false, boundsOrigin: { x: 0, y: 0, z: 0 }, boundsExtent: { x: 1000, y: 1000, z: 1000 } }, expected: 'success' },
 
   // === WORLD PARTITION GUARDED ACTIONS ===
-  { scenario: 'TOGGLE: enable_world_partition', toolName: 'manage_level_structure', arguments: { action: 'enable_world_partition', bEnableWorldPartition: true }, expected: 'error|cannot enable|success' },
-  { scenario: 'CONFIG: configure_grid_size', toolName: 'manage_level_structure', arguments: { action: 'configure_grid_size', gridName: 'MainGrid', gridCellSize: 12800, loadingRange: 25600, bBlockOnSlowStreaming: false, priority: 0, createIfMissing: true }, expected: 'error|not enabled|success' },
-  { scenario: 'CREATE: create_data_layer', toolName: 'manage_level_structure', arguments: { action: 'create_data_layer', dataLayerName: DATA_LAYER, dataLayerType: 'Runtime', bIsInitiallyVisible: true, bIsInitiallyLoaded: true }, expected: 'error|world partition|success|already exists' },
-  { scenario: 'CONNECT: assign_actor_to_data_layer', toolName: 'manage_level_structure', arguments: { action: 'assign_actor_to_data_layer', actorName: TEST_ACTOR, dataLayerName: DATA_LAYER }, expected: 'error|world partition|not found|success' },
+  { scenario: 'TOGGLE: enable_world_partition', toolName: 'manage_level_structure', arguments: { action: 'enable_world_partition', bEnableWorldPartition: true }, expected: 'success|cannot enable' },
+  { scenario: 'CONFIG: configure_grid_size', toolName: 'manage_level_structure', arguments: { action: 'configure_grid_size', gridName: 'MainGrid', gridCellSize: 12800, loadingRange: 25600, bBlockOnSlowStreaming: false, priority: 0, createIfMissing: true }, expected: 'success|not enabled' },
+  { scenario: 'CREATE: create_data_layer', toolName: 'manage_level_structure', arguments: { action: 'create_data_layer', dataLayerName: DATA_LAYER, dataLayerType: 'Runtime', bIsInitiallyVisible: true, bIsInitiallyLoaded: true }, expected: 'success|world partition|already exists' },
+  { scenario: 'CONNECT: assign_actor_to_data_layer', toolName: 'manage_level_structure', arguments: { action: 'assign_actor_to_data_layer', actorName: TEST_ACTOR, dataLayerName: DATA_LAYER }, expected: 'success|world partition|not found' },
   { scenario: 'CONFIG: configure_hlod_layer', toolName: 'manage_level_structure', arguments: { action: 'configure_hlod_layer', hlodLayerName: HLOD_LAYER, hlodLayerPath: HLOD_FOLDER, cellSize: 12800, loadingDistance: 25600, layerType: 'Instancing', bIsSpatiallyLoaded: true }, expected: 'success|already exists' },
-  { scenario: 'CREATE: create_minimap_volume', toolName: 'manage_level_structure', arguments: { action: 'create_minimap_volume', volumeName: MINIMAP_VOLUME, volumeLocation: { x: 0, y: 0, z: 0 }, volumeExtent: { x: 1000, y: 1000, z: 1000 } }, expected: 'error|world partition|success|already exists' },
+  { scenario: 'CREATE: create_minimap_volume', toolName: 'manage_level_structure', arguments: { action: 'create_minimap_volume', volumeName: MINIMAP_VOLUME, volumeLocation: { x: 0, y: 0, z: 0 }, volumeExtent: { x: 1000, y: 1000, z: 1000 } }, expected: 'success|world partition|already exists' },
 
   // === LEVEL BLUEPRINT ===
   { scenario: 'ACTION: open_level_blueprint', toolName: 'manage_level_structure', arguments: { action: 'open_level_blueprint', levelName: LEVEL_NAME }, expected: 'success' },
@@ -144,7 +144,52 @@ const testCases = [
     // === INFO ===
     { scenario: 'INFO: get_volumes_info', toolName: 'manage_level_structure', arguments: {"action": "get_volumes_info", "filter": "Test"}, expected: 'success' },
 
+    // === CREATE via the folded operation: one action, the class selects the native handler ===
+    { scenario: 'CREATE: create_volume TriggerVolume', toolName: 'manage_level_structure', arguments: { action: 'create_volume', volumeClass: 'TriggerVolume', volumeName: 'TestVol_Trigger', location: { x: 0, y: 0, z: 0 }, rotation: { pitch: 0, yaw: 0, roll: 0 }, extent: { x: 100, y: 100, z: 100 }, save: false }, expected: 'success|already exists' },
+    { scenario: 'CREATE: create_volume TriggerBox', toolName: 'manage_level_structure', arguments: { action: 'create_volume', volumeClass: 'TriggerBox', volumeName: 'TestVol_Box', location: { x: 0, y: 0, z: 0 }, boxExtent: { x: 100, y: 100, z: 100 } }, expected: 'success|already exists' },
+    { scenario: 'CREATE: create_volume TriggerSphere', toolName: 'manage_level_structure', arguments: { action: 'create_volume', volumeClass: 'TriggerSphere', volumeName: 'TestVol_Sphere', location: { x: 0, y: 0, z: 0 }, sphereRadius: 100 }, expected: 'success|already exists' },
+    { scenario: 'CREATE: create_volume TriggerCapsule', toolName: 'manage_level_structure', arguments: { action: 'create_volume', volumeClass: 'TriggerCapsule', volumeName: 'TestVol_Capsule', location: { x: 0, y: 0, z: 0 }, capsuleRadius: 50, capsuleHalfHeight: 100 }, expected: 'success|already exists' },
+    { scenario: 'CREATE: create_volume BlockingVolume attached to actor', toolName: 'manage_level_structure', arguments: { action: 'create_volume', volumeClass: 'BlockingVolume', volumeName: 'TestVol_BlockingAttached', location: { x: 0, y: 0, z: 0 }, actorPath: TEST_ACTOR }, expected: 'success|already exists' },
+    { scenario: 'CREATE: create_volume PainCausingVolume', toolName: 'manage_level_structure', arguments: { action: 'create_volume', volumeClass: 'PainCausingVolume', volumeName: 'TestVol_Pain', location: { x: 0, y: 0, z: 0 }, bPainCausing: false, damagePerSec: 10 }, expected: 'success|already exists' },
+    { scenario: 'CREATE: create_volume PhysicsVolume', toolName: 'manage_level_structure', arguments: { action: 'create_volume', volumeClass: 'PhysicsVolume', volumeName: 'TestVol_Physics', location: { x: 0, y: 0, z: 0 }, bWaterVolume: false, fluidFriction: 0.3, terminalVelocity: 4000 }, expected: 'success|already exists' },
+    { scenario: 'CREATE: create_volume AudioVolume', toolName: 'manage_level_structure', arguments: { action: 'create_volume', volumeClass: 'AudioVolume', volumeName: 'TestVol_Audio', location: { x: 0, y: 0, z: 0 }, bEnabled: true, reverbVolume: 0.5, fadeTime: 0.5 }, expected: 'success|already exists' },
+    { scenario: 'CREATE: create_volume CullDistanceVolume', toolName: 'manage_level_structure', arguments: { action: 'create_volume', volumeClass: 'CullDistanceVolume', volumeName: 'TestVol_Cull', location: { x: 0, y: 0, z: 0 }, cullDistances: [{ size: 100, cullDistance: 1000 }] }, expected: 'success|already exists' },
+    { scenario: 'CREATE: create_volume PostProcessVolume', toolName: 'manage_level_structure', arguments: { action: 'create_volume', volumeClass: 'PostProcessVolume', volumeName: 'TestVol_PostProcess', location: { x: 0, y: 0, z: 0 }, bUnbound: true, blendRadius: 100, blendWeight: 1 }, expected: 'success|already exists' },
+    { scenario: 'DELETE: remove_volume TestVol_Trigger', toolName: 'manage_level_structure', arguments: { action: 'remove_volume', volumeName: 'TestVol_Trigger' }, expected: 'success|not found' },
+    { scenario: 'DELETE: remove_volume TestVol_Box', toolName: 'manage_level_structure', arguments: { action: 'remove_volume', volumeName: 'TestVol_Box' }, expected: 'success|not found' },
+    { scenario: 'DELETE: remove_volume TestVol_Sphere', toolName: 'manage_level_structure', arguments: { action: 'remove_volume', volumeName: 'TestVol_Sphere' }, expected: 'success|not found' },
+    { scenario: 'DELETE: remove_volume TestVol_Capsule', toolName: 'manage_level_structure', arguments: { action: 'remove_volume', volumeName: 'TestVol_Capsule' }, expected: 'success|not found' },
+    { scenario: 'DELETE: remove_volume TestVol_BlockingAttached', toolName: 'manage_level_structure', arguments: { action: 'remove_volume', volumeName: 'TestVol_BlockingAttached' }, expected: 'success|not found' },
+    { scenario: 'DELETE: remove_volume TestVol_Pain', toolName: 'manage_level_structure', arguments: { action: 'remove_volume', volumeName: 'TestVol_Pain' }, expected: 'success|not found' },
+    { scenario: 'DELETE: remove_volume TestVol_Physics', toolName: 'manage_level_structure', arguments: { action: 'remove_volume', volumeName: 'TestVol_Physics' }, expected: 'success|not found' },
+    { scenario: 'DELETE: remove_volume TestVol_Audio', toolName: 'manage_level_structure', arguments: { action: 'remove_volume', volumeName: 'TestVol_Audio' }, expected: 'success|not found' },
+    { scenario: 'DELETE: remove_volume TestVol_Cull', toolName: 'manage_level_structure', arguments: { action: 'remove_volume', volumeName: 'TestVol_Cull' }, expected: 'success|not found' },
+    { scenario: 'DELETE: remove_volume TestVol_PostProcess', toolName: 'manage_level_structure', arguments: { action: 'remove_volume', volumeName: 'TestVol_PostProcess' }, expected: 'success|not found' },
+
     // === CLEANUP ===
+    // Every volume this block created. They carry FIXED names, so without this they
+    // survived the run: the next run's create took the 'already exists' branch
+    // against a stale actor, and the get_volumes_info filter above kept matching
+    // volumes from previous runs. The TestVol_* block already removes each of its own.
+    ...[
+      `${TRIGGER_VOLUME}_Actor`,
+      'Testtrigger_box', 'Testtrigger_sphere', 'Testtrigger_capsule',
+      BLOCKING_VOLUME, `${BLOCKING_VOLUME}_Actor`,
+      KILL_Z_VOLUME, `${KILL_Z_VOLUME}_Actor`,
+      'Testpain_causing_volume',
+      PHYSICS_VOLUME, `${PHYSICS_VOLUME}_Actor`,
+      'Testaudio_volume', 'Testreverb_volume',
+      CULL_DISTANCE_VOLUME, `${CULL_DISTANCE_VOLUME}_Actor`,
+      'Testprecomputed_visibility_volume', 'Testlightmass_importance_volume',
+      'Testnav_mesh_bounds_volume', 'Testnav_modifier_volume',
+      'Testcamera_blocking_volume',
+      POST_PROCESS_VOLUME, `${POST_PROCESS_VOLUME}_Actor`,
+    ].map((volumeName) => ({
+      scenario: `Cleanup: remove volume ${volumeName}`,
+      toolName: 'manage_level_structure',
+      arguments: { action: 'remove_volume', volumeName },
+      expected: 'success|not found',
+    })),
     { scenario: 'Cleanup: delete test actor', toolName: 'control_actor', arguments: { action: 'delete', actorName: TEST_ACTOR }, expected: 'success|not found' },
     { scenario: 'Cleanup: delete test folder', toolName: 'manage_asset', arguments: { action: 'delete', path: TEST_FOLDER, force: true }, expected: 'success|not found' },
   );
